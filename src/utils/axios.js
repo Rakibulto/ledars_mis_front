@@ -684,6 +684,10 @@ export const endpoints = {
     byId: (id) => `/api/user-permissions/${id}/`,
     setById: (id) => `/api/set-user-permissions/${id}/`,
   },
+  permissionGroup: {
+    list: '/api/permission-groups/',
+    byId: (id) => `/api/permission-groups/${id}/`,
+  },
   employee: {
     list: '/api/employees/',
     simple: '/api/employees/simple/',

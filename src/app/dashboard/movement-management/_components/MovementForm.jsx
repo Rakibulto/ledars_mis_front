@@ -24,6 +24,8 @@ import Autocomplete from '@mui/material/Autocomplete';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import CircularProgress from '@mui/material/CircularProgress';
 
+import { paths } from 'src/routes/paths';
+
 import { endpoints } from 'src/utils/axios';
 
 import { DashboardContent } from 'src/layouts/dashboard';
@@ -34,6 +36,8 @@ import { useGetRequest, usePatchMutation, useCreateMutation } from 'src/actions/
 import { toast } from 'src/components/snackbar';
 import { Iconify } from 'src/components/iconify';
 
+import { useAuthContext } from 'src/auth/hooks';
+
 const parseNumber = (val) => {
   const n = parseFloat(val);
   return Number.isFinite(n) ? n : 0;
@@ -41,6 +45,7 @@ const parseNumber = (val) => {
 
 export default function MovementForm() {
   const router = useRouter();
+  const { user } = useAuthContext();
   const searchParams = useSearchParams();
   const editId = searchParams.get('editId');
   const isEditMode = Boolean(editId);
@@ -48,6 +53,16 @@ export default function MovementForm() {
   const [loading, setLoading] = useState(false);
   const [serverStatus, setServerStatus] = useState(null);
   const [originalRowCount, setOriginalRowCount] = useState(0);
+
+  useEffect(() => {
+    if (!user) return;
+    const required = isEditMode ? 'change_movementmanagement' : 'add_movementmanagement';
+    const allowed =
+      user?.is_superuser || user?.user_permissions_list?.some((p) => p.codename === required);
+    if (!allowed) {
+      router.replace(paths.page403);
+    }
+  }, [user, router, isEditMode]);
 
   const apiUrl = useMemo(
     () => (editId ? endpoints.movementManagement.byId(editId) : null),

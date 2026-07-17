@@ -1,7 +1,7 @@
 'use client';
 
 import { mutate } from 'swr';
-import { useMemo, useState, useCallback } from 'react';
+import { useMemo, useState, useCallback, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 
 import Box from '@mui/material/Box';
@@ -19,6 +19,7 @@ import TableHead from '@mui/material/TableHead';
 import Typography from '@mui/material/Typography';
 import CircularProgress from '@mui/material/CircularProgress';
 
+import { paths } from 'src/routes/paths';
 import { useBoolean } from 'src/hooks/use-boolean';
 
 import { endpoints } from 'src/utils/axios';
@@ -56,6 +57,23 @@ export default function MovementDetail() {
   const [signRole, setSignRole] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const deleteConfirm = useBoolean();
+
+  const canChangeMovement =
+    user?.is_superuser ||
+    user?.user_permissions_list?.some((p) => p.codename === 'change_movementmanagement');
+  const canDeleteMovement =
+    user?.is_superuser ||
+    user?.user_permissions_list?.some((p) => p.codename === 'delete_movementmanagement');
+
+  useEffect(() => {
+    if (!user) return;
+    const canView =
+      user?.is_superuser ||
+      user?.user_permissions_list?.some((p) => p.codename === 'view_movementmanagement');
+    if (!canView) {
+      router.replace(paths.page403);
+    }
+  }, [user, router]);
 
   const apiUrl = useMemo(() => endpoints.movementManagement.byId(id), [id]);
   const { data: movement, loading } = useGetRequest(apiUrl);
@@ -364,21 +382,25 @@ export default function MovementDetail() {
           </Button>
           {movement.status === 'draft' && (
             <>
-              <Button
-                variant="contained"
-                startIcon={<Iconify icon="solar:pen-bold-duotone" />}
-                onClick={() => router.push(`/dashboard/movement-management/create?editId=${id}`)}
-              >
-                Edit
-              </Button>
-              <Button
-                variant="outlined"
-                color="error"
-                startIcon={<Iconify icon="solar:trash-bin-trash-bold-duotone" />}
-                onClick={deleteConfirm.onTrue}
-              >
-                Delete
-              </Button>
+              {canChangeMovement && (
+                <Button
+                  variant="contained"
+                  startIcon={<Iconify icon="solar:pen-bold-duotone" />}
+                  onClick={() => router.push(`/dashboard/movement-management/create?editId=${id}`)}
+                >
+                  Edit
+                </Button>
+              )}
+              {canDeleteMovement && (
+                <Button
+                  variant="outlined"
+                  color="error"
+                  startIcon={<Iconify icon="solar:trash-bin-trash-bold-duotone" />}
+                  onClick={deleteConfirm.onTrue}
+                >
+                  Delete
+                </Button>
+              )}
             </>
           )}
         </Stack>

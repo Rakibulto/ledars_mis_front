@@ -1,3 +1,7 @@
+export * from './permissions-view';
+
+export * from './permission-group-view';
+
 export * from './role-view';
 
 export * from './shift-view';

@@ -10,7 +10,7 @@ export const metadata = { title: `Attendance List | Dashboard - ${CONFIG.appName
 
 export default function Page() {
   return (
-    <PermissionBasedGuard requiredPermission={['view_attendance']}>
+    <PermissionBasedGuard requiredPermission={['view_attendance', 'view_attendancedata']}>
       <AttendanceView />
     </PermissionBasedGuard>
   );
