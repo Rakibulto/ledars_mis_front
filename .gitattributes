@@ -1,0 +1,16 @@
+# Normalize line endings to LF for text files (matches Prettier's endOfLine: 'lf')
+* text=auto
+
+# Explicitly ensure common project text files use LF
+*.js     text eol=lf
+*.jsx    text eol=lf
+*.ts     text eol=lf
+*.tsx    text eol=lf
+*.json   text eol=lf
+*.css    text eol=lf
+*.scss   text eol=lf
+*.html   text eol=lf
+*.md     text eol=lf
+*.yml    text eol=lf
+*.yaml   text eol=lf
+*.sh     text eol=lf

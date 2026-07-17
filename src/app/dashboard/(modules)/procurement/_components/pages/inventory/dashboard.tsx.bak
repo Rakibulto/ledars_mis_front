@@ -1,0 +1,426 @@
+import * as ReactRouter from 'react-router';
+import { Boxes, Package, Box, AlertTriangle, TrendingUp, TrendingDown, ArrowRight, Calendar } from 'lucide-react';
+import { Card, CardHeader, CardBody } from '../../components/ui/card';
+import { Button } from '../../components/ui/button';
+import { Badge } from '../../components/ui/badge';
+
+const Link = ReactRouter.Link || (ReactRouter as any).default?.Link;
+
+// Mock data
+const mockDashboardData = {
+  totalValue: 1245000,
+  fixedAssets: {
+    count: 342,
+    value: 985000
+  },
+  consumables: {
+    count: 1256,
+    value: 260000
+  },
+  lowStockItems: 12,
+  outOfStockItems: 3,
+  recentReceipts: [
+    {
+      id: 'INV-2024-1234',
+      name: 'Dell Precision Workstation',
+      type: 'asset',
+      quantity: 10,
+      value: 35000,
+      grnNumber: 'GRN-2024-003',
+      receivedDate: '2024-03-22',
+      location: 'IT Department - HQ'
+    },
+    {
+      id: 'INV-2024-1235',
+      name: 'Office Paper (A4, Ream)',
+      type: 'consumable',
+      quantity: 500,
+      value: 2500,
+      grnNumber: 'GRN-2024-004',
+      receivedDate: '2024-03-21',
+      location: 'Main Warehouse'
+    },
+    {
+      id: 'INV-2024-1236',
+      name: 'Ergonomic Office Chair',
+      type: 'asset',
+      quantity: 50,
+      value: 22500,
+      grnNumber: 'GRN-2024-001',
+      receivedDate: '2024-03-20',
+      location: 'Main Warehouse'
+    },
+    {
+      id: 'INV-2024-1237',
+      name: 'Printer Toner Cartridge (Black)',
+      type: 'consumable',
+      quantity: 100,
+      value: 8000,
+      grnNumber: 'GRN-2024-005',
+      receivedDate: '2024-03-19',
+      location: 'IT Department - HQ'
+    }
+  ],
+  lowStockAlerts: [
+    {
+      id: 'INV-2024-0234',
+      name: 'Whiteboard Markers',
+      type: 'consumable',
+      currentStock: 15,
+      minStock: 50,
+      location: 'Main Warehouse',
+      lastIssued: '2024-03-20'
+    },
+    {
+      id: 'INV-2024-0456',
+      name: 'USB Flash Drives (32GB)',
+      type: 'consumable',
+      currentStock: 8,
+      minStock: 25,
+      location: 'IT Department',
+      lastIssued: '2024-03-18'
+    },
+    {
+      id: 'INV-2024-0789',
+      name: 'First Aid Kit Supplies',
+      type: 'consumable',
+      currentStock: 3,
+      minStock: 10,
+      location: 'Medical Center',
+      lastIssued: '2024-03-15'
+    }
+  ],
+  topConsumables: [
+    { name: 'Office Paper (A4)', issued: 450, unit: 'reams', trend: 12 },
+    { name: 'Printer Toner', issued: 85, unit: 'units', trend: -5 },
+    { name: 'Pens & Markers', issued: 320, unit: 'boxes', trend: 8 },
+    { name: 'Notebooks', issued: 250, unit: 'units', trend: 15 },
+    { name: 'Folders & Files', issued: 180, unit: 'packs', trend: -3 }
+  ],
+  locationSummary: [
+    { location: 'Main Warehouse', assets: 125, consumables: 456, value: 425000 },
+    { location: 'IT Department - HQ', assets: 98, consumables: 234, value: 345000 },
+    { location: 'Medical Center', assets: 67, consumables: 178, value: 195000 },
+    { location: 'Construction Site A', assets: 52, consumables: 388, value: 280000 }
+  ]
+};
+
+export function InventoryDashboard() {
+  const data = mockDashboardData;
+
+  return (
+    <div className="p-8">
+      {/* Header */}
+      <div className="mb-6">
+        <h1 className="text-2xl font-semibold text-foreground mb-2">Inventory Dashboard</h1>
+        <p className="text-muted-foreground">Overview of assets and consumables</p>
+      </div>
+
+      {/* Main KPI Cards */}
+      <div className="grid grid-cols-4 gap-6 mb-6">
+        <Card>
+          <CardBody>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground mb-1">Total Inventory Value</p>
+                <p className="text-2xl font-semibold text-foreground">
+                  ${(data.totalValue / 1000000).toFixed(2)}M
+                </p>
+              </div>
+              <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                <Boxes className="w-6 h-6 text-primary" />
+              </div>
+            </div>
+          </CardBody>
+        </Card>
+
+        <Card className="border-l-4 border-l-blue-500">
+          <CardBody>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground mb-1">Fixed Assets</p>
+                <p className="text-2xl font-semibold text-foreground">{data.fixedAssets.count}</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  ${(data.fixedAssets.value / 1000).toFixed(0)}K value
+                </p>
+              </div>
+              <div className="w-12 h-12 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                <Box className="w-6 h-6 text-blue-500" />
+              </div>
+            </div>
+          </CardBody>
+        </Card>
+
+        <Card className="border-l-4 border-l-green-500">
+          <CardBody>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground mb-1">Consumables</p>
+                <p className="text-2xl font-semibold text-foreground">{data.consumables.count}</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  ${(data.consumables.value / 1000).toFixed(0)}K value
+                </p>
+              </div>
+              <div className="w-12 h-12 rounded-lg bg-green-500/10 flex items-center justify-center">
+                <Package className="w-6 h-6 text-green-500" />
+              </div>
+            </div>
+          </CardBody>
+        </Card>
+
+        <Card className="border-l-4 border-l-error">
+          <CardBody>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground mb-1">Low Stock Alerts</p>
+                <p className="text-2xl font-semibold text-error">{data.lowStockItems}</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {data.outOfStockItems} out of stock
+                </p>
+              </div>
+              <div className="w-12 h-12 rounded-lg bg-error/10 flex items-center justify-center">
+                <AlertTriangle className="w-6 h-6 text-error" />
+              </div>
+            </div>
+          </CardBody>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-3 gap-6 mb-6">
+        {/* Recently Received Items - 2 columns */}
+        <div className="col-span-2">
+          <Card>
+            <CardHeader 
+              title="Recently Received Items"
+              description="Latest inventory additions from GRNs"
+              action={
+                <Link to="/inventory/items">
+                  <Button variant="outline" size="sm">
+                    View All
+                    <ArrowRight className="w-4 h-4 ml-2" />
+                  </Button>
+                </Link>
+              }
+            />
+            <CardBody>
+              <div className="space-y-3">
+                {data.recentReceipts.map((item) => (
+                  <div
+                    key={item.id}
+                    className="flex items-center justify-between p-3 border border-border rounded-lg hover:border-primary/50 transition-colors"
+                  >
+                    <div className="flex items-center gap-3 flex-1">
+                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                        item.type === 'asset' ? 'bg-blue-500/10' : 'bg-green-500/10'
+                      }`}>
+                        {item.type === 'asset' ? (
+                          <Box className="w-5 h-5 text-blue-500" />
+                        ) : (
+                          <Package className="w-5 h-5 text-green-500" />
+                        )}
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Link to={`/inventory/${item.id}`}>
+                            <h4 className="font-medium text-foreground hover:text-primary">
+                              {item.name}
+                            </h4>
+                          </Link>
+                          <Badge variant={item.type === 'asset' ? 'default' : 'success'} size="sm">
+                            {item.type === 'asset' ? 'Asset' : 'Consumable'}
+                          </Badge>
+                        </div>
+                        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                          <span>Qty: {item.quantity}</span>
+                          <span>•</span>
+                          <span>GRN: {item.grnNumber}</span>
+                          <span>•</span>
+                          <span>{item.location}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-semibold text-foreground">
+                        ${item.value.toLocaleString()}
+                      </p>
+                      <p className="text-xs text-muted-foreground">{item.receivedDate}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardBody>
+          </Card>
+        </div>
+
+        {/* Low Stock Alerts - 1 column */}
+        <div>
+          <Card className="border-warning bg-warning/5">
+            <CardHeader 
+              title="Low Stock Alerts"
+              description="Items below minimum stock level"
+            />
+            <CardBody>
+              <div className="space-y-3">
+                {data.lowStockAlerts.map((item) => (
+                  <div
+                    key={item.id}
+                    className="p-3 border border-warning/20 rounded-lg bg-background"
+                  >
+                    <div className="flex items-start justify-between mb-2">
+                      <Link to={`/inventory/${item.id}`}>
+                        <h4 className="font-medium text-foreground text-sm hover:text-primary">
+                          {item.name}
+                        </h4>
+                      </Link>
+                      <AlertTriangle className="w-4 h-4 text-warning" />
+                    </div>
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-muted-foreground">Current:</span>
+                        <span className="font-semibold text-error">{item.currentStock}</span>
+                      </div>
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-muted-foreground">Min Required:</span>
+                        <span className="font-medium text-foreground">{item.minStock}</span>
+                      </div>
+                      <div className="h-1.5 bg-muted rounded-full overflow-hidden mt-2">
+                        <div 
+                          className="h-full bg-error"
+                          style={{ width: `${(item.currentStock / item.minStock) * 100}%` }}
+                        />
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        {item.location}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+                <Link to="/inventory/items">
+                  <Button variant="warning" size="sm" className="w-full">
+                    View All Low Stock Items
+                  </Button>
+                </Link>
+              </div>
+            </CardBody>
+          </Card>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-6 mb-6">
+        {/* Top Consumables Usage */}
+        <Card>
+          <CardHeader 
+            title="Top Consumables Usage (This Month)"
+            description="Most issued consumable items"
+          />
+          <CardBody>
+            <div className="space-y-3">
+              {data.topConsumables.map((item, index) => (
+                <div key={index} className="flex items-center justify-between">
+                  <div className="flex items-center gap-3 flex-1">
+                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-sm font-semibold text-primary">
+                      {index + 1}
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-foreground">{item.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {item.issued} {item.unit} issued
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {item.trend > 0 ? (
+                      <TrendingUp className="w-4 h-4 text-success" />
+                    ) : (
+                      <TrendingDown className="w-4 h-4 text-error" />
+                    )}
+                    <span className={`text-sm font-medium ${
+                      item.trend > 0 ? 'text-success' : 'text-error'
+                    }`}>
+                      {Math.abs(item.trend)}%
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardBody>
+        </Card>
+
+        {/* Location Summary */}
+        <Card>
+          <CardHeader 
+            title="Inventory by Location"
+            description="Distribution across storage locations"
+          />
+          <CardBody>
+            <div className="space-y-4">
+              {data.locationSummary.map((loc, index) => (
+                <div key={index} className="border-b border-border last:border-0 pb-4 last:pb-0">
+                  <div className="flex items-start justify-between mb-2">
+                    <h4 className="font-medium text-foreground text-sm">{loc.location}</h4>
+                    <p className="text-sm font-semibold text-primary">
+                      ${(loc.value / 1000).toFixed(0)}K
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded bg-blue-500/10 flex items-center justify-center">
+                        <Box className="w-4 h-4 text-blue-500" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Assets</p>
+                        <p className="text-sm font-semibold text-foreground">{loc.assets}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded bg-green-500/10 flex items-center justify-center">
+                        <Package className="w-4 h-4 text-green-500" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Consumables</p>
+                        <p className="text-sm font-semibold text-foreground">{loc.consumables}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardBody>
+        </Card>
+      </div>
+
+      {/* Quick Actions */}
+      <Card>
+        <CardHeader title="Quick Actions" />
+        <CardBody>
+          <div className="grid grid-cols-4 gap-4">
+            <Link to="/inventory/items">
+              <Button variant="outline" className="w-full justify-start">
+                <Boxes className="w-4 h-4 mr-2" />
+                View All Items
+              </Button>
+            </Link>
+            <Link to="/inventory/issue">
+              <Button variant="outline" className="w-full justify-start">
+                <ArrowRight className="w-4 h-4 mr-2" />
+                Issue Stock
+              </Button>
+            </Link>
+            <Link to="/inventory/movement">
+              <Button variant="outline" className="w-full justify-start">
+                <Calendar className="w-4 h-4 mr-2" />
+                View Movements
+              </Button>
+            </Link>
+            <Link to="/grn/list">
+              <Button variant="outline" className="w-full justify-start">
+                <Package className="w-4 h-4 mr-2" />
+                View GRNs
+              </Button>
+            </Link>
+          </div>
+        </CardBody>
+      </Card>
+    </div>
+  );
+}

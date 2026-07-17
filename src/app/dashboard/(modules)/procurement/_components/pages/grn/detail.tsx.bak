@@ -1,0 +1,503 @@
+import { useState } from 'react';
+import * as ReactRouter from 'react-router';
+import { ArrowLeft, CheckCircle, XCircle, AlertTriangle, Download, Printer, Eye, FileText, Calendar, User, MapPin, Package } from 'lucide-react';
+import { Card, CardHeader, CardBody } from '../../components/ui/card';
+import { Button } from '../../components/ui/button';
+import { Badge } from '../../components/ui/badge';
+
+const Link = ReactRouter.Link || (ReactRouter as any).default?.Link;
+const useParams = ReactRouter.useParams || (ReactRouter as any).default?.useParams;
+const useNavigate = ReactRouter.useNavigate || (ReactRouter as any).default?.useNavigate;
+
+// Mock GRN detail data
+const mockGRNData = {
+  id: 'GRN-2024-001',
+  woNumber: 'WO-2024-001',
+  poNumber: 'PO-2024-001',
+  vendor: {
+    name: 'Premium Office Solutions Ltd',
+    code: 'VEN-001',
+    email: 'contact@premiumoffice.com'
+  },
+  receivedDate: '2024-03-20',
+  receivedTime: '14:30',
+  receivedBy: 'John Smith',
+  receivingLocation: 'Main Warehouse - New York',
+  status: 'partial',
+  verificationStatus: 'verified',
+  verifiedBy: 'Sarah Johnson',
+  verifiedDate: '2024-03-20',
+  items: [
+    {
+      id: '1',
+      description: 'Ergonomic Executive Desk',
+      specification: 'Wooden finish, 1800mm x 900mm, with cable management system',
+      orderedQuantity: 25,
+      receivedQuantity: 25,
+      orderedBrand: 'Herman Miller',
+      receivedBrand: 'Herman Miller',
+      status: 'match',
+      issueNote: '',
+      photos: []
+    },
+    {
+      id: '2',
+      description: 'Ergonomic Office Chair',
+      specification: 'Mesh back, adjustable armrests, lumbar support',
+      orderedQuantity: 50,
+      receivedQuantity: 50,
+      orderedBrand: 'Steelcase',
+      receivedBrand: 'Steelcase',
+      status: 'match',
+      issueNote: '',
+      photos: []
+    },
+    {
+      id: '3',
+      description: 'Filing Cabinet (4-drawer)',
+      specification: 'Steel construction, lockable, fire-resistant rating',
+      orderedQuantity: 30,
+      receivedQuantity: 20,
+      orderedBrand: 'HON',
+      receivedBrand: 'HON',
+      status: 'partial',
+      issueNote: 'Only 20 units delivered. Vendor confirmed remaining 10 units will be delivered next week due to stock shortage.',
+      photos: ['photo1.jpg', 'photo2.jpg']
+    },
+    {
+      id: '4',
+      description: 'Bookshelf Unit',
+      specification: '1800mm height, 5 adjustable shelves, wood finish',
+      orderedQuantity: 20,
+      receivedQuantity: 20,
+      orderedBrand: 'IKEA Billy',
+      receivedBrand: 'Generic Brand',
+      status: 'mismatch',
+      issueNote: 'Received generic brand instead of IKEA Billy. Quality appears similar but not exact match. Awaiting procurement approval for acceptance.',
+      photos: ['photo3.jpg', 'photo4.jpg', 'photo5.jpg']
+    },
+    {
+      id: '5',
+      description: 'Meeting Table (6-seater)',
+      specification: 'Oval shape, 2400mm x 1200mm, premium wood finish',
+      orderedQuantity: 10,
+      receivedQuantity: 0,
+      orderedBrand: 'Knoll',
+      receivedBrand: '',
+      status: 'not-received',
+      issueNote: 'Not delivered with this shipment. Expected in next delivery.',
+      photos: []
+    }
+  ],
+  totalOrdered: 135,
+  totalReceived: 115,
+  discrepancyValue: 8400,
+  notes: 'Partial delivery due to stock issues. Vendor has confirmed second delivery within 7 days. All received items are in good condition except for brand mismatch on bookshelves.'
+};
+
+const getStatusColor = (status: string) => {
+  switch (status) {
+    case 'match': return 'success';
+    case 'mismatch': return 'warning';
+    case 'partial': return 'warning';
+    case 'not-received': return 'default';
+    default: return 'default';
+  }
+};
+
+const getStatusIcon = (status: string) => {
+  switch (status) {
+    case 'match':
+      return <CheckCircle className="w-5 h-5 text-success" />;
+    case 'mismatch':
+      return <AlertTriangle className="w-5 h-5 text-warning" />;
+    case 'partial':
+      return <AlertTriangle className="w-5 h-5 text-warning" />;
+    case 'not-received':
+      return <XCircle className="w-5 h-5 text-muted-foreground" />;
+    default:
+      return null;
+  }
+};
+
+export function GRNDetail() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const grn = mockGRNData;
+
+  const receiptPercentage = (grn.totalReceived / grn.totalOrdered) * 100;
+  const itemsWithIssues = grn.items.filter(i => i.status === 'mismatch' || i.status === 'partial').length;
+
+  return (
+    <div className="p-8">
+      {/* Header */}
+      <div className="mb-6">
+        <div className="flex items-center gap-4 mb-4">
+          <button
+            onClick={() => navigate('/grn/list')}
+            className="p-2 hover:bg-muted rounded-lg transition-colors"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+          <div className="flex-1">
+            <h1 className="text-2xl font-semibold text-foreground mb-1">{grn.id}</h1>
+            <p className="text-muted-foreground">Goods Receive Note Details</p>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline">
+              <Printer className="w-4 h-4 mr-2" />
+              Print
+            </Button>
+            <Button variant="outline">
+              <Download className="w-4 h-4 mr-2" />
+              Download PDF
+            </Button>
+          </div>
+        </div>
+
+        {/* Status Badges */}
+        <div className="flex items-center gap-3">
+          <Badge variant={grn.status === 'complete' ? 'success' : 'warning'}>
+            {grn.status === 'complete' ? 'Full Receipt' : 'Partial Receipt'}
+          </Badge>
+          <Badge variant={grn.verificationStatus === 'verified' ? 'success' : 'warning'}>
+            {grn.verificationStatus}
+          </Badge>
+          {itemsWithIssues > 0 && (
+            <Badge variant="error">
+              {itemsWithIssues} Item{itemsWithIssues > 1 ? 's' : ''} with Issues
+            </Badge>
+          )}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-3 gap-6">
+        {/* Main Content - 2 columns */}
+        <div className="col-span-2 space-y-6">
+          {/* Summary Cards */}
+          <div className="grid grid-cols-3 gap-6">
+            <Card>
+              <CardBody>
+                <div className="text-center">
+                  <p className="text-sm text-muted-foreground mb-1">Total Ordered</p>
+                  <p className="text-3xl font-bold text-foreground">{grn.totalOrdered}</p>
+                </div>
+              </CardBody>
+            </Card>
+
+            <Card>
+              <CardBody>
+                <div className="text-center">
+                  <p className="text-sm text-muted-foreground mb-1">Total Received</p>
+                  <p className="text-3xl font-bold text-primary">{grn.totalReceived}</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {receiptPercentage.toFixed(0)}% of order
+                  </p>
+                </div>
+              </CardBody>
+            </Card>
+
+            <Card>
+              <CardBody>
+                <div className="text-center">
+                  <p className="text-sm text-muted-foreground mb-1">Discrepancy Value</p>
+                  <p className="text-3xl font-bold text-error">
+                    ${grn.discrepancyValue.toLocaleString()}
+                  </p>
+                </div>
+              </CardBody>
+            </Card>
+          </div>
+
+          {/* Receipt Progress */}
+          {grn.status === 'partial' && (
+            <Card>
+              <CardBody>
+                <div className="mb-2">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium text-foreground">Receipt Progress</span>
+                    <span className="text-sm font-semibold text-foreground">
+                      {receiptPercentage.toFixed(0)}%
+                    </span>
+                  </div>
+                  <div className="h-3 bg-muted rounded-full overflow-hidden">
+                    <div 
+                      className="h-full bg-warning transition-all"
+                      style={{ width: `${receiptPercentage}%` }}
+                    />
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {grn.totalOrdered - grn.totalReceived} items pending receipt
+                </p>
+              </CardBody>
+            </Card>
+          )}
+
+          {/* Receipt Information */}
+          <Card>
+            <CardHeader title="Receipt Information" />
+            <CardBody>
+              <div className="grid grid-cols-2 gap-6">
+                <div className="flex items-start gap-3">
+                  <FileText className="w-5 h-5 text-muted-foreground mt-0.5" />
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-1">Work Order</p>
+                    <Link to={`/work-orders/${grn.woNumber}`} className="font-medium text-primary hover:underline">
+                      {grn.woNumber}
+                    </Link>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3">
+                  <FileText className="w-5 h-5 text-muted-foreground mt-0.5" />
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-1">PO Number</p>
+                    <p className="font-medium text-foreground">{grn.poNumber}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3">
+                  <Calendar className="w-5 h-5 text-muted-foreground mt-0.5" />
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-1">Received Date & Time</p>
+                    <p className="font-medium text-foreground">
+                      {grn.receivedDate} at {grn.receivedTime}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3">
+                  <User className="w-5 h-5 text-muted-foreground mt-0.5" />
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-1">Received By</p>
+                    <p className="font-medium text-foreground">{grn.receivedBy}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3">
+                  <MapPin className="w-5 h-5 text-muted-foreground mt-0.5" />
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-1">Receiving Location</p>
+                    <p className="font-medium text-foreground">{grn.receivingLocation}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3">
+                  <Package className="w-5 h-5 text-muted-foreground mt-0.5" />
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-1">Vendor</p>
+                    <p className="font-medium text-foreground">{grn.vendor.name}</p>
+                    <p className="text-xs text-muted-foreground">{grn.vendor.code}</p>
+                  </div>
+                </div>
+              </div>
+            </CardBody>
+          </Card>
+
+          {/* Items Detail */}
+          <Card>
+            <CardHeader 
+              title="Received Items Detail"
+              description="Item-by-item verification results"
+            />
+            <CardBody>
+              <div className="space-y-4">
+                {grn.items.map((item, index) => (
+                  <div
+                    key={item.id}
+                    className={`border-2 rounded-lg p-4 ${
+                      item.status === 'match' ? 'border-success/20 bg-success/5' :
+                      item.status === 'mismatch' ? 'border-warning/20 bg-warning/5' :
+                      item.status === 'partial' ? 'border-warning/20 bg-warning/5' :
+                      'border-border'
+                    }`}
+                  >
+                    {/* Item Header */}
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex items-start gap-3 flex-1">
+                        {getStatusIcon(item.status)}
+                        <div className="flex-1">
+                          <h4 className="font-semibold text-foreground mb-1">
+                            Item {index + 1}: {item.description}
+                          </h4>
+                          <p className="text-sm text-muted-foreground">{item.specification}</p>
+                        </div>
+                      </div>
+                      <Badge variant={getStatusColor(item.status)}>
+                        {item.status === 'match' ? 'Match' :
+                         item.status === 'mismatch' ? 'Brand Mismatch' :
+                         item.status === 'partial' ? 'Partial Receipt' :
+                         'Not Received'}
+                      </Badge>
+                    </div>
+
+                    {/* Comparison Grid */}
+                    <div className="grid grid-cols-4 gap-4 mb-3">
+                      <div className="p-3 bg-muted/30 rounded-lg">
+                        <p className="text-xs text-muted-foreground mb-1">Ordered Qty</p>
+                        <p className="text-xl font-bold text-foreground">{item.orderedQuantity}</p>
+                      </div>
+
+                      <div className={`p-3 rounded-lg ${
+                        item.receivedQuantity === item.orderedQuantity ? 'bg-success/10' : 
+                        item.receivedQuantity > 0 ? 'bg-warning/10' : 'bg-muted/30'
+                      }`}>
+                        <p className="text-xs text-muted-foreground mb-1">Received Qty</p>
+                        <p className="text-xl font-bold text-foreground">{item.receivedQuantity}</p>
+                      </div>
+
+                      <div className="p-3 bg-muted/30 rounded-lg">
+                        <p className="text-xs text-muted-foreground mb-1">Ordered Brand</p>
+                        <p className="text-sm font-semibold text-foreground">{item.orderedBrand}</p>
+                      </div>
+
+                      <div className={`p-3 rounded-lg ${
+                        item.receivedBrand === item.orderedBrand ? 'bg-success/10' : 
+                        item.receivedBrand ? 'bg-warning/10' : 'bg-muted/30'
+                      }`}>
+                        <p className="text-xs text-muted-foreground mb-1">Received Brand</p>
+                        <p className="text-sm font-semibold text-foreground">
+                          {item.receivedBrand || 'N/A'}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Issue Notes */}
+                    {item.issueNote && (
+                      <div className="p-3 bg-warning/5 border border-warning/20 rounded-lg mb-3">
+                        <p className="text-xs font-medium text-warning mb-1">Issue Note:</p>
+                        <p className="text-sm text-foreground">{item.issueNote}</p>
+                      </div>
+                    )}
+
+                    {/* Photos */}
+                    {item.photos.length > 0 && (
+                      <div>
+                        <p className="text-xs font-medium text-foreground mb-2">
+                          Evidence Photos ({item.photos.length})
+                        </p>
+                        <div className="grid grid-cols-4 gap-2">
+                          {item.photos.map((photo, photoIndex) => (
+                            <div key={photoIndex} className="relative group cursor-pointer">
+                              <div className="w-full h-24 bg-muted rounded-lg flex items-center justify-center">
+                                <Eye className="w-6 h-6 text-muted-foreground" />
+                              </div>
+                              <p className="text-xs text-center text-muted-foreground mt-1">
+                                Photo {photoIndex + 1}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </CardBody>
+          </Card>
+
+          {/* Additional Notes */}
+          {grn.notes && (
+            <Card>
+              <CardHeader title="Additional Notes" />
+              <CardBody>
+                <p className="text-sm text-foreground">{grn.notes}</p>
+              </CardBody>
+            </Card>
+          )}
+        </div>
+
+        {/* Sidebar - 1 column */}
+        <div className="space-y-6">
+          {/* Verification Status */}
+          <Card>
+            <CardHeader title="Verification Status" />
+            <CardBody>
+              <div className="space-y-4">
+                {grn.verificationStatus === 'verified' ? (
+                  <div className="flex items-start gap-3 p-3 bg-success/5 border border-success/20 rounded-lg">
+                    <CheckCircle className="w-5 h-5 text-success mt-0.5" />
+                    <div>
+                      <p className="font-medium text-success mb-1">Verified</p>
+                      <p className="text-sm text-muted-foreground">
+                        By {grn.verifiedBy}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {grn.verifiedDate}
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-start gap-3 p-3 bg-warning/5 border border-warning/20 rounded-lg">
+                    <AlertTriangle className="w-5 h-5 text-warning mt-0.5" />
+                    <div>
+                      <p className="font-medium text-warning mb-1">Pending Verification</p>
+                      <p className="text-sm text-muted-foreground">
+                        Awaiting supervisor review
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </CardBody>
+          </Card>
+
+          {/* Quick Stats */}
+          <Card>
+            <CardHeader title="Receipt Summary" />
+            <CardBody>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Total Items</span>
+                  <span className="font-semibold text-foreground">{grn.items.length}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Fully Received</span>
+                  <span className="font-semibold text-success">
+                    {grn.items.filter(i => i.status === 'match').length}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Partial/Issues</span>
+                  <span className="font-semibold text-warning">
+                    {grn.items.filter(i => i.status === 'mismatch' || i.status === 'partial').length}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Not Received</span>
+                  <span className="font-semibold text-muted-foreground">
+                    {grn.items.filter(i => i.status === 'not-received').length}
+                  </span>
+                </div>
+              </div>
+            </CardBody>
+          </Card>
+
+          {/* Quick Actions */}
+          <Card>
+            <CardHeader title="Actions" />
+            <CardBody>
+              <div className="space-y-2">
+                <Link to={`/work-orders/${grn.woNumber}`}>
+                  <Button variant="outline" className="w-full justify-start">
+                    <Eye className="w-4 h-4 mr-2" />
+                    View Work Order
+                  </Button>
+                </Link>
+                <Button variant="outline" className="w-full justify-start">
+                  <Download className="w-4 h-4 mr-2" />
+                  Download GRN
+                </Button>
+                <Button variant="outline" className="w-full justify-start">
+                  <Printer className="w-4 h-4 mr-2" />
+                  Print GRN
+                </Button>
+              </div>
+            </CardBody>
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
+}

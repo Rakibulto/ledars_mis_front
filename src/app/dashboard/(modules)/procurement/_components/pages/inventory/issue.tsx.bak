@@ -1,0 +1,323 @@
+import { useState } from 'react';
+import * as ReactRouter from 'react-router';
+import { ArrowLeft, Package, Plus, Trash2, Save } from 'lucide-react';
+import { Card, CardHeader, CardBody } from '../../components/ui/card';
+import { Button } from '../../components/ui/button';
+import { Badge } from '../../components/ui/badge';
+
+const Link = ReactRouter.Link || (ReactRouter as any).default?.Link;
+const useNavigate = ReactRouter.useNavigate || (ReactRouter as any).default?.useNavigate;
+
+interface IssueItem {
+  id: string;
+  inventoryId: string;
+  itemName: string;
+  availableStock: number;
+  quantity: number;
+}
+
+export function StockIssueTransfer() {
+  const navigate = useNavigate();
+  const [transactionType, setTransactionType] = useState<'issue' | 'transfer'>('issue');
+  const [transactionDate, setTransactionDate] = useState('');
+  const [fromLocation, setFromLocation] = useState('');
+  const [toLocation, setToLocation] = useState('');
+  const [issuedTo, setIssuedTo] = useState('');
+  const [purpose, setPurpose] = useState('');
+  const [notes, setNotes] = useState('');
+
+  const [items, setItems] = useState<IssueItem[]>([
+    { id: '1', inventoryId: '', itemName: '', availableStock: 0, quantity: 0 }
+  ]);
+
+  // Mock inventory for selection
+  const mockInventory = [
+    { id: 'INV-2024-0234', name: 'Office Paper (A4, Ream)', stock: 450 },
+    { id: 'INV-2024-0456', name: 'USB Flash Drives (32GB)', stock: 25 },
+    { id: 'INV-2024-0789', name: 'Printer Toner Cartridge (Black)', stock: 75 },
+    { id: 'INV-2024-0345', name: 'First Aid Kit Supplies', stock: 10 }
+  ];
+
+  const handleItemSelect = (id: string, inventoryId: string) => {
+    const selected = mockInventory.find(i => i.id === inventoryId);
+    if (selected) {
+      setItems(prev => prev.map(item => 
+        item.id === id ? { ...item, inventoryId: selected.id, itemName: selected.name, availableStock: selected.stock } : item
+      ));
+    }
+  };
+
+  const handleQuantityChange = (id: string, quantity: number) => {
+    setItems(prev => prev.map(item => 
+      item.id === id ? { ...item, quantity: Math.min(quantity, item.availableStock) } : item
+    ));
+  };
+
+  const addItem = () => {
+    const newId = (parseInt(items[items.length - 1].id) + 1).toString();
+    setItems([...items, { id: newId, inventoryId: '', itemName: '', availableStock: 0, quantity: 0 }]);
+  };
+
+  const removeItem = (id: string) => {
+    if (items.length > 1) {
+      setItems(items.filter(item => item.id !== id));
+    }
+  };
+
+  const handleSubmit = () => {
+    if (!transactionDate || !fromLocation || !toLocation) {
+      alert('Please fill in all required fields');
+      return;
+    }
+
+    const hasItems = items.some(item => item.inventoryId && item.quantity > 0);
+    if (!hasItems) {
+      alert('Please add at least one item with quantity');
+      return;
+    }
+
+    alert(`Stock ${transactionType} submitted successfully!`);
+    navigate('/inventory/movement');
+  };
+
+  return (
+    <div className="p-8 max-w-5xl mx-auto">
+      {/* Header */}
+      <div className="mb-6">
+        <div className="flex items-center gap-4 mb-4">
+          <Link to="/inventory/movement">
+            <button className="p-2 hover:bg-muted rounded-lg transition-colors">
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+          </Link>
+          <div>
+            <h1 className="text-2xl font-semibold text-foreground">Stock Issue / Transfer</h1>
+            <p className="text-muted-foreground">Record stock movement transaction</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="space-y-6">
+        {/* Transaction Type */}
+        <Card>
+          <CardHeader title="Transaction Type" description="Select transaction type" />
+          <CardBody>
+            <div className="flex gap-4">
+              <button
+                onClick={() => setTransactionType('issue')}
+                className={`flex-1 p-4 border-2 rounded-lg transition-colors ${
+                  transactionType === 'issue' ? 'border-warning bg-warning/5' : 'border-border hover:border-warning/50'
+                }`}
+              >
+                <Package className="w-6 h-6 text-warning mx-auto mb-2" />
+                <p className="font-semibold text-foreground">Issue Stock</p>
+                <p className="text-xs text-muted-foreground mt-1">Give out to departments/users</p>
+              </button>
+              <button
+                onClick={() => setTransactionType('transfer')}
+                className={`flex-1 p-4 border-2 rounded-lg transition-colors ${
+                  transactionType === 'transfer' ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'
+                }`}
+              >
+                <Package className="w-6 h-6 text-primary mx-auto mb-2" />
+                <p className="font-semibold text-foreground">Transfer Stock</p>
+                <p className="text-xs text-muted-foreground mt-1">Move between locations</p>
+              </button>
+            </div>
+          </CardBody>
+        </Card>
+
+        {/* Transaction Details */}
+        <Card>
+          <CardHeader title="Transaction Details" description="Fill in transaction information" />
+          <CardBody>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">
+                  Transaction Date *
+                </label>
+                <input
+                  type="date"
+                  value={transactionDate}
+                  onChange={(e) => setTransactionDate(e.target.value)}
+                  className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">
+                  From Location *
+                </label>
+                <select
+                  value={fromLocation}
+                  onChange={(e) => setFromLocation(e.target.value)}
+                  className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                >
+                  <option value="">Select location</option>
+                  <option value="Main Warehouse">Main Warehouse</option>
+                  <option value="IT Department - HQ">IT Department - HQ</option>
+                  <option value="Medical Center">Medical Center</option>
+                  <option value="Construction Site A">Construction Site A</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">
+                  {transactionType === 'issue' ? 'Issued To (Department/Person) *' : 'To Location *'}
+                </label>
+                <input
+                  type="text"
+                  value={toLocation}
+                  onChange={(e) => setToLocation(e.target.value)}
+                  placeholder={transactionType === 'issue' ? 'e.g., Admin Department' : 'e.g., Branch Office'}
+                  className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+              </div>
+
+              {transactionType === 'issue' && (
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">
+                    Recipient Name
+                  </label>
+                  <input
+                    type="text"
+                    value={issuedTo}
+                    onChange={(e) => setIssuedTo(e.target.value)}
+                    placeholder="Person receiving the stock"
+                    className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                </div>
+              )}
+
+              <div className={transactionType === 'issue' ? '' : 'col-span-2'}>
+                <label className="block text-sm font-medium text-foreground mb-2">
+                  Purpose / Reason
+                </label>
+                <input
+                  type="text"
+                  value={purpose}
+                  onChange={(e) => setPurpose(e.target.value)}
+                  placeholder="Reason for this transaction"
+                  className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+              </div>
+            </div>
+          </CardBody>
+        </Card>
+
+        {/* Items */}
+        <Card>
+          <CardHeader 
+            title="Items to Issue/Transfer"
+            description="Select items and quantities"
+            action={
+              <Button variant="outline" size="sm" onClick={addItem}>
+                <Plus className="w-4 h-4 mr-2" />
+                Add Item
+              </Button>
+            }
+          />
+          <CardBody>
+            <div className="space-y-4">
+              {items.map((item, index) => (
+                <div key={item.id} className="border-2 border-border rounded-lg p-4">
+                  <div className="flex items-start justify-between mb-3">
+                    <h4 className="font-medium text-foreground">Item {index + 1}</h4>
+                    {items.length > 1 && (
+                      <button
+                        onClick={() => removeItem(item.id)}
+                        className="text-error hover:bg-error/10 p-1 rounded"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="col-span-2">
+                      <label className="block text-sm font-medium text-foreground mb-2">
+                        Select Item *
+                      </label>
+                      <select
+                        value={item.inventoryId}
+                        onChange={(e) => handleItemSelect(item.id, e.target.value)}
+                        className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                      >
+                        <option value="">Choose an item</option>
+                        {mockInventory.map(inv => (
+                          <option key={inv.id} value={inv.id}>
+                            {inv.name} (Stock: {inv.stock})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-foreground mb-2">
+                        Quantity *
+                      </label>
+                      <input
+                        type="number"
+                        value={item.quantity || ''}
+                        onChange={(e) => handleQuantityChange(item.id, parseInt(e.target.value) || 0)}
+                        min="1"
+                        max={item.availableStock}
+                        disabled={!item.inventoryId}
+                        placeholder="0"
+                        className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary disabled:bg-muted"
+                      />
+                    </div>
+                  </div>
+
+                  {item.inventoryId && (
+                    <div className="mt-3 p-3 bg-primary/5 rounded-lg flex items-center justify-between">
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-1">Available Stock</p>
+                        <p className="text-sm font-semibold text-foreground">{item.availableStock} units</p>
+                      </div>
+                      {item.quantity > 0 && (
+                        <div>
+                          <p className="text-xs text-muted-foreground mb-1">After Transaction</p>
+                          <p className="text-sm font-semibold text-primary">
+                            {item.availableStock - item.quantity} units
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </CardBody>
+        </Card>
+
+        {/* Additional Notes */}
+        <Card>
+          <CardHeader title="Additional Notes" description="Optional comments or instructions" />
+          <CardBody>
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Add any additional notes, instructions, or comments about this transaction..."
+              rows={4}
+              className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+            />
+          </CardBody>
+        </Card>
+
+        {/* Action Buttons */}
+        <div className="flex gap-4">
+          <Link to="/inventory/movement" className="flex-1">
+            <Button variant="outline" className="w-full">
+              Cancel
+            </Button>
+          </Link>
+          <Button variant="primary" className="flex-1" onClick={handleSubmit}>
+            <Save className="w-4 h-4 mr-2" />
+            Submit Transaction
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}

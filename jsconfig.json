@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+    "ignoreDeprecations": "6.0",
+    "baseUrl": ".",
+    "paths": {
+      "src/*": ["src/*"],
+      "lucide-react": ["src/shims/lucide-react.jsx"],
+      "react-router": ["src/shims/react-router.jsx"]
+    }
+  }
+}
+
+

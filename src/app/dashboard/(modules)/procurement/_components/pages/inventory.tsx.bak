@@ -1,0 +1,61 @@
+import { Boxes } from 'lucide-react';
+import { Card, CardHeader, CardBody } from '../components/ui/card';
+
+export function Inventory() {
+  return (
+    <div className="p-8">
+      <div className="max-w-7xl mx-auto">
+        <div className="mb-6">
+          <h1 className="text-2xl font-semibold text-foreground mb-2">Inventory</h1>
+          <p className="text-muted-foreground">Stock levels and inventory management</p>
+        </div>
+
+        <div className="grid grid-cols-4 gap-6 mb-6">
+          <Card>
+            <CardBody>
+              <div className="text-center">
+                <p className="text-sm text-muted-foreground mb-1">Total Items</p>
+                <p className="text-2xl font-semibold text-foreground">0</p>
+              </div>
+            </CardBody>
+          </Card>
+          <Card>
+            <CardBody>
+              <div className="text-center">
+                <p className="text-sm text-muted-foreground mb-1">Low Stock</p>
+                <p className="text-2xl font-semibold text-warning">0</p>
+              </div>
+            </CardBody>
+          </Card>
+          <Card>
+            <CardBody>
+              <div className="text-center">
+                <p className="text-sm text-muted-foreground mb-1">Out of Stock</p>
+                <p className="text-2xl font-semibold text-danger">0</p>
+              </div>
+            </CardBody>
+          </Card>
+          <Card>
+            <CardBody>
+              <div className="text-center">
+                <p className="text-sm text-muted-foreground mb-1">Total Value</p>
+                <p className="text-2xl font-semibold text-foreground">$0</p>
+              </div>
+            </CardBody>
+          </Card>
+        </div>
+
+        <Card>
+          <CardHeader title="Inventory Items" description="Current stock levels across all locations" />
+          <CardBody>
+            <div className="text-center py-12">
+              <Boxes className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-foreground mb-2">No inventory items</h3>
+              <p className="text-muted-foreground">Inventory items will appear once goods are received</p>
+            </div>
+          </CardBody>
+        </Card>
+      </div>
+    </div>
+  );
+}

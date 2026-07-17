@@ -1,0 +1,292 @@
+import { useState } from 'react';
+import * as ReactRouter from 'react-router';
+import { Search, Calendar, Package, Plus, ArrowRight, ArrowLeft, Download } from 'lucide-react';
+import { Card, CardHeader, CardBody } from '../../components/ui/card';
+import { Button } from '../../components/ui/button';
+import { Badge } from '../../components/ui/badge';
+
+const Link = ReactRouter.Link || (ReactRouter as any).default?.Link;
+
+const mockMovements = [
+  {
+    id: 'MOV-2024-045',
+    date: '2024-03-22',
+    time: '14:30',
+    type: 'Stock In',
+    item: 'Dell Precision Workstation',
+    itemId: 'INV-2024-1234',
+    quantity: 10,
+    fromLocation: 'Vendor',
+    toLocation: 'IT Department - HQ',
+    reference: 'GRN-2024-003',
+    processedBy: 'Mike Chen',
+    balanceBefore: 0,
+    balanceAfter: 10
+  },
+  {
+    id: 'MOV-2024-044',
+    date: '2024-03-21',
+    time: '11:20',
+    type: 'Stock In',
+    item: 'Office Paper (A4, Ream)',
+    itemId: 'INV-2024-0234',
+    quantity: 500,
+    fromLocation: 'Vendor',
+    toLocation: 'Main Warehouse',
+    reference: 'GRN-2024-004',
+    processedBy: 'Sarah Johnson',
+    balanceBefore: 0,
+    balanceAfter: 500
+  },
+  {
+    id: 'MOV-2024-043',
+    date: '2024-03-20',
+    time: '15:45',
+    type: 'Issue',
+    item: 'Office Paper (A4, Ream)',
+    itemId: 'INV-2024-0234',
+    quantity: 25,
+    fromLocation: 'Main Warehouse',
+    toLocation: 'Admin Department',
+    reference: 'ISS-2024-015',
+    processedBy: 'John Smith',
+    issuedTo: 'Admin Manager',
+    balanceBefore: 500,
+    balanceAfter: 475
+  },
+  {
+    id: 'MOV-2024-042',
+    date: '2024-03-20',
+    time: '10:30',
+    type: 'Transfer',
+    item: 'Ergonomic Office Chair',
+    itemId: 'INV-2024-1235',
+    quantity: 5,
+    fromLocation: 'Main Warehouse',
+    toLocation: 'Branch Office',
+    reference: 'TRF-2024-008',
+    processedBy: 'David Brown',
+    balanceBefore: 50,
+    balanceAfter: 45
+  },
+  {
+    id: 'MOV-2024-041',
+    date: '2024-03-19',
+    time: '09:15',
+    type: 'Issue',
+    item: 'Printer Toner Cartridge (Black)',
+    itemId: 'INV-2024-0789',
+    quantity: 10,
+    fromLocation: 'IT Department',
+    toLocation: 'Finance Department',
+    reference: 'ISS-2024-014',
+    processedBy: 'Lisa Anderson',
+    issuedTo: 'Finance Manager',
+    balanceBefore: 85,
+    balanceAfter: 75
+  },
+  {
+    id: 'MOV-2024-040',
+    date: '2024-03-18',
+    time: '16:00',
+    type: 'Adjustment',
+    item: 'USB Flash Drives (32GB)',
+    itemId: 'INV-2024-0456',
+    quantity: -2,
+    fromLocation: 'IT Department',
+    toLocation: 'IT Department',
+    reference: 'ADJ-2024-003',
+    processedBy: 'IT Manager',
+    reason: 'Damaged units removed',
+    balanceBefore: 27,
+    balanceAfter: 25
+  }
+];
+
+const getMovementColor = (type: string) => {
+  switch (type) {
+    case 'Stock In': return 'success';
+    case 'Issue': return 'warning';
+    case 'Transfer': return 'default';
+    case 'Adjustment': return 'error';
+    default: return 'default';
+  }
+};
+
+export function StockMovementHistory() {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [typeFilter, setTypeFilter] = useState('all');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+
+  const filteredMovements = mockMovements.filter(mov => {
+    const matchesSearch = 
+      mov.item.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      mov.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      mov.reference.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    const matchesType = typeFilter === 'all' || mov.type === typeFilter;
+    
+    return matchesSearch && matchesType;
+  });
+
+  return (
+    <div className="p-8">
+      {/* Header */}
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold text-foreground mb-2">Stock Movement History</h1>
+          <p className="text-muted-foreground">Track all inventory transactions</p>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline">
+            <Download className="w-4 h-4 mr-2" />
+            Export Report
+          </Button>
+          <Link to="/inventory/issue">
+            <Button variant="primary">
+              <Plus className="w-4 h-4 mr-2" />
+              New Transaction
+            </Button>
+          </Link>
+        </div>
+      </div>
+
+      {/* Filters */}
+      <Card className="mb-6">
+        <CardBody>
+          <div className="grid grid-cols-5 gap-4">
+            <div className="col-span-2 relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <input
+                type="text"
+                placeholder="Search by item, ID, or reference..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+            </div>
+
+            <select
+              value={typeFilter}
+              onChange={(e) => setTypeFilter(e.target.value)}
+              className="px-4 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+            >
+              <option value="all">All Types</option>
+              <option value="Stock In">Stock In</option>
+              <option value="Issue">Issue</option>
+              <option value="Transfer">Transfer</option>
+              <option value="Adjustment">Adjustment</option>
+            </select>
+
+            <input
+              type="date"
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+              placeholder="From Date"
+              className="px-4 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+
+            <input
+              type="date"
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
+              placeholder="To Date"
+              className="px-4 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+          </div>
+        </CardBody>
+      </Card>
+
+      {/* Movement List */}
+      <Card>
+        <CardHeader 
+          title={`Stock Movements (${filteredMovements.length})`}
+          description="All inventory transactions"
+        />
+        <CardBody>
+          <div className="space-y-3">
+            {filteredMovements.map((mov) => (
+              <div
+                key={mov.id}
+                className="border-2 border-border rounded-lg p-4 hover:border-primary/50 transition-colors"
+              >
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex items-start gap-3 flex-1">
+                    <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${
+                      mov.type === 'Stock In' ? 'bg-success/10' :
+                      mov.type === 'Issue' ? 'bg-warning/10' :
+                      mov.type === 'Transfer' ? 'bg-primary/10' :
+                      'bg-error/10'
+                    }`}>
+                      {mov.type === 'Stock In' ? <Plus className="w-6 h-6 text-success" /> :
+                       mov.type === 'Issue' ? <Package className="w-6 h-6 text-warning" /> :
+                       mov.type === 'Transfer' ? <ArrowRight className="w-6 h-6 text-primary" /> :
+                       <Calendar className="w-6 h-6 text-error" />}
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <h3 className="font-semibold text-foreground">{mov.id}</h3>
+                        <Badge variant={getMovementColor(mov.type)}>
+                          {mov.type}
+                        </Badge>
+                        <Badge variant={mov.quantity > 0 ? 'success' : 'error'} size="sm">
+                          {mov.quantity > 0 ? '+' : ''}{mov.quantity} units
+                        </Badge>
+                      </div>
+                      <Link to={`/inventory/${mov.itemId}`}>
+                        <p className="text-sm font-medium text-primary hover:underline mb-2">
+                          {mov.item}
+                        </p>
+                      </Link>
+                      <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                        <span>{mov.date} at {mov.time}</span>
+                        <span>•</span>
+                        <span>Ref: {mov.reference}</span>
+                        <span>•</span>
+                        <span>By: {mov.processedBy}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-4 gap-4 p-3 bg-muted/30 rounded-lg">
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">From</p>
+                    <p className="text-sm font-medium text-foreground">{mov.fromLocation}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">To</p>
+                    <p className="text-sm font-medium text-foreground">{mov.toLocation}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Balance Before</p>
+                    <p className="text-sm font-semibold text-foreground">{mov.balanceBefore}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Balance After</p>
+                    <p className="text-sm font-semibold text-primary">{mov.balanceAfter}</p>
+                  </div>
+                </div>
+
+                {mov.issuedTo && (
+                  <div className="mt-3 p-2 bg-warning/10 border border-warning/20 rounded flex items-center gap-2 text-sm">
+                    <span className="text-muted-foreground">Issued to:</span>
+                    <span className="font-medium text-foreground">{mov.issuedTo}</span>
+                  </div>
+                )}
+
+                {mov.reason && (
+                  <div className="mt-3 p-2 bg-error/10 border border-error/20 rounded flex items-center gap-2 text-sm">
+                    <span className="text-muted-foreground">Reason:</span>
+                    <span className="font-medium text-foreground">{mov.reason}</span>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </CardBody>
+      </Card>
+    </div>
+  );
+}

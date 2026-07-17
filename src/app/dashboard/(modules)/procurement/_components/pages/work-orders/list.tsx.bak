@@ -1,0 +1,447 @@
+import { useState } from 'react';
+import * as ReactRouter from 'react-router';
+import { Search, Filter, Clipboard, FileText, CheckCircle, Clock, AlertCircle, Eye, Download, Printer, TrendingUp, Package } from 'lucide-react';
+import { Card, CardHeader, CardBody } from '../../components/ui/card';
+import { Button } from '../../components/ui/button';
+import { Badge } from '../../components/ui/badge';
+
+const Link = ReactRouter.Link || (ReactRouter as any).default?.Link;
+
+// Mock data for work orders
+const mockWorkOrders = [
+  {
+    id: 'WO-2024-001',
+    poNumber: 'PO-2024-001',
+    requisitionNumber: 'REQ-2024-001',
+    rfqNumber: 'RFQ-2024-001',
+    awardNumber: 'AWD-2024-001',
+    title: 'Office Furniture Supply',
+    vendor: {
+      name: 'Premium Office Solutions Ltd',
+      code: 'VEN-001',
+      email: 'contact@premiumoffice.com'
+    },
+    orderDate: '2024-03-15',
+    deliveryDeadline: '2024-04-30',
+    totalAmount: 245000,
+    status: 'approved',
+    approvalStatus: 'fully-approved',
+    vendorStatus: 'accepted',
+    deliveryStatus: 'in-progress',
+    items: 15,
+    deliveredItems: 8,
+    paymentStatus: 'partial',
+    amountPaid: 98000
+  },
+  {
+    id: 'WO-2024-002',
+    poNumber: 'PO-2024-002',
+    requisitionNumber: 'REQ-2024-002',
+    rfqNumber: 'RFQ-2024-002',
+    awardNumber: 'AWD-2024-002',
+    title: 'IT Equipment & Accessories',
+    vendor: {
+      name: 'TechSupply Global Inc',
+      code: 'VEN-002',
+      email: 'sales@techsupply.com'
+    },
+    orderDate: '2024-03-14',
+    deliveryDeadline: '2024-04-15',
+    totalAmount: 580000,
+    status: 'pending-approval',
+    approvalStatus: 'pending-finance',
+    vendorStatus: 'not-sent',
+    deliveryStatus: 'not-started',
+    items: 25,
+    deliveredItems: 0,
+    paymentStatus: 'not-started',
+    amountPaid: 0
+  },
+  {
+    id: 'WO-2024-003',
+    poNumber: 'PO-2024-003',
+    requisitionNumber: 'REQ-2024-003',
+    rfqNumber: 'RFQ-2024-003',
+    awardNumber: 'AWD-2024-003',
+    title: 'Medical Supplies & Equipment',
+    vendor: {
+      name: 'MediCare Suppliers',
+      code: 'VEN-003',
+      email: 'info@medicaresupp.com'
+    },
+    orderDate: '2024-03-16',
+    deliveryDeadline: '2024-05-15',
+    totalAmount: 1250000,
+    status: 'approved',
+    approvalStatus: 'fully-approved',
+    vendorStatus: 'pending-acceptance',
+    deliveryStatus: 'not-started',
+    items: 42,
+    deliveredItems: 0,
+    paymentStatus: 'not-started',
+    amountPaid: 0
+  },
+  {
+    id: 'WO-2024-004',
+    poNumber: 'PO-2024-004',
+    requisitionNumber: 'REQ-2024-004',
+    rfqNumber: 'RFQ-2024-004',
+    awardNumber: 'AWD-2024-004',
+    title: 'Construction Materials',
+    vendor: {
+      name: 'BuildPro Construction Supplies',
+      code: 'VEN-004',
+      email: 'sales@buildpro.com'
+    },
+    orderDate: '2024-03-12',
+    deliveryDeadline: '2024-06-10',
+    totalAmount: 3750000,
+    status: 'approved',
+    approvalStatus: 'fully-approved',
+    vendorStatus: 'accepted',
+    deliveryStatus: 'in-progress',
+    items: 68,
+    deliveredItems: 35,
+    paymentStatus: 'partial',
+    amountPaid: 1875000
+  },
+  {
+    id: 'WO-2024-005',
+    poNumber: 'PO-2024-005',
+    requisitionNumber: 'REQ-2024-005',
+    rfqNumber: 'RFQ-2024-005',
+    awardNumber: 'AWD-2024-005',
+    title: 'Catering Services Contract',
+    vendor: {
+      name: 'Gourmet Catering Ltd',
+      code: 'VEN-005',
+      email: 'info@gourmetcatering.com'
+    },
+    orderDate: '2024-03-10',
+    deliveryDeadline: '2024-03-25',
+    totalAmount: 125000,
+    status: 'draft',
+    approvalStatus: 'draft',
+    vendorStatus: 'not-sent',
+    deliveryStatus: 'not-started',
+    items: 12,
+    deliveredItems: 0,
+    paymentStatus: 'not-started',
+    amountPaid: 0
+  }
+];
+
+const getStatusColor = (status: string) => {
+  switch (status) {
+    case 'approved': return 'success';
+    case 'pending-approval': return 'warning';
+    case 'draft': return 'default';
+    case 'rejected': return 'error';
+    default: return 'default';
+  }
+};
+
+const getVendorStatusColor = (status: string) => {
+  switch (status) {
+    case 'accepted': return 'success';
+    case 'pending-acceptance': return 'warning';
+    case 'rejected': return 'error';
+    case 'not-sent': return 'default';
+    default: return 'default';
+  }
+};
+
+const getDeliveryStatusColor = (status: string) => {
+  switch (status) {
+    case 'completed': return 'success';
+    case 'in-progress': return 'warning';
+    case 'not-started': return 'default';
+    case 'delayed': return 'error';
+    default: return 'default';
+  }
+};
+
+export function WorkOrderList() {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+
+  const filteredWorkOrders = mockWorkOrders.filter(wo => {
+    const matchesSearch = 
+      wo.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      wo.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      wo.vendor.name.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    const matchesStatus = statusFilter === 'all' || wo.status === statusFilter;
+    
+    return matchesSearch && matchesStatus;
+  });
+
+  // Calculate KPIs
+  const totalWorkOrders = mockWorkOrders.length;
+  const approvedWOs = mockWorkOrders.filter(wo => wo.status === 'approved').length;
+  const pendingApproval = mockWorkOrders.filter(wo => wo.status === 'pending-approval').length;
+  const totalValue = mockWorkOrders.reduce((sum, wo) => sum + wo.totalAmount, 0);
+  const activeDeliveries = mockWorkOrders.filter(wo => wo.deliveryStatus === 'in-progress').length;
+  const totalPaid = mockWorkOrders.reduce((sum, wo) => sum + wo.amountPaid, 0);
+
+  return (
+    <div className="p-8">
+      {/* Header */}
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold text-foreground mb-2">Work Orders</h1>
+          <p className="text-muted-foreground">Manage purchase orders and vendor work orders</p>
+        </div>
+        <Link to="/work-orders/create">
+          <Button variant="primary">
+            <FileText className="w-4 h-4 mr-2" />
+            Create Work Order
+          </Button>
+        </Link>
+      </div>
+
+      {/* KPI Cards */}
+      <div className="grid grid-cols-4 gap-6 mb-6">
+        <Card>
+          <CardBody>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground mb-1">Total Work Orders</p>
+                <p className="text-2xl font-semibold text-foreground">{totalWorkOrders}</p>
+              </div>
+              <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                <Clipboard className="w-6 h-6 text-primary" />
+              </div>
+            </div>
+          </CardBody>
+        </Card>
+
+        <Card>
+          <CardBody>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground mb-1">Approved</p>
+                <p className="text-2xl font-semibold text-foreground">{approvedWOs}</p>
+              </div>
+              <div className="w-12 h-12 rounded-lg bg-success/10 flex items-center justify-center">
+                <CheckCircle className="w-6 h-6 text-success" />
+              </div>
+            </div>
+          </CardBody>
+        </Card>
+
+        <Card>
+          <CardBody>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground mb-1">Pending Approval</p>
+                <p className="text-2xl font-semibold text-foreground">{pendingApproval}</p>
+              </div>
+              <div className="w-12 h-12 rounded-lg bg-warning/10 flex items-center justify-center">
+                <Clock className="w-6 h-6 text-warning" />
+              </div>
+            </div>
+          </CardBody>
+        </Card>
+
+        <Card>
+          <CardBody>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground mb-1">Total Value</p>
+                <p className="text-2xl font-semibold text-foreground">
+                  ${(totalValue / 1000000).toFixed(2)}M
+                </p>
+              </div>
+              <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                <FileText className="w-6 h-6 text-primary" />
+              </div>
+            </div>
+          </CardBody>
+        </Card>
+      </div>
+
+      {/* Secondary KPIs */}
+      <div className="grid grid-cols-2 gap-6 mb-6">
+        <Card>
+          <CardBody>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground mb-1">Active Deliveries</p>
+                <p className="text-2xl font-semibold text-foreground">{activeDeliveries}</p>
+                <p className="text-xs text-muted-foreground mt-1">In-progress work orders</p>
+              </div>
+              <div className="w-12 h-12 rounded-lg bg-warning/10 flex items-center justify-center">
+                <Package className="w-6 h-6 text-warning" />
+              </div>
+            </div>
+          </CardBody>
+        </Card>
+
+        <Card>
+          <CardBody>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground mb-1">Total Paid</p>
+                <p className="text-2xl font-semibold text-success">
+                  ${(totalPaid / 1000000).toFixed(2)}M
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {((totalPaid / totalValue) * 100).toFixed(1)}% of total value
+                </p>
+              </div>
+              <div className="w-12 h-12 rounded-lg bg-success/10 flex items-center justify-center">
+                <TrendingUp className="w-6 h-6 text-success" />
+              </div>
+            </div>
+          </CardBody>
+        </Card>
+      </div>
+
+      {/* Filters and Search */}
+      <Card className="mb-6">
+        <CardBody>
+          <div className="flex gap-4">
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <input
+                type="text"
+                placeholder="Search by WO number, title, or vendor..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+            </div>
+            
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="px-4 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+            >
+              <option value="all">All Status</option>
+              <option value="approved">Approved</option>
+              <option value="pending-approval">Pending Approval</option>
+              <option value="draft">Draft</option>
+              <option value="rejected">Rejected</option>
+            </select>
+          </div>
+        </CardBody>
+      </Card>
+
+      {/* Work Orders List */}
+      <Card>
+        <CardHeader 
+          title={`Work Orders (${filteredWorkOrders.length})`}
+          description="View and manage all work orders"
+        />
+        <CardBody>
+          <div className="space-y-4">
+            {filteredWorkOrders.map((wo) => (
+              <div
+                key={wo.id}
+                className="border border-border rounded-lg p-4 hover:border-primary/50 transition-colors"
+              >
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-2">
+                      <h3 className="font-semibold text-foreground">{wo.id}</h3>
+                      <Badge variant={getStatusColor(wo.status)}>
+                        {wo.status.replace('-', ' ')}
+                      </Badge>
+                      <Badge variant={getVendorStatusColor(wo.vendorStatus)}>
+                        Vendor: {wo.vendorStatus.replace('-', ' ')}
+                      </Badge>
+                      <Badge variant={getDeliveryStatusColor(wo.deliveryStatus)}>
+                        {wo.deliveryStatus.replace('-', ' ')}
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground mb-1">{wo.title}</p>
+                    <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                      <span>PO: {wo.poNumber}</span>
+                      <span>•</span>
+                      <span>Vendor: {wo.vendor.name}</span>
+                      <span>•</span>
+                      <span>Order Date: {wo.orderDate}</span>
+                      <span>•</span>
+                      <span>Delivery: {wo.deliveryDeadline}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2">
+                    {wo.status === 'pending-approval' && (
+                      <Link to={`/work-orders/${wo.id}/approval`}>
+                        <Button variant="warning" size="sm">
+                          <CheckCircle className="w-4 h-4 mr-2" />
+                          Review
+                        </Button>
+                      </Link>
+                    )}
+                    <Link to={`/work-orders/${wo.id}`}>
+                      <Button variant="outline" size="sm">
+                        <Eye className="w-4 h-4 mr-2" />
+                        View Details
+                      </Button>
+                    </Link>
+                    <Link to={`/work-orders/${wo.id}/print`}>
+                      <Button variant="outline" size="sm">
+                        <Printer className="w-4 h-4 mr-2" />
+                        Print
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-4 gap-4 p-3 bg-muted/30 rounded-lg">
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Total Amount</p>
+                    <p className="text-sm font-semibold text-foreground">
+                      ${wo.totalAmount.toLocaleString()}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Items Progress</p>
+                    <p className="text-sm font-medium text-foreground">
+                      {wo.deliveredItems}/{wo.items} delivered
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Payment Status</p>
+                    <p className="text-sm font-semibold text-success">
+                      ${wo.amountPaid.toLocaleString()} paid
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Linked Documents</p>
+                    <div className="flex items-center gap-2 text-xs">
+                      <span className="text-primary">{wo.requisitionNumber}</span>
+                      <span>→</span>
+                      <span className="text-primary">{wo.awardNumber}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Progress Bar for Delivery */}
+                {wo.deliveryStatus === 'in-progress' && (
+                  <div className="mt-3">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs text-muted-foreground">Delivery Progress</span>
+                      <span className="text-xs font-medium text-foreground">
+                        {((wo.deliveredItems / wo.items) * 100).toFixed(0)}%
+                      </span>
+                    </div>
+                    <div className="h-2 bg-muted rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-primary transition-all"
+                        style={{ width: `${(wo.deliveredItems / wo.items) * 100}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </CardBody>
+      </Card>
+    </div>
+  );
+}

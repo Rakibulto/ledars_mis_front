@@ -1,0 +1,533 @@
+import { useState } from 'react';
+import * as ReactRouter from 'react-router';
+import { ArrowLeft, Plus, Trash2, Upload, Save, Send } from 'lucide-react';
+import { Card, CardHeader, CardBody } from '../../components/ui/card';
+import { Button } from '../../components/ui/button';
+
+const Link = ReactRouter.Link || (ReactRouter as any).default?.Link;
+const useNavigate = ReactRouter.useNavigate || (ReactRouter as any).default?.useNavigate;
+
+interface WorkOrderItem {
+  id: string;
+  description: string;
+  specification: string;
+  quantity: number;
+  unitPrice: number;
+  total: number;
+}
+
+export function CreateWorkOrder() {
+  const navigate = useNavigate();
+  const [formData, setFormData] = useState({
+    requisitionNumber: '',
+    rfqNumber: '',
+    awardNumber: '',
+    vendorId: '',
+    vendorName: '',
+    vendorEmail: '',
+    vendorPhone: '',
+    vendorAddress: '',
+    deliveryLocation: '',
+    deliveryDeadline: '',
+    paymentTerms: '30 days net',
+    warrantyPeriod: '12 months',
+    notes: ''
+  });
+
+  const [items, setItems] = useState<WorkOrderItem[]>([
+    { id: '1', description: '', specification: '', quantity: 1, unitPrice: 0, total: 0 }
+  ]);
+
+  const [attachments, setAttachments] = useState<File[]>([]);
+
+  const handleInputChange = (field: string, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleItemChange = (id: string, field: keyof WorkOrderItem, value: string | number) => {
+    setItems(prev => prev.map(item => {
+      if (item.id === id) {
+        const updated = { ...item, [field]: value };
+        if (field === 'quantity' || field === 'unitPrice') {
+          updated.total = updated.quantity * updated.unitPrice;
+        }
+        return updated;
+      }
+      return item;
+    }));
+  };
+
+  const addItem = () => {
+    const newId = (Math.max(...items.map(i => parseInt(i.id))) + 1).toString();
+    setItems([...items, { id: newId, description: '', specification: '', quantity: 1, unitPrice: 0, total: 0 }]);
+  };
+
+  const removeItem = (id: string) => {
+    if (items.length > 1) {
+      setItems(items.filter(item => item.id !== id));
+    }
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      setAttachments([...attachments, ...Array.from(e.target.files)]);
+    }
+  };
+
+  const removeAttachment = (index: number) => {
+    setAttachments(attachments.filter((_, i) => i !== index));
+  };
+
+  const calculateTotal = () => {
+    return items.reduce((sum, item) => sum + item.total, 0);
+  };
+
+  const handleSaveDraft = () => {
+    alert('Work Order saved as draft!');
+    navigate('/work-orders/list');
+  };
+
+  const handleSubmitForApproval = () => {
+    alert('Work Order submitted for approval!');
+    navigate('/work-orders/list');
+  };
+
+  // Mock data for dropdowns
+  const mockRequisitions = [
+    { id: 'REQ-2024-001', title: 'Office Furniture Supply' },
+    { id: 'REQ-2024-002', title: 'IT Equipment & Accessories' },
+    { id: 'REQ-2024-003', title: 'Medical Supplies' }
+  ];
+
+  const mockVendors = [
+    { id: 'VEN-001', name: 'Premium Office Solutions Ltd', email: 'contact@premiumoffice.com', phone: '+1 555-0101', address: '123 Business Park, Suite 400' },
+    { id: 'VEN-002', name: 'TechSupply Global Inc', email: 'sales@techsupply.com', phone: '+1 555-0102', address: '456 Tech Plaza' },
+    { id: 'VEN-003', name: 'MediCare Suppliers', email: 'info@medicaresupp.com', phone: '+1 555-0103', address: '789 Medical Center' }
+  ];
+
+  const handleVendorSelect = (vendorId: string) => {
+    const vendor = mockVendors.find(v => v.id === vendorId);
+    if (vendor) {
+      setFormData(prev => ({
+        ...prev,
+        vendorId: vendor.id,
+        vendorName: vendor.name,
+        vendorEmail: vendor.email,
+        vendorPhone: vendor.phone,
+        vendorAddress: vendor.address
+      }));
+    }
+  };
+
+  return (
+    <div className="p-8">
+      {/* Header */}
+      <div className="mb-6">
+        <div className="flex items-center gap-4 mb-2">
+          <Link to="/work-orders/list">
+            <button className="p-2 hover:bg-muted rounded-lg transition-colors">
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+          </Link>
+          <div>
+            <h1 className="text-2xl font-semibold text-foreground">Create Work Order</h1>
+            <p className="text-muted-foreground">Generate a new purchase order for vendor</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-3 gap-6">
+        {/* Main Form - 2 columns */}
+        <div className="col-span-2 space-y-6">
+          {/* Basic Information */}
+          <Card>
+            <CardHeader 
+              title="Basic Information"
+              description="Link to existing procurement documents"
+            />
+            <CardBody>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">
+                    Linked Requisition *
+                  </label>
+                  <select
+                    value={formData.requisitionNumber}
+                    onChange={(e) => handleInputChange('requisitionNumber', e.target.value)}
+                    className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                  >
+                    <option value="">Select Requisition</option>
+                    {mockRequisitions.map(req => (
+                      <option key={req.id} value={req.id}>{req.id} - {req.title}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">
+                    RFQ Number
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.rfqNumber}
+                    onChange={(e) => handleInputChange('rfqNumber', e.target.value)}
+                    placeholder="e.g., RFQ-2024-001"
+                    className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">
+                    Award Number
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.awardNumber}
+                    onChange={(e) => handleInputChange('awardNumber', e.target.value)}
+                    placeholder="e.g., AWD-2024-001"
+                    className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                </div>
+              </div>
+            </CardBody>
+          </Card>
+
+          {/* Vendor Information */}
+          <Card>
+            <CardHeader 
+              title="Vendor Information"
+              description="Select vendor for this work order"
+            />
+            <CardBody>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">
+                    Select Vendor *
+                  </label>
+                  <select
+                    value={formData.vendorId}
+                    onChange={(e) => handleVendorSelect(e.target.value)}
+                    className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                  >
+                    <option value="">Choose a vendor</option>
+                    {mockVendors.map(vendor => (
+                      <option key={vendor.id} value={vendor.id}>{vendor.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {formData.vendorId && (
+                  <div className="p-4 bg-muted/30 rounded-lg space-y-2">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-xs text-muted-foreground">Email</p>
+                        <p className="text-sm text-foreground">{formData.vendorEmail}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Phone</p>
+                        <p className="text-sm text-foreground">{formData.vendorPhone}</p>
+                      </div>
+                      <div className="col-span-2">
+                        <p className="text-xs text-muted-foreground">Address</p>
+                        <p className="text-sm text-foreground">{formData.vendorAddress}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </CardBody>
+          </Card>
+
+          {/* Items */}
+          <Card>
+            <CardHeader 
+              title="Work Order Items"
+              description="Add items to this work order"
+              action={
+                <Button variant="outline" size="sm" onClick={addItem}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Item
+                </Button>
+              }
+            />
+            <CardBody>
+              <div className="space-y-4">
+                {items.map((item, index) => (
+                  <div key={item.id} className="border border-border rounded-lg p-4">
+                    <div className="flex items-start justify-between mb-3">
+                      <h4 className="font-medium text-foreground">Item {index + 1}</h4>
+                      {items.length > 1 && (
+                        <button
+                          onClick={() => removeItem(item.id)}
+                          className="text-error hover:bg-error/10 p-1 rounded"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="col-span-2">
+                        <label className="block text-sm font-medium text-foreground mb-2">
+                          Description *
+                        </label>
+                        <input
+                          type="text"
+                          value={item.description}
+                          onChange={(e) => handleItemChange(item.id, 'description', e.target.value)}
+                          placeholder="Item description"
+                          className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                        />
+                      </div>
+
+                      <div className="col-span-2">
+                        <label className="block text-sm font-medium text-foreground mb-2">
+                          Specifications
+                        </label>
+                        <textarea
+                          value={item.specification}
+                          onChange={(e) => handleItemChange(item.id, 'specification', e.target.value)}
+                          placeholder="Technical specifications, requirements, etc."
+                          rows={2}
+                          className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-foreground mb-2">
+                          Quantity *
+                        </label>
+                        <input
+                          type="number"
+                          value={item.quantity}
+                          onChange={(e) => handleItemChange(item.id, 'quantity', parseInt(e.target.value) || 0)}
+                          min="1"
+                          className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-foreground mb-2">
+                          Unit Price (USD) *
+                        </label>
+                        <input
+                          type="number"
+                          value={item.unitPrice}
+                          onChange={(e) => handleItemChange(item.id, 'unitPrice', parseFloat(e.target.value) || 0)}
+                          min="0"
+                          step="0.01"
+                          className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                        />
+                      </div>
+
+                      <div className="col-span-2">
+                        <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+                          <span className="text-sm font-medium text-foreground">Item Total:</span>
+                          <span className="text-lg font-semibold text-primary">
+                            ${item.total.toLocaleString()}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+
+                <div className="flex items-center justify-between p-4 bg-primary/5 rounded-lg border border-primary/20">
+                  <span className="font-semibold text-foreground">Grand Total:</span>
+                  <span className="text-2xl font-semibold text-primary">
+                    ${calculateTotal().toLocaleString()}
+                  </span>
+                </div>
+              </div>
+            </CardBody>
+          </Card>
+
+          {/* Delivery Information */}
+          <Card>
+            <CardHeader 
+              title="Delivery Information"
+              description="Specify delivery details"
+            />
+            <CardBody>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="col-span-2">
+                  <label className="block text-sm font-medium text-foreground mb-2">
+                    Delivery Location *
+                  </label>
+                  <textarea
+                    value={formData.deliveryLocation}
+                    onChange={(e) => handleInputChange('deliveryLocation', e.target.value)}
+                    placeholder="Complete delivery address"
+                    rows={3}
+                    className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">
+                    Delivery Deadline *
+                  </label>
+                  <input
+                    type="date"
+                    value={formData.deliveryDeadline}
+                    onChange={(e) => handleInputChange('deliveryDeadline', e.target.value)}
+                    className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                </div>
+              </div>
+            </CardBody>
+          </Card>
+
+          {/* Terms & Conditions */}
+          <Card>
+            <CardHeader 
+              title="Terms & Conditions"
+              description="Specify payment and warranty terms"
+            />
+            <CardBody>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">
+                    Payment Terms *
+                  </label>
+                  <select
+                    value={formData.paymentTerms}
+                    onChange={(e) => handleInputChange('paymentTerms', e.target.value)}
+                    className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                  >
+                    <option value="30 days net">30 days net</option>
+                    <option value="45 days net">45 days net</option>
+                    <option value="60 days net">60 days net</option>
+                    <option value="90 days net">90 days net</option>
+                    <option value="Advance payment">Advance payment</option>
+                    <option value="50% advance, 50% on delivery">50% advance, 50% on delivery</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">
+                    Warranty Period
+                  </label>
+                  <select
+                    value={formData.warrantyPeriod}
+                    onChange={(e) => handleInputChange('warrantyPeriod', e.target.value)}
+                    className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                  >
+                    <option value="6 months">6 months</option>
+                    <option value="12 months">12 months</option>
+                    <option value="18 months">18 months</option>
+                    <option value="24 months">24 months</option>
+                    <option value="36 months">36 months</option>
+                  </select>
+                </div>
+
+                <div className="col-span-2">
+                  <label className="block text-sm font-medium text-foreground mb-2">
+                    Additional Notes
+                  </label>
+                  <textarea
+                    value={formData.notes}
+                    onChange={(e) => handleInputChange('notes', e.target.value)}
+                    placeholder="Any additional terms, conditions, or special instructions..."
+                    rows={4}
+                    className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+                  />
+                </div>
+              </div>
+            </CardBody>
+          </Card>
+        </div>
+
+        {/* Sidebar - 1 column */}
+        <div className="space-y-6">
+          {/* Summary */}
+          <Card>
+            <CardHeader title="Summary" />
+            <CardBody>
+              <div className="space-y-4">
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">Total Items</p>
+                  <p className="text-xl font-semibold text-foreground">{items.length}</p>
+                </div>
+                <div className="pt-4 border-t border-border">
+                  <p className="text-sm text-muted-foreground mb-1">Total Amount</p>
+                  <p className="text-2xl font-semibold text-primary">
+                    ${calculateTotal().toLocaleString()}
+                  </p>
+                </div>
+                <div className="pt-4 border-t border-border">
+                  <p className="text-sm text-muted-foreground mb-1">Status</p>
+                  <p className="text-sm font-medium text-foreground">Draft</p>
+                </div>
+              </div>
+            </CardBody>
+          </Card>
+
+          {/* Attachments */}
+          <Card>
+            <CardHeader title="Attachments" />
+            <CardBody>
+              <div className="space-y-3">
+                <label className="block">
+                  <div className="border-2 border-dashed border-border rounded-lg p-4 text-center cursor-pointer hover:border-primary transition-colors">
+                    <Upload className="w-6 h-6 text-muted-foreground mx-auto mb-2" />
+                    <p className="text-sm text-muted-foreground">
+                      Click to upload files
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      PDF, DOC, XLS (Max 10MB)
+                    </p>
+                  </div>
+                  <input
+                    type="file"
+                    multiple
+                    onChange={handleFileUpload}
+                    className="hidden"
+                    accept=".pdf,.doc,.docx,.xls,.xlsx"
+                  />
+                </label>
+
+                {attachments.length > 0 && (
+                  <div className="space-y-2">
+                    {attachments.map((file, index) => (
+                      <div key={index} className="flex items-center justify-between p-2 bg-muted/30 rounded">
+                        <span className="text-sm text-foreground truncate">{file.name}</span>
+                        <button
+                          onClick={() => removeAttachment(index)}
+                          className="text-error hover:bg-error/10 p-1 rounded"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </CardBody>
+          </Card>
+
+          {/* Actions */}
+          <Card>
+            <CardBody>
+              <div className="space-y-3">
+                <Button variant="primary" className="w-full" onClick={handleSubmitForApproval}>
+                  <Send className="w-4 h-4 mr-2" />
+                  Submit for Approval
+                </Button>
+                <Button variant="outline" className="w-full" onClick={handleSaveDraft}>
+                  <Save className="w-4 h-4 mr-2" />
+                  Save as Draft
+                </Button>
+                <Link to="/work-orders/list">
+                  <Button variant="outline" className="w-full">
+                    Cancel
+                  </Button>
+                </Link>
+              </div>
+            </CardBody>
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
+}

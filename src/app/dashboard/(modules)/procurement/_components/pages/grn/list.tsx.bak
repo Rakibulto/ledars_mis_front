@@ -1,0 +1,393 @@
+import { useState } from 'react';
+import * as ReactRouter from 'react-router';
+import { Search, Package, CheckCircle, AlertCircle, Clock, Eye, Plus, TrendingUp, FileText } from 'lucide-react';
+import { Card, CardHeader, CardBody } from '../../components/ui/card';
+import { Button } from '../../components/ui/button';
+import { Badge } from '../../components/ui/badge';
+
+const Link = ReactRouter.Link || (ReactRouter as any).default?.Link;
+
+// Mock GRN data
+const mockGRNs = [
+  {
+    id: 'GRN-2024-001',
+    woNumber: 'WO-2024-001',
+    poNumber: 'PO-2024-001',
+    vendor: 'Premium Office Solutions Ltd',
+    receivedDate: '2024-03-20',
+    receivedBy: 'John Smith',
+    receivingLocation: 'Main Warehouse - New York',
+    totalItems: 5,
+    receivedItems: 5,
+    orderedQuantity: 135,
+    receivedQuantity: 115,
+    status: 'partial',
+    verificationStatus: 'verified',
+    issues: 2,
+    discrepancyValue: 8400
+  },
+  {
+    id: 'GRN-2024-002',
+    woNumber: 'WO-2024-004',
+    poNumber: 'PO-2024-004',
+    vendor: 'BuildPro Construction Supplies',
+    receivedDate: '2024-03-18',
+    receivedBy: 'Sarah Johnson',
+    receivingLocation: 'Site A - Construction Zone',
+    totalItems: 8,
+    receivedItems: 8,
+    orderedQuantity: 68,
+    receivedQuantity: 68,
+    status: 'complete',
+    verificationStatus: 'verified',
+    issues: 0,
+    discrepancyValue: 0
+  },
+  {
+    id: 'GRN-2024-003',
+    woNumber: 'WO-2024-002',
+    poNumber: 'PO-2024-002',
+    vendor: 'TechSupply Global Inc',
+    receivedDate: '2024-03-22',
+    receivedBy: 'Mike Chen',
+    receivingLocation: 'IT Department - HQ',
+    totalItems: 5,
+    receivedItems: 3,
+    orderedQuantity: 65,
+    receivedQuantity: 35,
+    status: 'partial',
+    verificationStatus: 'pending',
+    issues: 3,
+    discrepancyValue: 15200
+  },
+  {
+    id: 'GRN-2024-004',
+    woNumber: 'WO-2024-003',
+    poNumber: 'PO-2024-003',
+    vendor: 'MediCare Suppliers',
+    receivedDate: '2024-03-15',
+    receivedBy: 'David Brown',
+    receivingLocation: 'Medical Center - Floor 2',
+    totalItems: 6,
+    receivedItems: 6,
+    orderedQuantity: 42,
+    receivedQuantity: 40,
+    status: 'partial',
+    verificationStatus: 'verified',
+    issues: 1,
+    discrepancyValue: 3500
+  },
+  {
+    id: 'GRN-2024-005',
+    woNumber: 'WO-2024-005',
+    poNumber: 'PO-2024-005',
+    vendor: 'Gourmet Catering Ltd',
+    receivedDate: '2024-03-25',
+    receivedBy: 'Lisa Anderson',
+    receivingLocation: 'Main Kitchen - Cafeteria',
+    totalItems: 4,
+    receivedItems: 2,
+    orderedQuantity: 12,
+    receivedQuantity: 8,
+    status: 'partial',
+    verificationStatus: 'pending',
+    issues: 2,
+    discrepancyValue: 4200
+  }
+];
+
+const getStatusColor = (status: string) => {
+  switch (status) {
+    case 'complete': return 'success';
+    case 'partial': return 'warning';
+    case 'rejected': return 'error';
+    default: return 'default';
+  }
+};
+
+const getVerificationStatusColor = (status: string) => {
+  switch (status) {
+    case 'verified': return 'success';
+    case 'pending': return 'warning';
+    case 'rejected': return 'error';
+    default: return 'default';
+  }
+};
+
+export function GRNList() {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+
+  const filteredGRNs = mockGRNs.filter(grn => {
+    const matchesSearch = 
+      grn.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      grn.woNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      grn.vendor.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      grn.receivingLocation.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    const matchesStatus = statusFilter === 'all' || grn.verificationStatus === statusFilter;
+    
+    return matchesSearch && matchesStatus;
+  });
+
+  // Calculate KPIs
+  const totalGRNs = mockGRNs.length;
+  const completeGRNs = mockGRNs.filter(g => g.status === 'complete').length;
+  const pendingVerification = mockGRNs.filter(g => g.verificationStatus === 'pending').length;
+  const totalIssues = mockGRNs.reduce((sum, g) => sum + g.issues, 0);
+  const totalReceived = mockGRNs.reduce((sum, g) => sum + g.receivedQuantity, 0);
+  const totalOrdered = mockGRNs.reduce((sum, g) => sum + g.orderedQuantity, 0);
+  const receiptRate = ((totalReceived / totalOrdered) * 100);
+
+  return (
+    <div className="p-8">
+      {/* Header */}
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold text-foreground mb-2">Goods Receive Notes</h1>
+          <p className="text-muted-foreground">Track and verify deliveries from vendors</p>
+        </div>
+        <Link to="/grn/create">
+          <Button variant="primary">
+            <Plus className="w-4 h-4 mr-2" />
+            Create GRN
+          </Button>
+        </Link>
+      </div>
+
+      {/* KPI Cards */}
+      <div className="grid grid-cols-4 gap-6 mb-6">
+        <Card>
+          <CardBody>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground mb-1">Total GRNs</p>
+                <p className="text-2xl font-semibold text-foreground">{totalGRNs}</p>
+              </div>
+              <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                <Package className="w-6 h-6 text-primary" />
+              </div>
+            </div>
+          </CardBody>
+        </Card>
+
+        <Card>
+          <CardBody>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground mb-1">Complete Receipts</p>
+                <p className="text-2xl font-semibold text-foreground">{completeGRNs}</p>
+              </div>
+              <div className="w-12 h-12 rounded-lg bg-success/10 flex items-center justify-center">
+                <CheckCircle className="w-6 h-6 text-success" />
+              </div>
+            </div>
+          </CardBody>
+        </Card>
+
+        <Card>
+          <CardBody>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground mb-1">Pending Verification</p>
+                <p className="text-2xl font-semibold text-foreground">{pendingVerification}</p>
+              </div>
+              <div className="w-12 h-12 rounded-lg bg-warning/10 flex items-center justify-center">
+                <Clock className="w-6 h-6 text-warning" />
+              </div>
+            </div>
+          </CardBody>
+        </Card>
+
+        <Card>
+          <CardBody>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground mb-1">Total Issues</p>
+                <p className="text-2xl font-semibold text-foreground">{totalIssues}</p>
+              </div>
+              <div className="w-12 h-12 rounded-lg bg-error/10 flex items-center justify-center">
+                <AlertCircle className="w-6 h-6 text-error" />
+              </div>
+            </div>
+          </CardBody>
+        </Card>
+      </div>
+
+      {/* Secondary KPIs */}
+      <div className="grid grid-cols-2 gap-6 mb-6">
+        <Card>
+          <CardBody>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground mb-1">Receipt Completion Rate</p>
+                <p className="text-2xl font-semibold text-foreground">{receiptRate.toFixed(1)}%</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {totalReceived} of {totalOrdered} items received
+                </p>
+              </div>
+              <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                <TrendingUp className="w-6 h-6 text-primary" />
+              </div>
+            </div>
+          </CardBody>
+        </Card>
+
+        <Card>
+          <CardBody>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground mb-1">Active Receiving Locations</p>
+                <p className="text-2xl font-semibold text-foreground">
+                  {new Set(mockGRNs.map(g => g.receivingLocation)).size}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">Across all sites</p>
+              </div>
+              <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                <FileText className="w-6 h-6 text-primary" />
+              </div>
+            </div>
+          </CardBody>
+        </Card>
+      </div>
+
+      {/* Filters and Search */}
+      <Card className="mb-6">
+        <CardBody>
+          <div className="flex gap-4">
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <input
+                type="text"
+                placeholder="Search by GRN number, WO number, vendor, or location..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+            </div>
+            
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="px-4 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+            >
+              <option value="all">All Status</option>
+              <option value="verified">Verified</option>
+              <option value="pending">Pending Verification</option>
+              <option value="rejected">Rejected</option>
+            </select>
+          </div>
+        </CardBody>
+      </Card>
+
+      {/* GRN List */}
+      <Card>
+        <CardHeader 
+          title={`Goods Receive Notes (${filteredGRNs.length})`}
+          description="View and manage all delivery receipts"
+        />
+        <CardBody>
+          <div className="space-y-4">
+            {filteredGRNs.map((grn) => (
+              <div
+                key={grn.id}
+                className="border border-border rounded-lg p-4 hover:border-primary/50 transition-colors"
+              >
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-2">
+                      <h3 className="font-semibold text-foreground">{grn.id}</h3>
+                      <Badge variant={getStatusColor(grn.status)}>
+                        {grn.status === 'complete' ? 'Full Receipt' : 'Partial Receipt'}
+                      </Badge>
+                      <Badge variant={getVerificationStatusColor(grn.verificationStatus)}>
+                        {grn.verificationStatus}
+                      </Badge>
+                      {grn.issues > 0 && (
+                        <Badge variant="error">
+                          {grn.issues} Issue{grn.issues > 1 ? 's' : ''}
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="text-sm text-muted-foreground mb-1">
+                      Vendor: {grn.vendor}
+                    </p>
+                    <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                      <span>WO: {grn.woNumber}</span>
+                      <span>•</span>
+                      <span>PO: {grn.poNumber}</span>
+                      <span>•</span>
+                      <span>Received: {grn.receivedDate}</span>
+                      <span>•</span>
+                      <span>By: {grn.receivedBy}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2">
+                    {grn.verificationStatus === 'pending' && (
+                      <Link to={`/grn/${grn.id}/verify`}>
+                        <Button variant="warning" size="sm">
+                          <CheckCircle className="w-4 h-4 mr-2" />
+                          Verify
+                        </Button>
+                      </Link>
+                    )}
+                    <Link to={`/grn/${grn.id}`}>
+                      <Button variant="outline" size="sm">
+                        <Eye className="w-4 h-4 mr-2" />
+                        View Details
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-4 gap-4 p-3 bg-muted/30 rounded-lg">
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Receiving Location</p>
+                    <p className="text-sm font-medium text-foreground">{grn.receivingLocation}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Items Progress</p>
+                    <p className="text-sm font-medium text-foreground">
+                      {grn.receivedItems}/{grn.totalItems} items
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Quantity Received</p>
+                    <p className="text-sm font-semibold text-foreground">
+                      {grn.receivedQuantity}/{grn.orderedQuantity}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Discrepancy Value</p>
+                    <p className={`text-sm font-semibold ${grn.discrepancyValue > 0 ? 'text-error' : 'text-success'}`}>
+                      {grn.discrepancyValue > 0 ? '-' : ''}${grn.discrepancyValue.toLocaleString()}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Progress Bar */}
+                {grn.status === 'partial' && (
+                  <div className="mt-3">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs text-muted-foreground">Receipt Progress</span>
+                      <span className="text-xs font-medium text-foreground">
+                        {((grn.receivedQuantity / grn.orderedQuantity) * 100).toFixed(0)}%
+                      </span>
+                    </div>
+                    <div className="h-2 bg-muted rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-warning transition-all"
+                        style={{ width: `${(grn.receivedQuantity / grn.orderedQuantity) * 100}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </CardBody>
+      </Card>
+    </div>
+  );
+}

@@ -1,0 +1,548 @@
+import { useState } from 'react';
+import * as ReactRouter from 'react-router';
+import { ArrowLeft, CheckCircle, XCircle, AlertTriangle, MessageSquare } from 'lucide-react';
+import { Card, CardHeader, CardBody } from '../../components/ui/card';
+import { Button } from '../../components/ui/button';
+import { Badge } from '../../components/ui/badge';
+
+const useParams = ReactRouter.useParams || (ReactRouter as any).default?.useParams;
+const useNavigate = ReactRouter.useNavigate || (ReactRouter as any).default?.useNavigate;
+
+// Mock GRN data for verification
+const mockGRNVerifyData = {
+  id: 'GRN-2024-003',
+  woNumber: 'WO-2024-002',
+  poNumber: 'PO-2024-002',
+  vendor: 'TechSupply Global Inc',
+  receivedDate: '2024-03-22',
+  receivedTime: '10:15',
+  receivedBy: 'Mike Chen',
+  receivingLocation: 'IT Department - HQ',
+  items: [
+    {
+      id: '1',
+      description: 'Dell Precision Workstation',
+      specification: 'Intel i9, 64GB RAM, 2TB SSD, NVIDIA RTX A4000',
+      orderedQuantity: 10,
+      receivedQuantity: 10,
+      orderedBrand: 'Dell Precision 5820',
+      receivedBrand: 'Dell Precision 5820',
+      status: 'match',
+      issueNote: '',
+      photos: []
+    },
+    {
+      id: '2',
+      description: '27" 4K Monitor',
+      specification: 'Dell UltraSharp, USB-C connectivity, height adjustable',
+      orderedQuantity: 20,
+      receivedQuantity: 15,
+      orderedBrand: 'Dell UltraSharp U2720Q',
+      receivedBrand: 'Dell UltraSharp U2720Q',
+      status: 'partial',
+      issueNote: 'Only 15 monitors delivered. Remaining 5 units backordered. Vendor will deliver within 10 days.',
+      photos: ['photo1.jpg']
+    },
+    {
+      id: '3',
+      description: 'Wireless Keyboard & Mouse Combo',
+      specification: 'Logitech MX Keys + MX Master 3, rechargeable',
+      orderedQuantity: 20,
+      receivedQuantity: 20,
+      orderedBrand: 'Logitech MX Combo',
+      receivedBrand: 'Logitech MX Combo',
+      status: 'match',
+      issueNote: '',
+      photos: []
+    },
+    {
+      id: '4',
+      description: 'Docking Station',
+      specification: 'Thunderbolt 4, dual 4K support, 90W charging',
+      orderedQuantity: 15,
+      receivedQuantity: 0,
+      orderedBrand: 'CalDigit TS4',
+      receivedBrand: '',
+      status: 'not-received',
+      issueNote: 'Not included in this shipment. Expected next week.',
+      photos: []
+    },
+    {
+      id: '5',
+      description: 'Network Switch',
+      specification: '48-port Gigabit, managed, PoE+',
+      orderedQuantity: 2,
+      receivedQuantity: 2,
+      orderedBrand: 'Cisco Catalyst 9200',
+      receivedBrand: 'Cisco Catalyst 9300',
+      status: 'mismatch',
+      issueNote: 'Received upgraded model (9300 instead of 9200). Higher specifications than ordered. Pending approval for acceptance.',
+      photos: ['photo2.jpg', 'photo3.jpg']
+    }
+  ],
+  totalOrdered: 67,
+  totalReceived: 47,
+  notes: 'Partial delivery. Receiver noted all items in good condition. Brand upgrade on network switch requires procurement review.'
+};
+
+export function ReceiverVerificationView() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const [verificationComments, setVerificationComments] = useState('');
+  const [itemDecisions, setItemDecisions] = useState<Record<string, 'approve' | 'reject' | null>>({});
+  const [showApproveModal, setShowApproveModal] = useState(false);
+  const [showRejectModal, setShowRejectModal] = useState(false);
+
+  const grn = mockGRNVerifyData;
+
+  const handleItemDecision = (itemId: string, decision: 'approve' | 'reject' | null) => {
+    setItemDecisions(prev => ({ ...prev, [itemId]: decision }));
+  };
+
+  const handleApprove = () => {
+    if (!verificationComments.trim()) {
+      alert('Please add verification comments');
+      return;
+    }
+    alert('GRN verified and approved successfully!');
+    navigate('/grn/list');
+  };
+
+  const handleReject = () => {
+    if (!verificationComments.trim()) {
+      alert('Please provide reason for rejection');
+      return;
+    }
+    alert('GRN rejected. Receiver has been notified.');
+    navigate('/grn/list');
+  };
+
+  const itemsRequiringDecision = grn.items.filter(i => i.status === 'mismatch' || i.status === 'partial');
+  const allDecisionsMade = itemsRequiringDecision.every(i => itemDecisions[i.id] !== undefined && itemDecisions[i.id] !== null);
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'match':
+        return <CheckCircle className="w-5 h-5 text-success" />;
+      case 'mismatch':
+        return <AlertTriangle className="w-5 h-5 text-warning" />;
+      case 'partial':
+        return <AlertTriangle className="w-5 h-5 text-warning" />;
+      case 'not-received':
+        return <XCircle className="w-5 h-5 text-muted-foreground" />;
+    }
+  };
+
+  return (
+    <div className="p-8 max-w-6xl mx-auto">
+      {/* Header */}
+      <div className="mb-6">
+        <div className="flex items-center gap-4 mb-4">
+          <button
+            onClick={() => navigate('/grn/list')}
+            className="p-2 hover:bg-muted rounded-lg transition-colors"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+          <div className="flex-1">
+            <h1 className="text-2xl font-semibold text-foreground mb-1">Verify GRN - {grn.id}</h1>
+            <p className="text-muted-foreground">Review and verify delivery receipt</p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <Badge variant="warning">Pending Verification</Badge>
+          <span className="text-sm text-muted-foreground">
+            Received by {grn.receivedBy} on {grn.receivedDate}
+          </span>
+        </div>
+      </div>
+
+      {/* Alert Banner */}
+      <Card className="mb-6 border-warning bg-warning/5">
+        <CardBody>
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="w-5 h-5 text-warning mt-0.5" />
+            <div>
+              <p className="font-medium text-foreground mb-1">Verification Required</p>
+              <p className="text-sm text-muted-foreground">
+                This GRN has {itemsRequiringDecision.length} item(s) requiring your decision. 
+                Please review all discrepancies and approve or reject each item.
+              </p>
+            </div>
+          </div>
+        </CardBody>
+      </Card>
+
+      {/* Receipt Summary */}
+      <div className="grid grid-cols-3 gap-6 mb-6">
+        <Card>
+          <CardBody>
+            <div className="text-center">
+              <p className="text-sm text-muted-foreground mb-1">Ordered</p>
+              <p className="text-3xl font-bold text-foreground">{grn.totalOrdered}</p>
+            </div>
+          </CardBody>
+        </Card>
+
+        <Card>
+          <CardBody>
+            <div className="text-center">
+              <p className="text-sm text-muted-foreground mb-1">Received</p>
+              <p className="text-3xl font-bold text-primary">{grn.totalReceived}</p>
+            </div>
+          </CardBody>
+        </Card>
+
+        <Card>
+          <CardBody>
+            <div className="text-center">
+              <p className="text-sm text-muted-foreground mb-1">Needs Decision</p>
+              <p className="text-3xl font-bold text-warning">{itemsRequiringDecision.length}</p>
+            </div>
+          </CardBody>
+        </Card>
+      </div>
+
+      {/* Receipt Info */}
+      <Card className="mb-6">
+        <CardHeader title="Receipt Information" />
+        <CardBody>
+          <div className="grid grid-cols-3 gap-6">
+            <div>
+              <p className="text-sm text-muted-foreground mb-1">Work Order</p>
+              <p className="font-medium text-foreground">{grn.woNumber}</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground mb-1">Vendor</p>
+              <p className="font-medium text-foreground">{grn.vendor}</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground mb-1">Location</p>
+              <p className="font-medium text-foreground">{grn.receivingLocation}</p>
+            </div>
+          </div>
+        </CardBody>
+      </Card>
+
+      {/* Items Verification */}
+      <Card className="mb-6">
+        <CardHeader 
+          title="Items Verification"
+          description="Review each item and make decisions on discrepancies"
+        />
+        <CardBody>
+          <div className="space-y-4">
+            {grn.items.map((item, index) => (
+              <div
+                key={item.id}
+                className={`border-2 rounded-lg p-4 ${
+                  item.status === 'match' ? 'border-success/20 bg-success/5' :
+                  item.status === 'mismatch' || item.status === 'partial' ? 'border-warning/20 bg-warning/5' :
+                  'border-border'
+                }`}
+              >
+                {/* Item Header */}
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex items-start gap-3 flex-1">
+                    {getStatusIcon(item.status)}
+                    <div className="flex-1">
+                      <h4 className="font-semibold text-foreground mb-1">
+                        {item.description}
+                      </h4>
+                      <p className="text-sm text-muted-foreground">{item.specification}</p>
+                    </div>
+                  </div>
+                  <Badge variant={
+                    item.status === 'match' ? 'success' :
+                    item.status === 'mismatch' ? 'warning' :
+                    item.status === 'partial' ? 'warning' : 'default'
+                  }>
+                    {item.status === 'match' ? 'Match' :
+                     item.status === 'mismatch' ? 'Brand Mismatch' :
+                     item.status === 'partial' ? 'Partial Receipt' :
+                     'Not Received'}
+                  </Badge>
+                </div>
+
+                {/* Comparison */}
+                <div className="grid grid-cols-4 gap-4 mb-4">
+                  <div className="p-3 bg-muted/50 rounded-lg">
+                    <p className="text-xs text-muted-foreground mb-1">Ordered</p>
+                    <p className="text-xl font-bold text-foreground">{item.orderedQuantity}</p>
+                  </div>
+                  <div className="p-3 bg-primary/10 rounded-lg">
+                    <p className="text-xs text-muted-foreground mb-1">Received</p>
+                    <p className="text-xl font-bold text-primary">{item.receivedQuantity}</p>
+                  </div>
+                  <div className="p-3 bg-muted/50 rounded-lg">
+                    <p className="text-xs text-muted-foreground mb-1">Brand Ordered</p>
+                    <p className="text-sm font-semibold text-foreground">{item.orderedBrand}</p>
+                  </div>
+                  <div className="p-3 bg-primary/10 rounded-lg">
+                    <p className="text-xs text-muted-foreground mb-1">Brand Received</p>
+                    <p className="text-sm font-semibold text-foreground">
+                      {item.receivedBrand || 'N/A'}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Issue Note */}
+                {item.issueNote && (
+                  <div className="p-3 bg-warning/10 border border-warning/20 rounded-lg mb-4">
+                    <p className="text-xs font-medium text-warning mb-1">Receiver's Note:</p>
+                    <p className="text-sm text-foreground">{item.issueNote}</p>
+                  </div>
+                )}
+
+                {/* Photos */}
+                {item.photos.length > 0 && (
+                  <div className="mb-4">
+                    <p className="text-xs font-medium text-foreground mb-2">
+                      Evidence Photos ({item.photos.length})
+                    </p>
+                    <div className="grid grid-cols-6 gap-2">
+                      {item.photos.map((photo, photoIndex) => (
+                        <div key={photoIndex} className="w-full h-16 bg-muted rounded flex items-center justify-center text-xs text-muted-foreground">
+                          Photo {photoIndex + 1}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Decision Buttons - Only for items with issues */}
+                {(item.status === 'mismatch' || item.status === 'partial') && (
+                  <div className="pt-4 border-t border-border">
+                    <p className="text-sm font-medium text-foreground mb-3">Your Decision:</p>
+                    <div className="flex gap-3">
+                      <Button
+                        variant={itemDecisions[item.id] === 'approve' ? 'success' : 'outline'}
+                        className="flex-1"
+                        onClick={() => handleItemDecision(item.id, 'approve')}
+                      >
+                        <CheckCircle className="w-4 h-4 mr-2" />
+                        Accept This Item
+                      </Button>
+                      <Button
+                        variant={itemDecisions[item.id] === 'reject' ? 'error' : 'outline'}
+                        className="flex-1"
+                        onClick={() => handleItemDecision(item.id, 'reject')}
+                      >
+                        <XCircle className="w-4 h-4 mr-2" />
+                        Reject This Item
+                      </Button>
+                    </div>
+                    {itemDecisions[item.id] && (
+                      <p className="text-sm text-center mt-2 font-medium">
+                        {itemDecisions[item.id] === 'approve' ? (
+                          <span className="text-success">✓ Item will be accepted</span>
+                        ) : (
+                          <span className="text-error">✗ Item will be rejected</span>
+                        )}
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {/* Auto-Accepted for perfect matches */}
+                {item.status === 'match' && (
+                  <div className="pt-4 border-t border-border">
+                    <div className="flex items-center justify-center gap-2 text-success">
+                      <CheckCircle className="w-4 h-4" />
+                      <span className="text-sm font-medium">Automatically Accepted (Perfect Match)</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </CardBody>
+      </Card>
+
+      {/* Receiver's Notes */}
+      {grn.notes && (
+        <Card className="mb-6">
+          <CardHeader title="Receiver's Additional Notes" />
+          <CardBody>
+            <p className="text-sm text-foreground">{grn.notes}</p>
+          </CardBody>
+        </Card>
+      )}
+
+      {/* Verification Comments */}
+      <Card className="mb-6">
+        <CardHeader 
+          title="Verification Comments"
+          description="Add your review comments and decision rationale"
+        />
+        <CardBody>
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-2">
+              Your Comments *
+            </label>
+            <textarea
+              value={verificationComments}
+              onChange={(e) => setVerificationComments(e.target.value)}
+              placeholder="Add your verification comments, explain your decisions on discrepancies, or note any follow-up actions..."
+              rows={5}
+              className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary resize-none text-base"
+            />
+          </div>
+        </CardBody>
+      </Card>
+
+      {/* Decision Summary */}
+      {itemsRequiringDecision.length > 0 && (
+        <Card className="mb-6 border-primary bg-primary/5">
+          <CardBody>
+            <div className="flex items-start gap-3">
+              <MessageSquare className="w-5 h-5 text-primary mt-0.5" />
+              <div className="flex-1">
+                <p className="font-medium text-foreground mb-2">Decision Summary:</p>
+                <div className="space-y-1">
+                  {itemsRequiringDecision.map(item => (
+                    <div key={item.id} className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">{item.description}:</span>
+                      {itemDecisions[item.id] === 'approve' ? (
+                        <span className="text-success font-medium">✓ Accept</span>
+                      ) : itemDecisions[item.id] === 'reject' ? (
+                        <span className="text-error font-medium">✗ Reject</span>
+                      ) : (
+                        <span className="text-warning font-medium">⚠ Pending Decision</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </CardBody>
+        </Card>
+      )}
+
+      {/* Action Buttons */}
+      <div className="flex gap-4">
+        <Button 
+          variant="error" 
+          className="flex-1"
+          onClick={() => setShowRejectModal(true)}
+        >
+          <XCircle className="w-4 h-4 mr-2" />
+          Reject Entire GRN
+        </Button>
+        <Button 
+          variant="success" 
+          className="flex-1"
+          onClick={() => setShowApproveModal(true)}
+          disabled={!allDecisionsMade}
+        >
+          <CheckCircle className="w-4 h-4 mr-2" />
+          Verify & Approve GRN
+        </Button>
+      </div>
+
+      {!allDecisionsMade && itemsRequiringDecision.length > 0 && (
+        <p className="text-center text-sm text-warning mt-4">
+          ⚠ Please make decisions on all items with discrepancies before approving
+        </p>
+      )}
+
+      {/* Approve Modal */}
+      {showApproveModal && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <Card className="max-w-md w-full">
+            <CardHeader 
+              title="Verify & Approve GRN"
+              description="Confirm your verification decision"
+            />
+            <CardBody>
+              <div className="space-y-4">
+                <div className="flex items-start gap-3 p-4 bg-success/5 border border-success/20 rounded-lg">
+                  <CheckCircle className="w-5 h-5 text-success mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium text-foreground mb-1">Approving GRN:</p>
+                    <p className="text-sm text-foreground">{grn.id}</p>
+                    <p className="text-sm text-muted-foreground mt-2">
+                      {grn.totalReceived} of {grn.totalOrdered} items received
+                    </p>
+                  </div>
+                </div>
+
+                {itemsRequiringDecision.length > 0 && (
+                  <div className="p-3 bg-muted/30 rounded-lg">
+                    <p className="text-xs font-medium text-foreground mb-2">Your Decisions:</p>
+                    <div className="space-y-1">
+                      {itemsRequiringDecision.map(item => (
+                        <div key={item.id} className="flex items-center justify-between text-xs">
+                          <span className="text-muted-foreground truncate">{item.description}</span>
+                          <span className={itemDecisions[item.id] === 'approve' ? 'text-success' : 'text-error'}>
+                            {itemDecisions[item.id] === 'approve' ? '✓ Accept' : '✗ Reject'}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex gap-2 justify-end">
+                  <Button variant="outline" onClick={() => setShowApproveModal(false)}>
+                    Cancel
+                  </Button>
+                  <Button variant="success" onClick={handleApprove}>
+                    <CheckCircle className="w-4 h-4 mr-2" />
+                    Confirm Approval
+                  </Button>
+                </div>
+              </div>
+            </CardBody>
+          </Card>
+        </div>
+      )}
+
+      {/* Reject Modal */}
+      {showRejectModal && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <Card className="max-w-md w-full">
+            <CardHeader 
+              title="Reject GRN"
+              description="This will reject the entire goods receipt"
+            />
+            <CardBody>
+              <div className="space-y-4">
+                <div className="flex items-start gap-3 p-4 bg-error/5 border border-error/20 rounded-lg">
+                  <AlertTriangle className="w-5 h-5 text-error mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium text-foreground mb-1">Rejecting:</p>
+                    <p className="text-sm text-foreground">{grn.id}</p>
+                    <p className="text-sm text-muted-foreground mt-2">
+                      The receiver will be notified and may need to re-submit
+                    </p>
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-sm text-muted-foreground mb-2">Your Comments:</p>
+                  <div className="p-3 bg-muted/30 rounded-lg max-h-32 overflow-y-auto">
+                    <p className="text-sm text-foreground">
+                      {verificationComments || 'No comments provided'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex gap-2 justify-end">
+                  <Button variant="outline" onClick={() => setShowRejectModal(false)}>
+                    Cancel
+                  </Button>
+                  <Button variant="error" onClick={handleReject}>
+                    <XCircle className="w-4 h-4 mr-2" />
+                    Confirm Rejection
+                  </Button>
+                </div>
+              </div>
+            </CardBody>
+          </Card>
+        </div>
+      )}
+    </div>
+  );
+}

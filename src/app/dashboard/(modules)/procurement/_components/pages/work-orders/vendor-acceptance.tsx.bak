@@ -1,0 +1,597 @@
+import { useState } from 'react';
+import * as ReactRouter from 'react-router';
+import { CheckCircle, XCircle, Download, Printer, Upload, FileText, Calendar, DollarSign, Package, AlertCircle, Paperclip, Trash2 } from 'lucide-react';
+import { Card, CardHeader, CardBody } from '../../components/ui/card';
+import { Button } from '../../components/ui/button';
+import { Badge } from '../../components/ui/badge';
+
+const useParams = ReactRouter.useParams || (ReactRouter as any).default?.useParams;
+
+// Mock work order data for vendor view
+const mockVendorWOData = {
+  id: 'WO-2024-001',
+  poNumber: 'PO-2024-001',
+  orderDate: '2024-03-15',
+  deliveryDeadline: '2024-04-30',
+  acceptanceDeadline: '2024-03-17',
+  status: 'pending-acceptance',
+  organization: {
+    name: 'Global Development Foundation',
+    address: '456 Corporate Blvd, New York, NY 10002',
+    phone: '+1 555-0200',
+    email: 'procurement@globaldev.org',
+    contactPerson: 'Sarah Johnson',
+    contactTitle: 'Procurement Manager'
+  },
+  deliveryLocation: 'Main Office Building\n456 Corporate Blvd, 3rd Floor\nNew York, NY 10002\nUnited States',
+  paymentTerms: '30 days net from delivery',
+  warrantyPeriod: '12 months',
+  items: [
+    {
+      id: '1',
+      description: 'Ergonomic Executive Desk',
+      specification: 'Wooden finish, 1800mm x 900mm, with cable management system',
+      quantity: 25,
+      unitPrice: 1200,
+      total: 30000
+    },
+    {
+      id: '2',
+      description: 'Ergonomic Office Chair',
+      specification: 'Mesh back, adjustable armrests, lumbar support, 5-year warranty',
+      quantity: 50,
+      unitPrice: 450,
+      total: 22500
+    },
+    {
+      id: '3',
+      description: 'Filing Cabinet (4-drawer)',
+      specification: 'Steel construction, lockable, fire-resistant rating',
+      quantity: 30,
+      unitPrice: 350,
+      total: 10500
+    },
+    {
+      id: '4',
+      description: 'Bookshelf Unit',
+      specification: '1800mm height, 5 adjustable shelves, wood finish',
+      quantity: 20,
+      unitPrice: 280,
+      total: 5600
+    },
+    {
+      id: '5',
+      description: 'Meeting Table (6-seater)',
+      specification: 'Oval shape, 2400mm x 1200mm, premium wood finish',
+      quantity: 10,
+      unitPrice: 1800,
+      total: 18000
+    }
+  ],
+  terms: [
+    'The Vendor shall deliver the goods/services as per the specifications mentioned in this Work Order.',
+    'Delivery must be completed on or before the delivery deadline specified above.',
+    'Quality inspection will be conducted upon delivery.',
+    'Payment will be processed within 30 days from delivery after successful GRN.',
+    'Any defective items must be replaced at Vendor\'s cost within 7 business days.',
+    'Installation and setup services are included where applicable.',
+    'The Vendor must maintain valid business licenses throughout the contract period.',
+    'All items must comply with original quotation specifications.',
+    'Transportation and handling are the responsibility of the Vendor.',
+    'Any modifications require written approval from the Organization.'
+  ],
+  totalAmount: 86600,
+  specialInstructions: 'All furniture must be assembled on-site. Installation to be coordinated with facilities team. Quality inspection required before final acceptance.'
+};
+
+export function VendorWorkOrderAcceptance() {
+  const { id } = useParams();
+  const [showAcceptModal, setShowAcceptModal] = useState(false);
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [acknowledgementNotes, setAcknowledgementNotes] = useState('');
+  const [rejectionReason, setRejectionReason] = useState('');
+  const [signedDocument, setSignedDocument] = useState<File | null>(null);
+  const [hasAgreedToTerms, setHasAgreedToTerms] = useState(false);
+
+  const wo = mockVendorWOData;
+
+  const daysRemaining = Math.ceil(
+    (new Date(wo.acceptanceDeadline).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)
+  );
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setSignedDocument(e.target.files[0]);
+    }
+  };
+
+  const handleAccept = () => {
+    if (!hasAgreedToTerms) {
+      alert('Please agree to the terms and conditions');
+      return;
+    }
+    if (!signedDocument) {
+      alert('Please upload the signed work order document');
+      return;
+    }
+    alert('Work Order accepted successfully! The organization has been notified.');
+    setShowAcceptModal(false);
+  };
+
+  const handleReject = () => {
+    if (!rejectionReason.trim()) {
+      alert('Please provide a reason for declining');
+      return;
+    }
+    alert('Work Order declined. The organization has been notified.');
+    setShowRejectModal(false);
+  };
+
+  const handlePrint = () => {
+    window.print();
+  };
+
+  const handleDownload = () => {
+    alert('Downloading Work Order as PDF...');
+  };
+
+  return (
+    <div className="min-h-screen bg-muted/20">
+      {/* Header - Public View */}
+      <div className="bg-primary text-primary-foreground py-6 px-8 print:bg-white print:text-foreground">
+        <div className="max-w-6xl mx-auto">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-semibold mb-1">Work Order - Vendor Acceptance</h1>
+              <p className="text-primary-foreground/80 print:text-muted-foreground">
+                Work Order: {wo.id} | PO: {wo.poNumber}
+              </p>
+            </div>
+            <div className="w-16 h-16 bg-primary-foreground/10 print:bg-primary/10 rounded-full flex items-center justify-center">
+              <FileText className="w-8 h-8 text-primary-foreground print:text-primary" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-6xl mx-auto p-8 print:p-4">
+        {/* Deadline Alert */}
+        {wo.status === 'pending-acceptance' && (
+          <Card className="mb-6 border-warning bg-warning/5 print:hidden">
+            <CardBody>
+              <div className="flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-warning mt-0.5" />
+                <div className="flex-1">
+                  <p className="font-medium text-foreground mb-1">Action Required - Response Deadline</p>
+                  <p className="text-sm text-muted-foreground">
+                    Please accept or decline this work order within{' '}
+                    <span className="font-semibold text-warning">{daysRemaining} days</span>
+                    {' '}(Deadline: {wo.acceptanceDeadline})
+                  </p>
+                </div>
+              </div>
+            </CardBody>
+          </Card>
+        )}
+
+        {/* Action Buttons */}
+        <div className="mb-6 flex gap-2 print:hidden">
+          <Button variant="outline" onClick={handlePrint}>
+            <Printer className="w-4 h-4 mr-2" />
+            Print
+          </Button>
+          <Button variant="outline" onClick={handleDownload}>
+            <Download className="w-4 h-4 mr-2" />
+            Download PDF
+          </Button>
+        </div>
+
+        {/* Organization Info */}
+        <Card className="mb-6">
+          <CardBody>
+            <div className="border-b border-border pb-4 mb-4">
+              <h2 className="text-xl font-bold text-primary mb-1">{wo.organization.name}</h2>
+              <p className="text-sm text-muted-foreground">{wo.organization.address}</p>
+              <p className="text-sm text-muted-foreground">
+                Tel: {wo.organization.phone} | Email: {wo.organization.email}
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-6">
+              <div>
+                <p className="text-sm text-muted-foreground mb-1">Contact Person</p>
+                <p className="font-medium text-foreground">{wo.organization.contactPerson}</p>
+                <p className="text-sm text-muted-foreground">{wo.organization.contactTitle}</p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground mb-1">Order Date</p>
+                <p className="font-medium text-foreground">{wo.orderDate}</p>
+              </div>
+            </div>
+          </CardBody>
+        </Card>
+
+        {/* WO Summary */}
+        <div className="grid grid-cols-3 gap-6 mb-6">
+          <Card>
+            <CardBody>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">Total Value</p>
+                  <p className="text-2xl font-semibold text-primary">
+                    ${wo.totalAmount.toLocaleString()}
+                  </p>
+                </div>
+                <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <DollarSign className="w-6 h-6 text-primary" />
+                </div>
+              </div>
+            </CardBody>
+          </Card>
+
+          <Card>
+            <CardBody>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">Total Items</p>
+                  <p className="text-2xl font-semibold text-foreground">{wo.items.length}</p>
+                </div>
+                <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <Package className="w-6 h-6 text-primary" />
+                </div>
+              </div>
+            </CardBody>
+          </Card>
+
+          <Card>
+            <CardBody>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">Delivery Deadline</p>
+                  <p className="text-lg font-semibold text-foreground">{wo.deliveryDeadline}</p>
+                </div>
+                <div className="w-12 h-12 rounded-lg bg-warning/10 flex items-center justify-center">
+                  <Calendar className="w-6 h-6 text-warning" />
+                </div>
+              </div>
+            </CardBody>
+          </Card>
+        </div>
+
+        {/* Items Table */}
+        <Card className="mb-6">
+          <CardHeader 
+            title="Order Items & Specifications"
+            description="Please review all items carefully"
+          />
+          <CardBody>
+            <div className="border border-border rounded-lg overflow-hidden">
+              <table className="w-full">
+                <thead className="bg-muted/50">
+                  <tr className="border-b border-border">
+                    <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">No.</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">Description & Specifications</th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground">Qty</th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground">Unit Price</th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {wo.items.map((item, index) => (
+                    <tr key={item.id} className="border-b border-border last:border-0">
+                      <td className="px-4 py-3 text-sm font-semibold text-foreground">{index + 1}</td>
+                      <td className="px-4 py-3">
+                        <p className="text-sm font-semibold text-foreground">{item.description}</p>
+                        <p className="text-xs text-muted-foreground mt-1">{item.specification}</p>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-right text-foreground">{item.quantity}</td>
+                      <td className="px-4 py-3 text-sm text-right text-foreground">
+                        ${item.unitPrice.toLocaleString()}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-right font-semibold text-foreground">
+                        ${item.total.toLocaleString()}
+                      </td>
+                    </tr>
+                  ))}
+                  <tr className="bg-primary/5 border-t-2 border-primary">
+                    <td colSpan={4} className="px-4 py-4 text-right font-bold text-foreground">
+                      TOTAL ORDER VALUE:
+                    </td>
+                    <td className="px-4 py-4 text-right font-bold text-primary text-lg">
+                      ${wo.totalAmount.toLocaleString()}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </CardBody>
+        </Card>
+
+        {/* Delivery & Payment */}
+        <div className="grid grid-cols-2 gap-6 mb-6">
+          <Card>
+            <CardHeader title="Delivery Information" />
+            <CardBody>
+              <div className="space-y-3">
+                <div>
+                  <p className="text-sm font-medium text-foreground mb-2">Delivery Location</p>
+                  <div className="p-3 bg-muted/30 rounded-lg">
+                    <p className="text-sm text-foreground whitespace-pre-line">{wo.deliveryLocation}</p>
+                  </div>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-foreground mb-1">Delivery Deadline</p>
+                  <p className="text-lg font-semibold text-error">{wo.deliveryDeadline}</p>
+                </div>
+              </div>
+            </CardBody>
+          </Card>
+
+          <Card>
+            <CardHeader title="Payment & Warranty" />
+            <CardBody>
+              <div className="space-y-3">
+                <div>
+                  <p className="text-sm font-medium text-foreground mb-1">Payment Terms</p>
+                  <p className="text-sm text-muted-foreground">{wo.paymentTerms}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-foreground mb-1">Warranty Period</p>
+                  <p className="text-sm text-muted-foreground">{wo.warrantyPeriod}</p>
+                </div>
+              </div>
+            </CardBody>
+          </Card>
+        </div>
+
+        {/* Special Instructions */}
+        {wo.specialInstructions && (
+          <Card className="mb-6 border-warning bg-warning/5">
+            <CardHeader title="Special Instructions" />
+            <CardBody>
+              <p className="text-sm text-foreground">{wo.specialInstructions}</p>
+            </CardBody>
+          </Card>
+        )}
+
+        {/* Terms & Conditions */}
+        <Card className="mb-6">
+          <CardHeader 
+            title="Terms & Conditions"
+            description="Please review carefully before accepting"
+          />
+          <CardBody>
+            <div className="space-y-2">
+              {wo.terms.map((term, index) => (
+                <div key={index} className="flex gap-3 text-sm">
+                  <span className="font-semibold text-muted-foreground min-w-[24px]">{index + 1}.</span>
+                  <p className="text-foreground">{term}</p>
+                </div>
+              ))}
+            </div>
+          </CardBody>
+        </Card>
+
+        {/* Acceptance Section */}
+        {wo.status === 'pending-acceptance' && (
+          <Card className="mb-6 border-primary print:hidden">
+            <CardHeader 
+              title="Vendor Acceptance"
+              description="Upload signed document and confirm acceptance"
+            />
+            <CardBody>
+              <div className="space-y-6">
+                {/* Upload Signed Document */}
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-3">
+                    Upload Signed Work Order *
+                  </label>
+                  <div className="space-y-3">
+                    <label className="block">
+                      <div className="border-2 border-dashed border-border rounded-lg p-6 text-center cursor-pointer hover:border-primary transition-colors">
+                        <Upload className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+                        <p className="text-sm font-medium text-foreground mb-1">
+                          Click to upload signed document
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          PDF or scanned image (Max 10MB)
+                        </p>
+                      </div>
+                      <input
+                        type="file"
+                        onChange={handleFileUpload}
+                        className="hidden"
+                        accept=".pdf,.jpg,.jpeg,.png"
+                      />
+                    </label>
+
+                    {signedDocument && (
+                      <div className="flex items-center justify-between p-3 bg-success/5 border border-success/20 rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <Paperclip className="w-4 h-4 text-success" />
+                          <div>
+                            <p className="text-sm font-medium text-foreground">{signedDocument.name}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {(signedDocument.size / 1024).toFixed(2)} KB
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => setSignedDocument(null)}
+                          className="text-error hover:bg-error/10 p-1 rounded"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Acknowledgement Notes */}
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">
+                    Acknowledgement Notes (Optional)
+                  </label>
+                  <textarea
+                    value={acknowledgementNotes}
+                    onChange={(e) => setAcknowledgementNotes(e.target.value)}
+                    placeholder="Any comments or notes regarding this work order..."
+                    rows={3}
+                    className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+                  />
+                </div>
+
+                {/* Agreement Checkbox */}
+                <div className="p-4 bg-muted/30 rounded-lg">
+                  <label className="flex items-start gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={hasAgreedToTerms}
+                      onChange={(e) => setHasAgreedToTerms(e.target.checked)}
+                      className="mt-1 w-4 h-4 rounded border-input focus:ring-2 focus:ring-primary"
+                    />
+                    <span className="text-sm text-foreground">
+                      I confirm that I have reviewed all items, specifications, terms and conditions mentioned in this Work Order, 
+                      and agree to deliver as per the requirements within the specified timeline.
+                    </span>
+                  </label>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex gap-3">
+                  <Button 
+                    variant="success" 
+                    className="flex-1"
+                    onClick={() => setShowAcceptModal(true)}
+                  >
+                    <CheckCircle className="w-4 h-4 mr-2" />
+                    Accept Work Order
+                  </Button>
+                  <Button 
+                    variant="error"
+                    className="flex-1"
+                    onClick={() => setShowRejectModal(true)}
+                  >
+                    <XCircle className="w-4 h-4 mr-2" />
+                    Decline Work Order
+                  </Button>
+                </div>
+              </div>
+            </CardBody>
+          </Card>
+        )}
+
+        {/* Contact Information */}
+        <Card>
+          <CardHeader title="Need Help?" />
+          <CardBody>
+            <p className="text-sm text-muted-foreground mb-3">
+              If you have any questions or need clarifications, please contact:
+            </p>
+            <div className="space-y-2">
+              <p className="text-sm text-foreground">
+                <span className="font-medium">Contact:</span> {wo.organization.contactPerson} ({wo.organization.contactTitle})
+              </p>
+              <p className="text-sm text-foreground">
+                <span className="font-medium">Email:</span> {wo.organization.email}
+              </p>
+              <p className="text-sm text-foreground">
+                <span className="font-medium">Phone:</span> {wo.organization.phone}
+              </p>
+            </div>
+          </CardBody>
+        </Card>
+      </div>
+
+      {/* Accept Modal */}
+      {showAcceptModal && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <Card className="max-w-md w-full">
+            <CardHeader 
+              title="Accept Work Order"
+              description="Confirm your acceptance"
+            />
+            <CardBody>
+              <div className="space-y-4">
+                <div className="flex items-start gap-3 p-4 bg-success/5 border border-success/20 rounded-lg">
+                  <CheckCircle className="w-5 h-5 text-success mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium text-foreground mb-1">You are accepting:</p>
+                    <p className="text-sm text-foreground">{wo.id}</p>
+                    <p className="text-sm font-semibold text-success mt-2">
+                      Total Value: ${wo.totalAmount.toLocaleString()}
+                    </p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Delivery Deadline: {wo.deliveryDeadline}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="p-3 bg-muted/30 rounded-lg">
+                  <p className="text-xs text-muted-foreground">
+                    By accepting, you commit to delivering all items as per specifications within the deadline.
+                  </p>
+                </div>
+
+                <div className="flex gap-2 justify-end">
+                  <Button variant="outline" onClick={() => setShowAcceptModal(false)}>
+                    Cancel
+                  </Button>
+                  <Button variant="success" onClick={handleAccept}>
+                    <CheckCircle className="w-4 h-4 mr-2" />
+                    Confirm Acceptance
+                  </Button>
+                </div>
+              </div>
+            </CardBody>
+          </Card>
+        </div>
+      )}
+
+      {/* Reject Modal */}
+      {showRejectModal && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <Card className="max-w-md w-full">
+            <CardHeader 
+              title="Decline Work Order"
+              description="Please provide a reason"
+            />
+            <CardBody>
+              <div className="space-y-4">
+                <div className="flex items-start gap-3 p-4 bg-error/5 border border-error/20 rounded-lg">
+                  <AlertCircle className="w-5 h-5 text-error mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium text-foreground mb-1">Declining:</p>
+                    <p className="text-sm text-foreground">{wo.id}</p>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">
+                    Reason for Declining *
+                  </label>
+                  <textarea
+                    value={rejectionReason}
+                    onChange={(e) => setRejectionReason(e.target.value)}
+                    placeholder="Please explain why you cannot accept this work order..."
+                    rows={4}
+                    className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+                  />
+                </div>
+
+                <div className="flex gap-2 justify-end">
+                  <Button variant="outline" onClick={() => setShowRejectModal(false)}>
+                    Cancel
+                  </Button>
+                  <Button variant="error" onClick={handleReject}>
+                    <XCircle className="w-4 h-4 mr-2" />
+                    Confirm Decline
+                  </Button>
+                </div>
+              </div>
+            </CardBody>
+          </Card>
+        </div>
+      )}
+    </div>
+  );
+}

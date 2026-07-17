@@ -1,0 +1,430 @@
+import { useState } from 'react';
+import * as ReactRouter from 'react-router';
+import { Search, Filter, Box, Package, AlertTriangle, Eye, Boxes, TrendingUp, DollarSign, MapPin } from 'lucide-react';
+import { Card, CardHeader, CardBody } from '../../components/ui/card';
+import { Button } from '../../components/ui/button';
+import { Badge } from '../../components/ui/badge';
+
+const Link = ReactRouter.Link || (ReactRouter as any).default?.Link;
+
+// Mock inventory items
+const mockInventoryItems = [
+  {
+    id: 'INV-2024-1234',
+    name: 'Dell Precision Workstation',
+    category: 'IT Equipment',
+    type: 'asset',
+    quantity: 10,
+    unitPrice: 3500,
+    totalValue: 35000,
+    location: 'IT Department - HQ',
+    custodian: 'IT Manager',
+    status: 'in-stock',
+    lastMovement: '2024-03-22',
+    grnNumber: 'GRN-2024-003',
+    woNumber: 'WO-2024-002'
+  },
+  {
+    id: 'INV-2024-0234',
+    name: 'Office Paper (A4, Ream)',
+    category: 'Office Supplies',
+    type: 'consumable',
+    quantity: 450,
+    minStock: 200,
+    unitPrice: 5,
+    totalValue: 2250,
+    location: 'Main Warehouse',
+    custodian: 'Warehouse Manager',
+    status: 'in-stock',
+    lastMovement: '2024-03-21',
+    issued: 50,
+    grnNumber: 'GRN-2024-004'
+  },
+  {
+    id: 'INV-2024-1235',
+    name: 'Ergonomic Office Chair',
+    category: 'Furniture',
+    type: 'asset',
+    quantity: 50,
+    unitPrice: 450,
+    totalValue: 22500,
+    location: 'Main Warehouse',
+    custodian: 'Facilities Manager',
+    status: 'in-stock',
+    lastMovement: '2024-03-20',
+    grnNumber: 'GRN-2024-001',
+    woNumber: 'WO-2024-001'
+  },
+  {
+    id: 'INV-2024-0456',
+    name: 'USB Flash Drives (32GB)',
+    category: 'IT Accessories',
+    type: 'consumable',
+    quantity: 8,
+    minStock: 25,
+    unitPrice: 12,
+    totalValue: 96,
+    location: 'IT Department',
+    custodian: 'IT Manager',
+    status: 'low-stock',
+    lastMovement: '2024-03-18',
+    issued: 17,
+    grnNumber: 'GRN-2024-002'
+  },
+  {
+    id: 'INV-2024-1236',
+    name: '27" 4K Monitor',
+    category: 'IT Equipment',
+    type: 'asset',
+    quantity: 15,
+    unitPrice: 650,
+    totalValue: 9750,
+    location: 'IT Department - HQ',
+    custodian: 'IT Manager',
+    status: 'in-stock',
+    lastMovement: '2024-03-22',
+    grnNumber: 'GRN-2024-003',
+    woNumber: 'WO-2024-002'
+  },
+  {
+    id: 'INV-2024-0789',
+    name: 'Printer Toner Cartridge (Black)',
+    category: 'Office Supplies',
+    type: 'consumable',
+    quantity: 75,
+    minStock: 30,
+    unitPrice: 80,
+    totalValue: 6000,
+    location: 'IT Department',
+    custodian: 'IT Manager',
+    status: 'in-stock',
+    lastMovement: '2024-03-19',
+    issued: 25,
+    grnNumber: 'GRN-2024-005'
+  },
+  {
+    id: 'INV-2024-1237',
+    name: 'Medical Equipment Cart',
+    category: 'Medical Equipment',
+    type: 'asset',
+    quantity: 12,
+    unitPrice: 850,
+    totalValue: 10200,
+    location: 'Medical Center',
+    custodian: 'Medical Director',
+    status: 'in-stock',
+    lastMovement: '2024-03-15',
+    grnNumber: 'GRN-2024-006',
+    woNumber: 'WO-2024-003'
+  },
+  {
+    id: 'INV-2024-0345',
+    name: 'First Aid Kit Supplies',
+    category: 'Medical Supplies',
+    type: 'consumable',
+    quantity: 3,
+    minStock: 10,
+    unitPrice: 45,
+    totalValue: 135,
+    location: 'Medical Center',
+    custodian: 'Medical Director',
+    status: 'low-stock',
+    lastMovement: '2024-03-15',
+    issued: 7,
+    grnNumber: 'GRN-2024-007'
+  }
+];
+
+const getStatusColor = (status: string) => {
+  switch (status) {
+    case 'in-stock': return 'success';
+    case 'low-stock': return 'warning';
+    case 'out-of-stock': return 'error';
+    default: return 'default';
+  }
+};
+
+export function InventoryItems() {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [typeFilter, setTypeFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [categoryFilter, setCategoryFilter] = useState('all');
+
+  const filteredItems = mockInventoryItems.filter(item => {
+    const matchesSearch = 
+      item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.location.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    const matchesType = typeFilter === 'all' || item.type === typeFilter;
+    const matchesStatus = statusFilter === 'all' || item.status === statusFilter;
+    const matchesCategory = categoryFilter === 'all' || item.category === categoryFilter;
+    
+    return matchesSearch && matchesType && matchesStatus && matchesCategory;
+  });
+
+  const categories = ['all', ...Array.from(new Set(mockInventoryItems.map(i => i.category)))];
+
+  // Calculate KPIs
+  const totalItems = filteredItems.length;
+  const totalValue = filteredItems.reduce((sum, item) => sum + item.totalValue, 0);
+  const assetsCount = filteredItems.filter(i => i.type === 'asset').length;
+  const consumablesCount = filteredItems.filter(i => i.type === 'consumable').length;
+  const lowStockCount = filteredItems.filter(i => i.status === 'low-stock').length;
+
+  return (
+    <div className="p-8">
+      {/* Header */}
+      <div className="mb-6">
+        <h1 className="text-2xl font-semibold text-foreground mb-2">Inventory Items</h1>
+        <p className="text-muted-foreground">Manage all assets and consumables</p>
+      </div>
+
+      {/* KPI Cards */}
+      <div className="grid grid-cols-5 gap-6 mb-6">
+        <Card>
+          <CardBody>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground mb-1">Total Items</p>
+                <p className="text-2xl font-semibold text-foreground">{totalItems}</p>
+              </div>
+              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                <Boxes className="w-5 h-5 text-primary" />
+              </div>
+            </div>
+          </CardBody>
+        </Card>
+
+        <Card>
+          <CardBody>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground mb-1">Total Value</p>
+                <p className="text-xl font-semibold text-foreground">
+                  ${(totalValue / 1000).toFixed(0)}K
+                </p>
+              </div>
+              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                <DollarSign className="w-5 h-5 text-primary" />
+              </div>
+            </div>
+          </CardBody>
+        </Card>
+
+        <Card className="border-l-4 border-l-blue-500">
+          <CardBody>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground mb-1">Fixed Assets</p>
+                <p className="text-2xl font-semibold text-blue-500">{assetsCount}</p>
+              </div>
+              <Box className="w-5 h-5 text-blue-500" />
+            </div>
+          </CardBody>
+        </Card>
+
+        <Card className="border-l-4 border-l-green-500">
+          <CardBody>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground mb-1">Consumables</p>
+                <p className="text-2xl font-semibold text-green-500">{consumablesCount}</p>
+              </div>
+              <Package className="w-5 h-5 text-green-500" />
+            </div>
+          </CardBody>
+        </Card>
+
+        <Card className="border-l-4 border-l-warning">
+          <CardBody>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground mb-1">Low Stock</p>
+                <p className="text-2xl font-semibold text-warning">{lowStockCount}</p>
+              </div>
+              <AlertTriangle className="w-5 h-5 text-warning" />
+            </div>
+          </CardBody>
+        </Card>
+      </div>
+
+      {/* Filters */}
+      <Card className="mb-6">
+        <CardBody>
+          <div className="flex gap-4">
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <input
+                type="text"
+                placeholder="Search by name, ID, category, or location..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+            </div>
+
+            <select
+              value={typeFilter}
+              onChange={(e) => setTypeFilter(e.target.value)}
+              className="px-4 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+            >
+              <option value="all">All Types</option>
+              <option value="asset">Fixed Assets</option>
+              <option value="consumable">Consumables</option>
+            </select>
+
+            <select
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
+              className="px-4 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+            >
+              {categories.map(cat => (
+                <option key={cat} value={cat}>
+                  {cat === 'all' ? 'All Categories' : cat}
+                </option>
+              ))}
+            </select>
+
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="px-4 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+            >
+              <option value="all">All Status</option>
+              <option value="in-stock">In Stock</option>
+              <option value="low-stock">Low Stock</option>
+              <option value="out-of-stock">Out of Stock</option>
+            </select>
+          </div>
+        </CardBody>
+      </Card>
+
+      {/* Items List */}
+      <Card>
+        <CardHeader 
+          title={`Inventory Items (${filteredItems.length})`}
+          description="View and manage all inventory"
+        />
+        <CardBody>
+          <div className="space-y-3">
+            {filteredItems.map((item) => (
+              <div
+                key={item.id}
+                className={`border-2 rounded-lg p-4 hover:border-primary/50 transition-colors ${
+                  item.type === 'asset' ? 'border-l-blue-500 border-l-4' : 'border-l-green-500 border-l-4'
+                }`}
+              >
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex items-start gap-3 flex-1">
+                    <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${
+                      item.type === 'asset' ? 'bg-blue-500/10' : 'bg-green-500/10'
+                    }`}>
+                      {item.type === 'asset' ? (
+                        <Box className="w-6 h-6 text-blue-500" />
+                      ) : (
+                        <Package className="w-6 h-6 text-green-500" />
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <Link to={`/inventory/${item.id}`}>
+                          <h3 className="font-semibold text-foreground hover:text-primary">
+                            {item.name}
+                          </h3>
+                        </Link>
+                        <Badge variant={item.type === 'asset' ? 'default' : 'success'} size="sm">
+                          {item.type === 'asset' ? 'Fixed Asset' : 'Consumable'}
+                        </Badge>
+                        <Badge variant={getStatusColor(item.status)} size="sm">
+                          {item.status.replace('-', ' ')}
+                        </Badge>
+                        {item.status === 'low-stock' && (
+                          <AlertTriangle className="w-4 h-4 text-warning" />
+                        )}
+                      </div>
+                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                        <span>ID: {item.id}</span>
+                        <span>•</span>
+                        <span>Category: {item.category}</span>
+                        <span>•</span>
+                        <span>Last Movement: {item.lastMovement}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <Link to={`/inventory/${item.id}`}>
+                    <Button variant="outline" size="sm">
+                      <Eye className="w-4 h-4 mr-2" />
+                      View Details
+                    </Button>
+                  </Link>
+                </div>
+
+                <div className="grid grid-cols-5 gap-4 p-3 bg-muted/30 rounded-lg">
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">
+                      {item.type === 'asset' ? 'Quantity' : 'Current Stock'}
+                    </p>
+                    <p className="text-sm font-semibold text-foreground">
+                      {item.quantity} {item.type === 'consumable' && 'units'}
+                    </p>
+                  </div>
+
+                  {item.type === 'consumable' && item.minStock && (
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1">Min Stock</p>
+                      <p className="text-sm font-medium text-foreground">{item.minStock}</p>
+                    </div>
+                  )}
+
+                  {item.type === 'consumable' && item.issued !== undefined && (
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1">Issued (Month)</p>
+                      <p className="text-sm font-medium text-foreground">{item.issued}</p>
+                    </div>
+                  )}
+
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Unit Price</p>
+                    <p className="text-sm font-medium text-foreground">
+                      ${item.unitPrice.toLocaleString()}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Total Value</p>
+                    <p className="text-sm font-semibold text-primary">
+                      ${item.totalValue.toLocaleString()}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Location</p>
+                    <div className="flex items-center gap-1">
+                      <MapPin className="w-3 h-3 text-muted-foreground" />
+                      <p className="text-sm font-medium text-foreground truncate">
+                        {item.location}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Low Stock Warning */}
+                {item.status === 'low-stock' && item.type === 'consumable' && (
+                  <div className="mt-3 p-2 bg-warning/10 border border-warning/20 rounded flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4 text-warning" />
+                    <p className="text-sm text-warning">
+                      Stock level below minimum. Current: {item.quantity}, Required: {item.minStock}
+                    </p>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </CardBody>
+      </Card>
+    </div>
+  );
+}

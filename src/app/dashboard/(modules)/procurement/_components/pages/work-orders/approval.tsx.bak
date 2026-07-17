@@ -1,0 +1,544 @@
+import { useState } from 'react';
+import * as ReactRouter from 'react-router';
+import { ArrowLeft, CheckCircle, XCircle, AlertCircle, FileText, DollarSign, Calendar, User } from 'lucide-react';
+import { Card, CardHeader, CardBody } from '../../components/ui/card';
+import { Button } from '../../components/ui/button';
+import { Badge } from '../../components/ui/badge';
+
+const useParams = ReactRouter.useParams || (ReactRouter as any).default?.useParams;
+const useNavigate = ReactRouter.useNavigate || (ReactRouter as any).default?.useNavigate;
+
+// Mock work order data for approval
+const mockWOApprovalData = {
+  id: 'WO-2024-002',
+  poNumber: 'PO-2024-002',
+  requisitionNumber: 'REQ-2024-002',
+  rfqNumber: 'RFQ-2024-002',
+  awardNumber: 'AWD-2024-002',
+  title: 'IT Equipment & Accessories',
+  orderDate: '2024-03-14',
+  deliveryDeadline: '2024-04-15',
+  submittedBy: 'Sarah Johnson',
+  submittedDate: '2024-03-14 09:30 AM',
+  currentApprover: 'Finance Director',
+  vendor: {
+    name: 'TechSupply Global Inc',
+    code: 'VEN-002',
+    email: 'sales@techsupply.com',
+    phone: '+1 555-0102',
+    address: '456 Tech Plaza, Silicon Valley, CA 94025'
+  },
+  deliveryLocation: 'IT Department\n789 Innovation Drive, 2nd Floor\nSan Francisco, CA 94103',
+  paymentTerms: '45 days net from delivery',
+  warrantyPeriod: '24 months',
+  notes: 'All equipment must be configured before delivery. Setup and configuration services included. User training required for specialized software.',
+  items: [
+    {
+      id: '1',
+      description: 'Dell Precision Workstation',
+      specification: 'Intel i9, 64GB RAM, 2TB SSD, NVIDIA RTX A4000',
+      quantity: 10,
+      unitPrice: 3500,
+      total: 35000
+    },
+    {
+      id: '2',
+      description: '27" 4K Monitor',
+      specification: 'Dell UltraSharp, USB-C connectivity, height adjustable',
+      quantity: 20,
+      unitPrice: 650,
+      total: 13000
+    },
+    {
+      id: '3',
+      description: 'Wireless Keyboard & Mouse Combo',
+      specification: 'Logitech MX Keys + MX Master 3, rechargeable',
+      quantity: 20,
+      unitPrice: 200,
+      total: 4000
+    },
+    {
+      id: '4',
+      description: 'Docking Station',
+      specification: 'Thunderbolt 4, dual 4K support, 90W charging',
+      quantity: 15,
+      unitPrice: 280,
+      total: 4200
+    },
+    {
+      id: '5',
+      description: 'Network Switch',
+      specification: '48-port Gigabit, managed, PoE+',
+      quantity: 2,
+      unitPrice: 1200,
+      total: 2400
+    }
+  ],
+  totalAmount: 58600,
+  budgetCode: 'DEPT-IT-2024-Q1',
+  approvalChain: [
+    { role: 'Procurement Manager', name: 'Sarah Johnson', status: 'approved', date: '2024-03-14 10:00 AM' },
+    { role: 'Finance Director', name: 'Michael Chen', status: 'pending', date: null },
+    { role: 'Executive Director', name: 'David Williams', status: 'pending', date: null }
+  ]
+};
+
+export function WorkOrderApproval() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const [showApproveModal, setShowApproveModal] = useState(false);
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [comments, setComments] = useState('');
+  const [rejectionReason, setRejectionReason] = useState('');
+
+  const wo = mockWOApprovalData;
+
+  const handleApprove = () => {
+    if (!comments.trim()) {
+      alert('Please add comments for your approval');
+      return;
+    }
+    alert('Work Order approved successfully!');
+    navigate('/work-orders/list');
+  };
+
+  const handleReject = () => {
+    if (!rejectionReason.trim()) {
+      alert('Please provide a reason for rejection');
+      return;
+    }
+    alert('Work Order rejected. Requester has been notified.');
+    navigate('/work-orders/list');
+  };
+
+  return (
+    <div className="p-8">
+      {/* Header */}
+      <div className="mb-6">
+        <div className="flex items-center gap-4 mb-4">
+          <button
+            onClick={() => navigate('/work-orders/list')}
+            className="p-2 hover:bg-muted rounded-lg transition-colors"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+          <div className="flex-1">
+            <h1 className="text-2xl font-semibold text-foreground mb-1">Work Order Approval</h1>
+            <p className="text-muted-foreground">{wo.id} - {wo.title}</p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <Badge variant="warning">Pending Your Approval</Badge>
+          <span className="text-sm text-muted-foreground">Submitted by {wo.submittedBy} on {wo.submittedDate}</span>
+        </div>
+      </div>
+
+      {/* Alert Banner */}
+      <Card className="mb-6 border-warning bg-warning/5">
+        <CardBody>
+          <div className="flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-warning mt-0.5" />
+            <div>
+              <p className="font-medium text-foreground mb-1">Action Required</p>
+              <p className="text-sm text-muted-foreground">
+                This work order requires your approval as <span className="font-semibold">{wo.currentApprover}</span>. 
+                Please review all details carefully before making a decision.
+              </p>
+            </div>
+          </div>
+        </CardBody>
+      </Card>
+
+      <div className="grid grid-cols-3 gap-6">
+        {/* Main Content - 2 columns */}
+        <div className="col-span-2 space-y-6">
+          {/* Summary Cards */}
+          <div className="grid grid-cols-3 gap-6">
+            <Card>
+              <CardBody>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-1">Total Amount</p>
+                    <p className="text-2xl font-semibold text-foreground">
+                      ${wo.totalAmount.toLocaleString()}
+                    </p>
+                  </div>
+                  <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <DollarSign className="w-6 h-6 text-primary" />
+                  </div>
+                </div>
+              </CardBody>
+            </Card>
+
+            <Card>
+              <CardBody>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-1">Total Items</p>
+                    <p className="text-2xl font-semibold text-foreground">{wo.items.length}</p>
+                  </div>
+                  <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <FileText className="w-6 h-6 text-primary" />
+                  </div>
+                </div>
+              </CardBody>
+            </Card>
+
+            <Card>
+              <CardBody>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-1">Delivery Timeline</p>
+                    <p className="text-lg font-semibold text-foreground">30 days</p>
+                  </div>
+                  <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <Calendar className="w-6 h-6 text-primary" />
+                  </div>
+                </div>
+              </CardBody>
+            </Card>
+          </div>
+
+          {/* Work Order Information */}
+          <Card>
+            <CardHeader title="Work Order Information" />
+            <CardBody>
+              <div className="grid grid-cols-2 gap-6">
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">WO Number</p>
+                  <p className="font-medium text-foreground">{wo.id}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">PO Number</p>
+                  <p className="font-medium text-foreground">{wo.poNumber}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">Linked Requisition</p>
+                  <p className="font-medium text-primary">{wo.requisitionNumber}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">Award Number</p>
+                  <p className="font-medium text-primary">{wo.awardNumber}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">Order Date</p>
+                  <p className="font-medium text-foreground">{wo.orderDate}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">Delivery Deadline</p>
+                  <p className="font-medium text-foreground">{wo.deliveryDeadline}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">Budget Code</p>
+                  <p className="font-medium text-foreground">{wo.budgetCode}</p>
+                </div>
+              </div>
+            </CardBody>
+          </Card>
+
+          {/* Vendor Details */}
+          <Card>
+            <CardHeader title="Vendor Information" />
+            <CardBody>
+              <div className="space-y-3">
+                <h3 className="font-semibold text-foreground">{wo.vendor.name}</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-1">Vendor Code</p>
+                    <p className="text-sm font-medium text-foreground">{wo.vendor.code}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-1">Email</p>
+                    <p className="text-sm font-medium text-foreground">{wo.vendor.email}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-1">Phone</p>
+                    <p className="text-sm font-medium text-foreground">{wo.vendor.phone}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-1">Address</p>
+                    <p className="text-sm font-medium text-foreground">{wo.vendor.address}</p>
+                  </div>
+                </div>
+              </div>
+            </CardBody>
+          </Card>
+
+          {/* Items Table */}
+          <Card>
+            <CardHeader title="Order Items" description="Review all items in this work order" />
+            <CardBody>
+              <div className="border border-border rounded-lg overflow-hidden">
+                <table className="w-full">
+                  <thead className="bg-muted/50">
+                    <tr className="border-b border-border">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">Item Description</th>
+                      <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground">Qty</th>
+                      <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground">Unit Price</th>
+                      <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {wo.items.map((item) => (
+                      <tr key={item.id} className="border-b border-border last:border-0">
+                        <td className="px-4 py-3">
+                          <p className="text-sm font-medium text-foreground">{item.description}</p>
+                          <p className="text-xs text-muted-foreground mt-1">{item.specification}</p>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-right text-foreground">{item.quantity}</td>
+                        <td className="px-4 py-3 text-sm text-right text-foreground">
+                          ${item.unitPrice.toLocaleString()}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-right font-medium text-foreground">
+                          ${item.total.toLocaleString()}
+                        </td>
+                      </tr>
+                    ))}
+                    <tr className="bg-muted/30">
+                      <td colSpan={3} className="px-4 py-3 text-sm font-semibold text-foreground text-right">
+                        Grand Total:
+                      </td>
+                      <td className="px-4 py-3 text-sm font-semibold text-primary text-right">
+                        ${wo.totalAmount.toLocaleString()}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </CardBody>
+          </Card>
+
+          {/* Delivery & Terms */}
+          <Card>
+            <CardHeader title="Delivery & Payment Terms" />
+            <CardBody>
+              <div className="space-y-4">
+                <div>
+                  <p className="text-sm font-medium text-foreground mb-2">Delivery Location</p>
+                  <div className="p-3 bg-muted/30 rounded-lg">
+                    <p className="text-sm text-foreground whitespace-pre-line">{wo.deliveryLocation}</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm font-medium text-foreground mb-2">Payment Terms</p>
+                    <p className="text-sm text-muted-foreground">{wo.paymentTerms}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-foreground mb-2">Warranty Period</p>
+                    <p className="text-sm text-muted-foreground">{wo.warrantyPeriod}</p>
+                  </div>
+                </div>
+                {wo.notes && (
+                  <div>
+                    <p className="text-sm font-medium text-foreground mb-2">Special Instructions</p>
+                    <div className="p-3 bg-muted/30 rounded-lg">
+                      <p className="text-sm text-foreground">{wo.notes}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </CardBody>
+          </Card>
+
+          {/* Approval Decision */}
+          <Card className="border-primary/20">
+            <CardHeader title="Your Decision" description="Add your comments and approve or reject" />
+            <CardBody>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">
+                    Approval Comments *
+                  </label>
+                  <textarea
+                    value={comments}
+                    onChange={(e) => setComments(e.target.value)}
+                    placeholder="Enter your comments, observations, or conditions for approval..."
+                    rows={4}
+                    className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+                  />
+                </div>
+
+                <div className="flex gap-3">
+                  <Button 
+                    variant="success" 
+                    className="flex-1"
+                    onClick={() => setShowApproveModal(true)}
+                  >
+                    <CheckCircle className="w-4 h-4 mr-2" />
+                    Approve Work Order
+                  </Button>
+                  <Button 
+                    variant="error"
+                    className="flex-1"
+                    onClick={() => setShowRejectModal(true)}
+                  >
+                    <XCircle className="w-4 h-4 mr-2" />
+                    Reject Work Order
+                  </Button>
+                </div>
+              </div>
+            </CardBody>
+          </Card>
+        </div>
+
+        {/* Sidebar - 1 column */}
+        <div className="space-y-6">
+          {/* Approval Chain */}
+          <Card>
+            <CardHeader title="Approval Chain" />
+            <CardBody>
+              <div className="space-y-4">
+                {wo.approvalChain.map((approver, index) => (
+                  <div key={index} className="flex gap-3">
+                    <div className="flex flex-col items-center">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                        approver.status === 'approved' ? 'bg-success/10' :
+                        approver.status === 'pending' ? 'bg-warning/10' : 'bg-muted'
+                      }`}>
+                        {approver.status === 'approved' ? (
+                          <CheckCircle className="w-4 h-4 text-success" />
+                        ) : approver.status === 'pending' ? (
+                          <Clock className="w-4 h-4 text-warning" />
+                        ) : (
+                          <User className="w-4 h-4 text-muted-foreground" />
+                        )}
+                      </div>
+                      {index < wo.approvalChain.length - 1 && (
+                        <div className="w-0.5 h-12 bg-border mt-2" />
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-medium text-foreground text-sm">{approver.role}</p>
+                      <p className="text-xs text-muted-foreground">{approver.name}</p>
+                      {approver.status === 'approved' && approver.date && (
+                        <p className="text-xs text-success mt-1">Approved: {approver.date}</p>
+                      )}
+                      {approver.status === 'pending' && (
+                        <Badge variant="warning" size="sm" className="mt-1">Pending</Badge>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardBody>
+          </Card>
+
+          {/* Submission Info */}
+          <Card>
+            <CardHeader title="Submission Details" />
+            <CardBody>
+              <div className="space-y-3">
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Submitted By</p>
+                  <p className="text-sm font-medium text-foreground">{wo.submittedBy}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Submission Date</p>
+                  <p className="text-sm font-medium text-foreground">{wo.submittedDate}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Current Stage</p>
+                  <Badge variant="warning">{wo.currentApprover} Review</Badge>
+                </div>
+              </div>
+            </CardBody>
+          </Card>
+        </div>
+      </div>
+
+      {/* Approve Confirmation Modal */}
+      {showApproveModal && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <Card className="max-w-md w-full">
+            <CardHeader 
+              title="Confirm Approval"
+              description="You are about to approve this work order"
+            />
+            <CardBody>
+              <div className="space-y-4">
+                <div className="flex items-start gap-3 p-4 bg-success/5 border border-success/20 rounded-lg">
+                  <CheckCircle className="w-5 h-5 text-success mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium text-foreground mb-1">Approving:</p>
+                    <p className="text-sm text-foreground">{wo.id} - {wo.title}</p>
+                    <p className="text-sm font-semibold text-success mt-2">
+                      Amount: ${wo.totalAmount.toLocaleString()}
+                    </p>
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-sm text-muted-foreground mb-2">Your Comments:</p>
+                  <div className="p-3 bg-muted/30 rounded-lg">
+                    <p className="text-sm text-foreground">{comments || 'No comments provided'}</p>
+                  </div>
+                </div>
+
+                <div className="flex gap-2 justify-end">
+                  <Button variant="outline" onClick={() => setShowApproveModal(false)}>
+                    Cancel
+                  </Button>
+                  <Button variant="success" onClick={handleApprove}>
+                    <CheckCircle className="w-4 h-4 mr-2" />
+                    Confirm Approval
+                  </Button>
+                </div>
+              </div>
+            </CardBody>
+          </Card>
+        </div>
+      )}
+
+      {/* Reject Confirmation Modal */}
+      {showRejectModal && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <Card className="max-w-md w-full">
+            <CardHeader 
+              title="Reject Work Order"
+              description="Please provide a detailed reason for rejection"
+            />
+            <CardBody>
+              <div className="space-y-4">
+                <div className="flex items-start gap-3 p-4 bg-error/5 border border-error/20 rounded-lg">
+                  <AlertCircle className="w-5 h-5 text-error mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium text-foreground mb-1">Rejecting:</p>
+                    <p className="text-sm text-foreground">{wo.id} - {wo.title}</p>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">
+                    Rejection Reason *
+                  </label>
+                  <textarea
+                    value={rejectionReason}
+                    onChange={(e) => setRejectionReason(e.target.value)}
+                    placeholder="Provide a clear explanation for rejecting this work order..."
+                    rows={4}
+                    className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+                  />
+                </div>
+
+                <div className="flex gap-2 justify-end">
+                  <Button variant="outline" onClick={() => setShowRejectModal(false)}>
+                    Cancel
+                  </Button>
+                  <Button variant="error" onClick={handleReject}>
+                    <XCircle className="w-4 h-4 mr-2" />
+                    Confirm Rejection
+                  </Button>
+                </div>
+              </div>
+            </CardBody>
+          </Card>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Import Clock icon
+import { Clock } from 'lucide-react';

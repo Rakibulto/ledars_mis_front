@@ -1,0 +1,568 @@
+import { useState } from 'react';
+import * as ReactRouter from 'react-router';
+import { ArrowLeft, Edit, Printer, Download, Send, CheckCircle, XCircle, FileText, Calendar, DollarSign, Package, User, Mail, Phone, MapPin, Clock, Paperclip } from 'lucide-react';
+import { Card, CardHeader, CardBody } from '../../components/ui/card';
+import { Button } from '../../components/ui/button';
+import { Badge } from '../../components/ui/badge';
+
+const Link = ReactRouter.Link || (ReactRouter as any).default?.Link;
+const useParams = ReactRouter.useParams || (ReactRouter as any).default?.useParams;
+const useNavigate = ReactRouter.useNavigate || (ReactRouter as any).default?.useNavigate;
+
+// Mock work order data
+const mockWorkOrderData = {
+  id: 'WO-2024-001',
+  poNumber: 'PO-2024-001',
+  requisitionNumber: 'REQ-2024-001',
+  rfqNumber: 'RFQ-2024-001',
+  csNumber: 'CS-2024-001',
+  awardNumber: 'AWD-2024-001',
+  title: 'Office Furniture Supply',
+  orderDate: '2024-03-15',
+  deliveryDeadline: '2024-04-30',
+  status: 'approved',
+  approvalStatus: 'fully-approved',
+  vendorStatus: 'accepted',
+  vendorAcceptanceDate: '2024-03-16',
+  deliveryStatus: 'in-progress',
+  paymentStatus: 'partial',
+  vendor: {
+    name: 'Premium Office Solutions Ltd',
+    code: 'VEN-001',
+    contactPerson: 'John Anderson',
+    email: 'contact@premiumoffice.com',
+    phone: '+1 555-0101',
+    address: '123 Business Park, Suite 400, New York, NY 10001'
+  },
+  deliveryLocation: 'Main Office Building\n456 Corporate Blvd, 3rd Floor\nNew York, NY 10002\nUnited States',
+  paymentTerms: '30 days net from delivery',
+  warrantyPeriod: '12 months',
+  notes: 'All furniture must be assembled on-site. Installation to be coordinated with facilities team. Quality inspection required before final acceptance.',
+  items: [
+    {
+      id: '1',
+      description: 'Ergonomic Executive Desk',
+      specification: 'Wooden finish, 1800mm x 900mm, with cable management system',
+      quantity: 25,
+      unitPrice: 1200,
+      total: 30000,
+      delivered: 15,
+      deliveryStatus: 'partial'
+    },
+    {
+      id: '2',
+      description: 'Ergonomic Office Chair',
+      specification: 'Mesh back, adjustable armrests, lumbar support, 5-year warranty',
+      quantity: 50,
+      unitPrice: 450,
+      total: 22500,
+      delivered: 50,
+      deliveryStatus: 'completed'
+    },
+    {
+      id: '3',
+      description: 'Filing Cabinet (4-drawer)',
+      specification: 'Steel construction, lockable, fire-resistant rating',
+      quantity: 30,
+      unitPrice: 350,
+      total: 10500,
+      delivered: 0,
+      deliveryStatus: 'pending'
+    },
+    {
+      id: '4',
+      description: 'Bookshelf Unit',
+      specification: '1800mm height, 5 adjustable shelves, wood finish',
+      quantity: 20,
+      unitPrice: 280,
+      total: 5600,
+      delivered: 0,
+      deliveryStatus: 'pending'
+    },
+    {
+      id: '5',
+      description: 'Meeting Table (6-seater)',
+      specification: 'Oval shape, 2400mm x 1200mm, premium wood finish',
+      quantity: 10,
+      unitPrice: 1800,
+      total: 18000,
+      delivered: 0,
+      deliveryStatus: 'pending'
+    }
+  ],
+  approvalHistory: [
+    {
+      approver: 'Sarah Johnson',
+      role: 'Procurement Manager',
+      action: 'Approved',
+      date: '2024-03-15 10:30 AM',
+      comments: 'All procurement requirements met. Approved for processing.'
+    },
+    {
+      approver: 'Michael Chen',
+      role: 'Finance Director',
+      action: 'Approved',
+      date: '2024-03-15 02:15 PM',
+      comments: 'Budget allocation confirmed. Financial approval granted.'
+    },
+    {
+      approver: 'David Williams',
+      role: 'Executive Director',
+      action: 'Approved',
+      date: '2024-03-15 04:45 PM',
+      comments: 'Final approval granted. Proceed with vendor notification.'
+    }
+  ],
+  attachments: [
+    { name: 'Technical Specifications.pdf', size: '2.4 MB', uploadDate: '2024-03-15' },
+    { name: 'Vendor Quotation.pdf', size: '1.8 MB', uploadDate: '2024-03-15' },
+    { name: 'Award Letter.pdf', size: '856 KB', uploadDate: '2024-03-15' }
+  ],
+  totalAmount: 86600,
+  amountPaid: 22500,
+  totalItems: 135,
+  deliveredItems: 65
+};
+
+const getStatusColor = (status: string) => {
+  switch (status) {
+    case 'approved': return 'success';
+    case 'pending-approval': return 'warning';
+    case 'draft': return 'default';
+    case 'rejected': return 'error';
+    default: return 'default';
+  }
+};
+
+const getDeliveryItemStatusColor = (status: string) => {
+  switch (status) {
+    case 'completed': return 'success';
+    case 'partial': return 'warning';
+    case 'pending': return 'default';
+    default: return 'default';
+  }
+};
+
+export function WorkOrderDetail() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const wo = mockWorkOrderData;
+
+  const deliveryProgress = (wo.deliveredItems / wo.totalItems) * 100;
+  const paymentProgress = (wo.amountPaid / wo.totalAmount) * 100;
+
+  return (
+    <div className="p-8">
+      {/* Header */}
+      <div className="mb-6">
+        <div className="flex items-center gap-4 mb-4">
+          <button
+            onClick={() => navigate('/work-orders/list')}
+            className="p-2 hover:bg-muted rounded-lg transition-colors"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+          <div className="flex-1">
+            <h1 className="text-2xl font-semibold text-foreground mb-1">{wo.id}</h1>
+            <p className="text-muted-foreground">{wo.title}</p>
+          </div>
+          <div className="flex gap-2">
+            <Link to={`/work-orders/${wo.id}/print`}>
+              <Button variant="outline">
+                <Printer className="w-4 h-4 mr-2" />
+                Print
+              </Button>
+            </Link>
+            <Button variant="outline">
+              <Download className="w-4 h-4 mr-2" />
+              Download PDF
+            </Button>
+            {wo.vendorStatus === 'accepted' && (
+              <Button variant="primary">
+                <Send className="w-4 h-4 mr-2" />
+                Send to Vendor
+              </Button>
+            )}
+          </div>
+        </div>
+
+        {/* Status Badges */}
+        <div className="flex items-center gap-3">
+          <Badge variant={getStatusColor(wo.status)}>
+            {wo.status.replace('-', ' ')}
+          </Badge>
+          <Badge variant={wo.vendorStatus === 'accepted' ? 'success' : 'warning'}>
+            Vendor: {wo.vendorStatus}
+          </Badge>
+          <Badge variant={wo.deliveryStatus === 'in-progress' ? 'warning' : 'default'}>
+            Delivery: {wo.deliveryStatus.replace('-', ' ')}
+          </Badge>
+          <Badge variant={wo.paymentStatus === 'partial' ? 'warning' : 'default'}>
+            Payment: {wo.paymentStatus}
+          </Badge>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-3 gap-6">
+        {/* Main Content - 2 columns */}
+        <div className="col-span-2 space-y-6">
+          {/* Overview Cards */}
+          <div className="grid grid-cols-2 gap-6">
+            <Card>
+              <CardBody>
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-1">Order Amount</p>
+                    <p className="text-2xl font-semibold text-foreground">
+                      ${wo.totalAmount.toLocaleString()}
+                    </p>
+                  </div>
+                  <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <DollarSign className="w-6 h-6 text-primary" />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Paid</span>
+                    <span className="font-medium text-success">${wo.amountPaid.toLocaleString()}</span>
+                  </div>
+                  <div className="h-2 bg-muted rounded-full overflow-hidden">
+                    <div className="h-full bg-success" style={{ width: `${paymentProgress}%` }} />
+                  </div>
+                  <p className="text-xs text-muted-foreground">{paymentProgress.toFixed(0)}% paid</p>
+                </div>
+              </CardBody>
+            </Card>
+
+            <Card>
+              <CardBody>
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-1">Delivery Progress</p>
+                    <p className="text-2xl font-semibold text-foreground">
+                      {wo.deliveredItems}/{wo.totalItems}
+                    </p>
+                  </div>
+                  <div className="w-12 h-12 rounded-lg bg-warning/10 flex items-center justify-center">
+                    <Package className="w-6 h-6 text-warning" />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Items delivered</span>
+                    <span className="font-medium text-foreground">{deliveryProgress.toFixed(0)}%</span>
+                  </div>
+                  <div className="h-2 bg-muted rounded-full overflow-hidden">
+                    <div className="h-full bg-primary" style={{ width: `${deliveryProgress}%` }} />
+                  </div>
+                  <p className="text-xs text-muted-foreground">Deadline: {wo.deliveryDeadline}</p>
+                </div>
+              </CardBody>
+            </Card>
+          </div>
+
+          {/* Work Order Details */}
+          <Card>
+            <CardHeader title="Work Order Details" />
+            <CardBody>
+              <div className="grid grid-cols-2 gap-6">
+                <div className="flex items-start gap-3">
+                  <FileText className="w-5 h-5 text-muted-foreground mt-0.5" />
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-1">PO Number</p>
+                    <p className="font-medium text-foreground">{wo.poNumber}</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <Calendar className="w-5 h-5 text-muted-foreground mt-0.5" />
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-1">Order Date</p>
+                    <p className="font-medium text-foreground">{wo.orderDate}</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <FileText className="w-5 h-5 text-muted-foreground mt-0.5" />
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-1">Requisition</p>
+                    <Link to={`/requisitions/${wo.requisitionNumber}`} className="font-medium text-primary hover:underline">
+                      {wo.requisitionNumber}
+                    </Link>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <FileText className="w-5 h-5 text-muted-foreground mt-0.5" />
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-1">RFQ Number</p>
+                    <Link to={`/rfq/${wo.rfqNumber}`} className="font-medium text-primary hover:underline">
+                      {wo.rfqNumber}
+                    </Link>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <FileText className="w-5 h-5 text-muted-foreground mt-0.5" />
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-1">Award Number</p>
+                    <Link to={`/awards/notification/${wo.awardNumber}`} className="font-medium text-primary hover:underline">
+                      {wo.awardNumber}
+                    </Link>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <Clock className="w-5 h-5 text-muted-foreground mt-0.5" />
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-1">Delivery Deadline</p>
+                    <p className="font-medium text-foreground">{wo.deliveryDeadline}</p>
+                  </div>
+                </div>
+              </div>
+            </CardBody>
+          </Card>
+
+          {/* Vendor Information */}
+          <Card>
+            <CardHeader title="Vendor Information" />
+            <CardBody>
+              <div className="space-y-4">
+                <div>
+                  <h3 className="font-semibold text-foreground mb-3">{wo.vendor.name}</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="flex items-start gap-3">
+                      <User className="w-4 h-4 text-muted-foreground mt-0.5" />
+                      <div>
+                        <p className="text-sm text-muted-foreground">Contact Person</p>
+                        <p className="text-sm font-medium text-foreground">{wo.vendor.contactPerson}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <Mail className="w-4 h-4 text-muted-foreground mt-0.5" />
+                      <div>
+                        <p className="text-sm text-muted-foreground">Email</p>
+                        <p className="text-sm font-medium text-foreground">{wo.vendor.email}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <Phone className="w-4 h-4 text-muted-foreground mt-0.5" />
+                      <div>
+                        <p className="text-sm text-muted-foreground">Phone</p>
+                        <p className="text-sm font-medium text-foreground">{wo.vendor.phone}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <MapPin className="w-4 h-4 text-muted-foreground mt-0.5" />
+                      <div>
+                        <p className="text-sm text-muted-foreground">Address</p>
+                        <p className="text-sm font-medium text-foreground">{wo.vendor.address}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {wo.vendorStatus === 'accepted' && (
+                  <div className="p-3 bg-success/5 border border-success/20 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle className="w-4 h-4 text-success" />
+                      <span className="text-sm font-medium text-success">
+                        Vendor accepted on {wo.vendorAcceptanceDate}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </CardBody>
+          </Card>
+
+          {/* Items Table */}
+          <Card>
+            <CardHeader title="Order Items" description={`${wo.items.length} items in this order`} />
+            <CardBody>
+              <div className="border border-border rounded-lg overflow-hidden">
+                <table className="w-full">
+                  <thead className="bg-muted/50">
+                    <tr className="border-b border-border">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">Item</th>
+                      <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground">Qty</th>
+                      <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground">Delivered</th>
+                      <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground">Unit Price</th>
+                      <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground">Total</th>
+                      <th className="px-4 py-3 text-center text-xs font-medium text-muted-foreground">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {wo.items.map((item) => (
+                      <tr key={item.id} className="border-b border-border last:border-0">
+                        <td className="px-4 py-3">
+                          <p className="text-sm font-medium text-foreground">{item.description}</p>
+                          <p className="text-xs text-muted-foreground mt-1">{item.specification}</p>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-right text-foreground">{item.quantity}</td>
+                        <td className="px-4 py-3 text-sm text-right text-foreground">{item.delivered}</td>
+                        <td className="px-4 py-3 text-sm text-right text-foreground">
+                          ${item.unitPrice.toLocaleString()}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-right font-medium text-foreground">
+                          ${item.total.toLocaleString()}
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <Badge variant={getDeliveryItemStatusColor(item.deliveryStatus)} size="sm">
+                            {item.deliveryStatus}
+                          </Badge>
+                        </td>
+                      </tr>
+                    ))}
+                    <tr className="bg-muted/30">
+                      <td colSpan={4} className="px-4 py-3 text-sm font-semibold text-foreground text-right">
+                        Grand Total:
+                      </td>
+                      <td className="px-4 py-3 text-sm font-semibold text-primary text-right">
+                        ${wo.totalAmount.toLocaleString()}
+                      </td>
+                      <td></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </CardBody>
+          </Card>
+
+          {/* Delivery & Terms */}
+          <Card>
+            <CardHeader title="Delivery & Terms" />
+            <CardBody>
+              <div className="space-y-4">
+                <div>
+                  <p className="text-sm font-medium text-foreground mb-2">Delivery Location</p>
+                  <div className="p-3 bg-muted/30 rounded-lg">
+                    <p className="text-sm text-foreground whitespace-pre-line">{wo.deliveryLocation}</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm font-medium text-foreground mb-2">Payment Terms</p>
+                    <p className="text-sm text-muted-foreground">{wo.paymentTerms}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-foreground mb-2">Warranty Period</p>
+                    <p className="text-sm text-muted-foreground">{wo.warrantyPeriod}</p>
+                  </div>
+                </div>
+                {wo.notes && (
+                  <div>
+                    <p className="text-sm font-medium text-foreground mb-2">Additional Notes</p>
+                    <div className="p-3 bg-muted/30 rounded-lg">
+                      <p className="text-sm text-foreground">{wo.notes}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </CardBody>
+          </Card>
+
+          {/* Approval History */}
+          <Card>
+            <CardHeader title="Approval History" />
+            <CardBody>
+              <div className="space-y-4">
+                {wo.approvalHistory.map((approval, index) => (
+                  <div key={index} className="flex gap-4">
+                    <div className="flex flex-col items-center">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                        approval.action === 'Approved' ? 'bg-success/10' : 'bg-error/10'
+                      }`}>
+                        {approval.action === 'Approved' ? (
+                          <CheckCircle className="w-4 h-4 text-success" />
+                        ) : (
+                          <XCircle className="w-4 h-4 text-error" />
+                        )}
+                      </div>
+                      {index < wo.approvalHistory.length - 1 && (
+                        <div className="w-0.5 h-full bg-border mt-2" />
+                      )}
+                    </div>
+                    <div className="flex-1 pb-6">
+                      <div className="flex items-start justify-between mb-1">
+                        <div>
+                          <p className="font-medium text-foreground">{approval.approver}</p>
+                          <p className="text-sm text-muted-foreground">{approval.role}</p>
+                        </div>
+                        <Badge variant={approval.action === 'Approved' ? 'success' : 'error'}>
+                          {approval.action}
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground mb-1">{approval.date}</p>
+                      <p className="text-sm text-foreground">{approval.comments}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardBody>
+          </Card>
+        </div>
+
+        {/* Sidebar - 1 column */}
+        <div className="space-y-6">
+          {/* Quick Actions */}
+          <Card>
+            <CardHeader title="Quick Actions" />
+            <CardBody>
+              <div className="space-y-2">
+                <Link to={`/work-orders/vendor-acceptance/${wo.id}`}>
+                  <Button variant="outline" className="w-full justify-start">
+                    <Eye className="w-4 h-4 mr-2" />
+                    Vendor View
+                  </Button>
+                </Link>
+                <Button variant="outline" className="w-full justify-start">
+                  <Send className="w-4 h-4 mr-2" />
+                  Resend to Vendor
+                </Button>
+                <Button variant="outline" className="w-full justify-start">
+                  <Download className="w-4 h-4 mr-2" />
+                  Download Documents
+                </Button>
+              </div>
+            </CardBody>
+          </Card>
+
+          {/* Attachments */}
+          <Card>
+            <CardHeader title="Attachments" />
+            <CardBody>
+              <div className="space-y-2">
+                {wo.attachments.map((file, index) => (
+                  <div key={index} className="flex items-center gap-3 p-3 border border-border rounded-lg hover:border-primary/50 transition-colors cursor-pointer">
+                    <Paperclip className="w-4 h-4 text-muted-foreground" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-foreground truncate">{file.name}</p>
+                      <p className="text-xs text-muted-foreground">{file.size}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardBody>
+          </Card>
+
+          {/* Timeline Info */}
+          <Card>
+            <CardHeader title="Important Dates" />
+            <CardBody>
+              <div className="space-y-3">
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Order Date</p>
+                  <p className="text-sm font-medium text-foreground">{wo.orderDate}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Vendor Acceptance</p>
+                  <p className="text-sm font-medium text-foreground">{wo.vendorAcceptanceDate}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Delivery Deadline</p>
+                  <p className="text-sm font-medium text-foreground">{wo.deliveryDeadline}</p>
+                </div>
+              </div>
+            </CardBody>
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
+}

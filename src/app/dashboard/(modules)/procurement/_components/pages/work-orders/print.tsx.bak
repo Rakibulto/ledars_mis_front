@@ -1,0 +1,358 @@
+import * as ReactRouter from 'react-router';
+import { ArrowLeft, Printer, Download } from 'lucide-react';
+import { Button } from '../../components/ui/button';
+
+const useParams = ReactRouter.useParams || (ReactRouter as any).default?.useParams;
+const useNavigate = ReactRouter.useNavigate || (ReactRouter as any).default?.useNavigate;
+
+// Mock work order data
+const mockWOPrintData = {
+  id: 'WO-2024-001',
+  poNumber: 'PO-2024-001',
+  orderDate: '2024-03-15',
+  deliveryDeadline: '2024-04-30',
+  vendor: {
+    name: 'Premium Office Solutions Ltd',
+    code: 'VEN-001',
+    contactPerson: 'John Anderson',
+    email: 'contact@premiumoffice.com',
+    phone: '+1 555-0101',
+    address: '123 Business Park, Suite 400\nNew York, NY 10001\nUnited States'
+  },
+  organization: {
+    name: 'Global Development Foundation',
+    address: '456 Corporate Blvd\nNew York, NY 10002\nUnited States',
+    phone: '+1 555-0200',
+    email: 'procurement@globaldev.org',
+    taxId: 'TAX-123-456-789'
+  },
+  deliveryLocation: 'Main Office Building\n456 Corporate Blvd, 3rd Floor\nNew York, NY 10002\nUnited States',
+  paymentTerms: '30 days net from delivery',
+  warrantyPeriod: '12 months',
+  validityPeriod: '60 days',
+  items: [
+    {
+      id: '1',
+      description: 'Ergonomic Executive Desk',
+      specification: 'Wooden finish, 1800mm x 900mm, with cable management system',
+      quantity: 25,
+      unitPrice: 1200,
+      total: 30000
+    },
+    {
+      id: '2',
+      description: 'Ergonomic Office Chair',
+      specification: 'Mesh back, adjustable armrests, lumbar support, 5-year warranty',
+      quantity: 50,
+      unitPrice: 450,
+      total: 22500
+    },
+    {
+      id: '3',
+      description: 'Filing Cabinet (4-drawer)',
+      specification: 'Steel construction, lockable, fire-resistant rating',
+      quantity: 30,
+      unitPrice: 350,
+      total: 10500
+    },
+    {
+      id: '4',
+      description: 'Bookshelf Unit',
+      specification: '1800mm height, 5 adjustable shelves, wood finish',
+      quantity: 20,
+      unitPrice: 280,
+      total: 5600
+    },
+    {
+      id: '5',
+      description: 'Meeting Table (6-seater)',
+      specification: 'Oval shape, 2400mm x 1200mm, premium wood finish',
+      quantity: 10,
+      unitPrice: 1800,
+      total: 18000
+    }
+  ],
+  terms: [
+    'The Vendor shall deliver the goods/services as per the specifications mentioned in this Work Order.',
+    'Delivery must be completed on or before the delivery deadline specified above.',
+    'Quality inspection will be conducted upon delivery. Goods must meet the specified standards.',
+    'Payment will be processed within the specified payment terms after successful delivery and acceptance.',
+    'Any defective or non-conforming items must be replaced at the Vendor\'s cost within 7 business days.',
+    'The Vendor must maintain all required business licenses and insurance throughout the contract period.',
+    'This Work Order is subject to the General Terms and Conditions of the Organization.',
+    'Installation, assembly, and setup services are included where applicable.',
+    'The Vendor is responsible for safe transportation and handling of all items.',
+    'Any modifications to this Work Order must be agreed upon in writing by both parties.'
+  ],
+  totalAmount: 86600,
+  preparedBy: 'Sarah Johnson',
+  approvedBy: 'David Williams',
+  issueDate: '2024-03-15'
+};
+
+export function WorkOrderPrint() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const wo = mockWOPrintData;
+
+  const handlePrint = () => {
+    window.print();
+  };
+
+  const handleDownload = () => {
+    alert('Downloading Work Order as PDF...');
+  };
+
+  return (
+    <div>
+      {/* Action Bar - Hidden in print */}
+      <div className="sticky top-0 bg-background border-b border-border p-4 print:hidden z-10">
+        <div className="max-w-6xl mx-auto flex items-center justify-between">
+          <button
+            onClick={() => navigate(`/work-orders/${id}`)}
+            className="flex items-center gap-2 px-3 py-2 hover:bg-muted rounded-lg transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span>Back to Details</span>
+          </button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={handleDownload}>
+              <Download className="w-4 h-4 mr-2" />
+              Download PDF
+            </Button>
+            <Button variant="primary" onClick={handlePrint}>
+              <Printer className="w-4 h-4 mr-2" />
+              Print
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Printable Document */}
+      <div className="max-w-6xl mx-auto p-8 bg-white print:p-0">
+        <div className="bg-white min-h-screen p-12 print:p-8" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
+          {/* Official Header */}
+          <div className="border-4 border-primary p-6 mb-8">
+            <div className="flex items-start justify-between mb-4">
+              <div>
+                <h1 className="text-3xl font-bold text-primary mb-2">{wo.organization.name}</h1>
+                <p className="text-sm text-gray-600 whitespace-pre-line">{wo.organization.address}</p>
+                <p className="text-sm text-gray-600 mt-1">
+                  Tel: {wo.organization.phone} | Email: {wo.organization.email}
+                </p>
+                <p className="text-sm text-gray-600">Tax ID: {wo.organization.taxId}</p>
+              </div>
+              <div className="text-right">
+                <div className="inline-block px-4 py-2 bg-primary text-white font-bold text-lg">
+                  WORK ORDER
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Document Info */}
+          <div className="grid grid-cols-2 gap-8 mb-8">
+            <div>
+              <div className="bg-gray-100 p-4 rounded-lg">
+                <h3 className="font-bold text-gray-700 mb-3 text-sm uppercase">Work Order Details</h3>
+                <div className="space-y-2">
+                  <div className="flex justify-between border-b border-gray-300 pb-1">
+                    <span className="text-sm font-semibold">WO Number:</span>
+                    <span className="text-sm font-bold text-primary">{wo.id}</span>
+                  </div>
+                  <div className="flex justify-between border-b border-gray-300 pb-1">
+                    <span className="text-sm font-semibold">PO Number:</span>
+                    <span className="text-sm">{wo.poNumber}</span>
+                  </div>
+                  <div className="flex justify-between border-b border-gray-300 pb-1">
+                    <span className="text-sm font-semibold">Issue Date:</span>
+                    <span className="text-sm">{wo.issueDate}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm font-semibold">Valid Until:</span>
+                    <span className="text-sm">{wo.validityPeriod}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <div className="bg-gray-100 p-4 rounded-lg">
+                <h3 className="font-bold text-gray-700 mb-3 text-sm uppercase">Vendor Information</h3>
+                <div className="space-y-2">
+                  <div>
+                    <p className="text-sm font-bold text-gray-900">{wo.vendor.name}</p>
+                    <p className="text-sm text-gray-600">Code: {wo.vendor.code}</p>
+                  </div>
+                  <div className="pt-2 border-t border-gray-300">
+                    <p className="text-sm text-gray-700">Contact: {wo.vendor.contactPerson}</p>
+                    <p className="text-sm text-gray-700">{wo.vendor.email}</p>
+                    <p className="text-sm text-gray-700">{wo.vendor.phone}</p>
+                    <p className="text-sm text-gray-600 whitespace-pre-line mt-1">{wo.vendor.address}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Delivery Information */}
+          <div className="mb-8 p-4 border-2 border-gray-300 rounded-lg">
+            <div className="grid grid-cols-2 gap-6">
+              <div>
+                <h3 className="font-bold text-gray-700 mb-2 text-sm uppercase">Delivery Location</h3>
+                <p className="text-sm text-gray-900 whitespace-pre-line">{wo.deliveryLocation}</p>
+              </div>
+              <div>
+                <h3 className="font-bold text-gray-700 mb-2 text-sm uppercase">Delivery Deadline</h3>
+                <p className="text-lg font-bold text-red-600">{wo.deliveryDeadline}</p>
+                <p className="text-xs text-gray-600 mt-1">Failure to meet deadline may result in penalties</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Items Table */}
+          <div className="mb-8">
+            <h3 className="font-bold text-gray-900 mb-4 text-base uppercase border-b-2 border-primary pb-2">
+              Order Items & Specifications
+            </h3>
+            <table className="w-full border-2 border-gray-300">
+              <thead>
+                <tr className="bg-gray-800 text-white">
+                  <th className="px-3 py-3 text-left text-xs font-bold uppercase border-r border-gray-600">No.</th>
+                  <th className="px-3 py-3 text-left text-xs font-bold uppercase border-r border-gray-600">Description & Specifications</th>
+                  <th className="px-3 py-3 text-right text-xs font-bold uppercase border-r border-gray-600">Qty</th>
+                  <th className="px-3 py-3 text-right text-xs font-bold uppercase border-r border-gray-600">Unit Price</th>
+                  <th className="px-3 py-3 text-right text-xs font-bold uppercase">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {wo.items.map((item, index) => (
+                  <tr key={item.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                    <td className="px-3 py-3 border-r border-b border-gray-300 text-sm font-semibold">{index + 1}</td>
+                    <td className="px-3 py-3 border-r border-b border-gray-300">
+                      <p className="text-sm font-semibold text-gray-900">{item.description}</p>
+                      <p className="text-xs text-gray-600 mt-1">{item.specification}</p>
+                    </td>
+                    <td className="px-3 py-3 text-right border-r border-b border-gray-300 text-sm">{item.quantity}</td>
+                    <td className="px-3 py-3 text-right border-r border-b border-gray-300 text-sm">
+                      ${item.unitPrice.toLocaleString()}
+                    </td>
+                    <td className="px-3 py-3 text-right border-b border-gray-300 text-sm font-semibold">
+                      ${item.total.toLocaleString()}
+                    </td>
+                  </tr>
+                ))}
+                {/* Totals */}
+                <tr className="bg-gray-200 border-t-4 border-primary">
+                  <td colSpan={4} className="px-3 py-4 text-right font-bold text-gray-900 text-base">
+                    TOTAL ORDER VALUE:
+                  </td>
+                  <td className="px-3 py-4 text-right font-bold text-primary text-xl">
+                    ${wo.totalAmount.toLocaleString()}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          {/* Payment & Warranty Terms */}
+          <div className="grid grid-cols-2 gap-6 mb-8">
+            <div className="p-4 bg-blue-50 border-2 border-blue-200 rounded-lg">
+              <h3 className="font-bold text-gray-900 mb-2 text-sm uppercase">Payment Terms</h3>
+              <p className="text-sm text-gray-700">{wo.paymentTerms}</p>
+            </div>
+            <div className="p-4 bg-green-50 border-2 border-green-200 rounded-lg">
+              <h3 className="font-bold text-gray-900 mb-2 text-sm uppercase">Warranty Period</h3>
+              <p className="text-sm text-gray-700">{wo.warrantyPeriod}</p>
+            </div>
+          </div>
+
+          {/* Terms & Conditions */}
+          <div className="mb-12 p-6 border-2 border-gray-300 rounded-lg bg-gray-50">
+            <h3 className="font-bold text-gray-900 mb-4 text-base uppercase border-b-2 border-gray-400 pb-2">
+              Terms & Conditions
+            </h3>
+            <div className="space-y-2">
+              {wo.terms.map((term, index) => (
+                <div key={index} className="flex gap-3 text-sm">
+                  <span className="font-bold text-gray-700 min-w-[24px]">{index + 1}.</span>
+                  <p className="text-gray-800">{term}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Vendor Acceptance Section */}
+          <div className="mb-8 p-6 border-4 border-gray-800 rounded-lg bg-yellow-50">
+            <h3 className="font-bold text-gray-900 mb-4 text-base uppercase text-center">
+              Vendor Acceptance & Acknowledgement
+            </h3>
+            <p className="text-sm text-gray-800 mb-6 text-center">
+              By signing below, the Vendor acknowledges receipt of this Work Order and agrees to all terms and conditions stated herein.
+            </p>
+            
+            <div className="grid grid-cols-2 gap-8 mt-8">
+              <div>
+                <div className="border-b-2 border-gray-800 pb-2 mb-2 min-h-[60px]">
+                  {/* Signature space */}
+                </div>
+                <div className="text-center">
+                  <p className="font-bold text-sm text-gray-900">Vendor Authorized Signature</p>
+                  <p className="text-xs text-gray-600 mt-1">Name & Title</p>
+                </div>
+              </div>
+              <div>
+                <div className="border-b-2 border-gray-800 pb-2 mb-2 min-h-[60px]">
+                  {/* Date space */}
+                </div>
+                <div className="text-center">
+                  <p className="font-bold text-sm text-gray-900">Date</p>
+                  <p className="text-xs text-gray-600 mt-1">DD/MM/YYYY</p>
+                </div>
+              </div>
+            </div>
+            
+            <div className="mt-6 p-3 bg-red-100 border-2 border-red-400 rounded">
+              <p className="text-xs text-red-800 font-semibold text-center">
+                IMPORTANT: Please sign and return a scanned copy to {wo.organization.email} within 48 hours
+              </p>
+            </div>
+          </div>
+
+          {/* Organization Signatures */}
+          <div className="border-t-4 border-primary pt-8">
+            <div className="grid grid-cols-2 gap-8">
+              <div className="text-center">
+                <div className="border-t-2 border-gray-800 pt-2 inline-block min-w-[250px]">
+                  <p className="font-bold text-sm text-gray-900">{wo.preparedBy}</p>
+                  <p className="text-xs text-gray-600">Procurement Manager</p>
+                  <p className="text-xs text-gray-600 mt-1">Prepared By</p>
+                </div>
+              </div>
+              <div className="text-center">
+                <div className="border-t-2 border-gray-800 pt-2 inline-block min-w-[250px]">
+                  <p className="font-bold text-sm text-gray-900">{wo.approvedBy}</p>
+                  <p className="text-xs text-gray-600">Executive Director</p>
+                  <p className="text-xs text-gray-600 mt-1">Approved By</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div className="mt-12 pt-6 border-t-2 border-gray-300 text-center">
+            <p className="text-xs text-gray-600">
+              This is an official document generated by the Procurement Management System
+            </p>
+            <p className="text-xs text-gray-600 mt-1">
+              Document ID: {wo.id} | Generated on: {new Date().toLocaleDateString()}
+            </p>
+            <p className="text-xs text-gray-500 mt-2">
+              For queries, contact: {wo.organization.email} | {wo.organization.phone}
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

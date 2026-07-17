@@ -1,0 +1,161 @@
+/** **************************************
+* Fonts: app
+*************************************** */
+@import 'tailwindcss';
+
+@import '@fontsource-variable/public-sans';
+
+@import '@fontsource/barlow/400.css';
+@import '@fontsource/barlow/500.css';
+@import '@fontsource/barlow/600.css';
+@import '@fontsource/barlow/700.css';
+@import '@fontsource/barlow/800.css';
+
+/** **************************************
+* Plugins
+*************************************** */
+/* scrollbar */
+@import './components/scrollbar/styles.css';
+
+/* image */
+@import './components/image/styles.css';
+
+/* chart */
+@import './components/chart/styles.css';
+
+/** **************************************
+* Tailwind v4: dark: variant → MUI data-color-scheme attribute
+* MUI sets data-color-scheme="dark" on <html>; we wire Tailwind's
+* dark: prefix to that same selector so they share one toggle.
+*************************************** */
+@custom-variant dark ([data-color-scheme="dark"] &);
+
+/** **************************************
+* Tailwind v4 Design Tokens — synced with MUI palette (colors.json + palette.js)
+*
+* grey[200] = #F4F6F8  grey[300] = #DFE3E8  grey[500] = #919EAB
+* grey[600] = #637381  grey[800] = #1C252E  grey[900] = #141A21
+* grey[930] = #0A0D10  grey[960] = #020203
+*************************************** */
+@theme {
+  /*
+   * Tailwind v4 base spacing unit = 0.25rem (4px).
+   * p-4 → calc(0.25rem × 4) = 1rem = 16px.
+   */
+  --spacing: 0.25rem;
+
+  /* Brand — primary.main / primary.contrastText */
+  --color-primary: #00a76f;
+  --color-primary-foreground: #ffffff;
+
+  /* Surface secondary — grey[200] (background.light.neutral) */
+  --color-secondary: #f4f6f8;
+  --color-secondary-foreground: #1c252e; /* grey[800] = text.light.primary */
+
+  /* Page / text — text.light.primary = grey[800] */
+  --color-foreground: #1c252e;
+  --color-muted-foreground: #637381; /* grey[600] = text.light.secondary */
+
+  /* Card surface — background.light.paper */
+  --color-card: #ffffff;
+  --color-card-foreground: #1c252e; /* grey[800] */
+
+  /* Neutral bg — background.light.neutral = grey[200] */
+  --color-muted: #f4f6f8;
+
+  /* Borders — grey[300] */
+  --color-border: #dfe3e8;
+  --color-input: #dfe3e8;
+
+  /* Semantic — exact values from colors.json */
+  --color-success: #22c55e;
+  --color-warning: #ffab00;
+  --color-error: #ff5630;
+}
+
+/** **************************************
+* Dark mode token overrides — exact MUI dark palette (palette.js)
+* Triggered by MUI's data-color-scheme="dark" on <html>.
+*************************************** */
+[data-color-scheme='dark'] {
+  /* text.dark.primary / text.dark.secondary */
+  --color-foreground: #ffffff;
+  --color-muted-foreground: #919eab; /* grey[500] = text.dark.secondary */
+
+  /* background.dark.paper = grey[930] */
+  --color-card: #0a0d10;
+  --color-card-foreground: #ffffff;
+
+  /* background.dark.neutral = grey[900] */
+  --color-secondary: #141a21;
+  --color-secondary-foreground: #ffffff;
+
+  /* background.dark.neutral = grey[900] */
+  --color-muted: #141a21;
+
+  /* Borders — grey[500] at 20% opacity (MUI dark divider) */
+  --color-border: rgba(145, 158, 171, 0.2);
+  --color-input: rgba(145, 158, 171, 0.2);
+}
+
+/** **************************************
+* Baseline
+*************************************** */
+html {
+  height: 100%;
+  -webkit-overflow-scrolling: touch;
+}
+body,
+#root,
+#root__layout {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 100%;
+  flex-direction: column;
+}
+img {
+  max-width: 100%;
+  vertical-align: middle;
+}
+ul {
+  margin: 0;
+  padding: 0;
+  list-style-type: none;
+}
+input[type='number'] {
+  -moz-appearance: textfield;
+  appearance: none;
+}
+input[type='number']::-webkit-outer-spin-button {
+  margin: 0;
+  -webkit-appearance: none;
+}
+input[type='number']::-webkit-inner-spin-button {
+  margin: 0;
+  -webkit-appearance: none;
+}
+.css-8fy69x-MuiStack-root {
+  align-items: center !important;
+}
+
+/** **************************************
+* Form elements — dark mode & theme-aware bg/color
+* Applies to all native inputs, selects, textareas so they
+* automatically respect the active Tailwind token values.
+*************************************** */
+input:not([type='radio']):not([type='checkbox']):not([type='range']):not([type='color']):not(
+    [type='file']
+  ),
+textarea,
+select {
+  background-color: var(--color-card);
+  color: var(--color-foreground);
+}
+input:disabled,
+textarea:disabled,
+select:disabled {
+  background-color: var(--color-muted);
+  color: var(--color-muted-foreground);
+  cursor: not-allowed;
+  opacity: 0.7;
+}
