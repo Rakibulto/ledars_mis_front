@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import Link from 'next/link';
 import { mutate } from 'swr';
@@ -34,11 +34,11 @@ import { ConfirmDialog } from 'src/components/custom-dialog';
 
 import QualityControlPointFormDialog from './quality-control-point-form-dialog';
 import {
-  getFrequencyChipProps,
-  getPriorityChipProps,
-  getStatusChipProps,
   formatDateTime,
   getQCPNarrative,
+  getStatusChipProps,
+  getPriorityChipProps,
+  getFrequencyChipProps,
 } from './quality-control-point-shared';
 
 const EP = endpoints.storeInventory;

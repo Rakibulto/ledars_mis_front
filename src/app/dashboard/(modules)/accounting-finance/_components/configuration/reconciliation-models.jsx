@@ -12,6 +12,7 @@ import Stack from '@mui/material/Stack';
 import Table from '@mui/material/Table';
 import Button from '@mui/material/Button';
 import Dialog from '@mui/material/Dialog';
+import { IconButton } from '@mui/material';
 import Tooltip from '@mui/material/Tooltip';
 import TableRow from '@mui/material/TableRow';
 import MenuItem from '@mui/material/MenuItem';
@@ -30,11 +31,18 @@ import { Iconify } from 'src/components/iconify';
 
 import { ReferenceConfigToolbar } from './reference-config-toolbar';
 import { useReconciliationModelsApi } from './use-reconciliation-models-api';
-import { IconButton } from '@mui/material';
 
 const EMPTY_FORM = {
-  name: '', type: 'suggestion', match_label: '', match_journal: '',
-  account: '', tax: '', amount_rule: '', text_rule: '', change_version: '', auto_validate: false,
+  name: '',
+  type: 'suggestion',
+  match_label: '',
+  match_journal: '',
+  account: '',
+  tax: '',
+  amount_rule: '',
+  text_rule: '',
+  change_version: '',
+  auto_validate: false,
 };
 
 const BASE_PATH = '/dashboard/accounting-finance/configuration/reconciliation-models';
@@ -60,22 +68,22 @@ function MetricCard({ label, value, helper }) {
 export default function ReconciliationModels() {
   const [editTarget, setEditTarget] = useState(null);
 
-const handleOpenEditDIalog = (modle) => {
-  setEditTarget(modle);
-  setForm({
-    name: modle.name || '',
-    type: modle.type || 'suggestion',
-    match_label: modle.match_label || '',
-    match_journal: modle.match_journal || '',
-    account: modle.account || '',
-    tax: modle.tax || '',
-    amount_rule: modle.amount_rule || '',
-    text_rule: modle.text_rule || '',
-    change_version: modle.change_version || '',
-    auto_validate: modle.auto_validate || false,
-  });
-  setOpen(true);
-}
+  const handleOpenEditDIalog = (modle) => {
+    setEditTarget(modle);
+    setForm({
+      name: modle.name || '',
+      type: modle.type || 'suggestion',
+      match_label: modle.match_label || '',
+      match_journal: modle.match_journal || '',
+      account: modle.account || '',
+      tax: modle.tax || '',
+      amount_rule: modle.amount_rule || '',
+      text_rule: modle.text_rule || '',
+      change_version: modle.change_version || '',
+      auto_validate: modle.auto_validate || false,
+    });
+    setOpen(true);
+  };
   const workspace = useReconciliationModelsApi();
   const [open, setOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -316,7 +324,13 @@ const handleOpenEditDIalog = (modle) => {
                       </Button>
                     </Tooltip>
                     <Tooltip title="Edit">
-                      <IconButton size="small" onClick={(e) => { e.stopPropagation(); handleOpenEditDIalog(model); }}>
+                      <IconButton
+                        size="small"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleOpenEditDIalog(model);
+                        }}
+                      >
                         <Iconify icon="solar:pen-bold" width={16} />
                       </IconButton>
                     </Tooltip>
@@ -356,124 +370,141 @@ const handleOpenEditDIalog = (modle) => {
         </Card>
       ) : null} */}
 
-      <Dialog open={open} onClose={() => { setOpen(false); setEditTarget(null); setForm(EMPTY_FORM); }}>
-      <DialogTitle>{editTarget ? 'Edit Reconciliation Model' : 'New Reconciliation Model'}</DialogTitle>
-      <DialogContent sx={{ pt: '16px !important' }}>
-        <Grid container spacing={2}>
-          <Grid size={{ xs: 12, sm: 6 }}>
-            <TextField
-              fullWidth
-              label="Name"
-              value={form.name}
-              onChange={(event) =>
-                setForm((current) => ({ ...current, name: event.target.value }))
-              }
-            />
+      <Dialog
+        open={open}
+        onClose={() => {
+          setOpen(false);
+          setEditTarget(null);
+          setForm(EMPTY_FORM);
+        }}
+      >
+        <DialogTitle>
+          {editTarget ? 'Edit Reconciliation Model' : 'New Reconciliation Model'}
+        </DialogTitle>
+        <DialogContent sx={{ pt: '16px !important' }}>
+          <Grid container spacing={2}>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <TextField
+                fullWidth
+                label="Name"
+                value={form.name}
+                onChange={(event) =>
+                  setForm((current) => ({ ...current, name: event.target.value }))
+                }
+              />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <TextField
+                select
+                fullWidth
+                label="Type"
+                value={form.type}
+                onChange={(event) =>
+                  setForm((current) => ({ ...current, type: event.target.value }))
+                }
+              >
+                <MenuItem value="writeoff">Write-off</MenuItem>
+                <MenuItem value="suggestion">Suggestion</MenuItem>
+                <MenuItem value="manual">Manual</MenuItem>
+              </TextField>
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <TextField
+                fullWidth
+                label="Match Label Contains"
+                value={form.match_label}
+                onChange={(event) =>
+                  setForm((current) => ({ ...current, match_label: event.target.value }))
+                }
+              />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <TextField
+                fullWidth
+                label="Match Journal"
+                value={form.match_journal}
+                onChange={(event) =>
+                  setForm((current) => ({ ...current, match_journal: event.target.value }))
+                }
+              />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <TextField
+                fullWidth
+                label="Counterpart Account"
+                value={form.account}
+                onChange={(event) =>
+                  setForm((current) => ({ ...current, account: event.target.value }))
+                }
+              />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <TextField
+                fullWidth
+                label="Tax"
+                value={form.tax}
+                onChange={(event) =>
+                  setForm((current) => ({ ...current, tax: event.target.value }))
+                }
+              />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <TextField
+                fullWidth
+                label="Amount Rule"
+                value={form.amount_rule}
+                onChange={(event) =>
+                  setForm((current) => ({ ...current, amount_rule: event.target.value }))
+                }
+              />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <TextField
+                fullWidth
+                label="Text Rule"
+                value={form.text_rule}
+                onChange={(event) =>
+                  setForm((current) => ({ ...current, text_rule: event.target.value }))
+                }
+              />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <TextField
+                fullWidth
+                label="Version"
+                value={form.change_version}
+                onChange={(event) =>
+                  setForm((current) => ({ ...current, change_version: event.target.value }))
+                }
+              />
+            </Grid>
+            <Grid size={{ xs: 12 }}>
+              <Button
+                variant={form.auto_validate ? 'contained' : 'outlined'}
+                onClick={() =>
+                  setForm((current) => ({ ...current, auto_validate: !current.auto_validate }))
+                }
+              >
+                {form.auto_validate ? 'Auto validate enabled' : 'Enable auto validate'}
+              </Button>
+            </Grid>
           </Grid>
-          <Grid size={{ xs: 12, sm: 6 }}>
-            <TextField
-              select
-              fullWidth
-              label="Type"
-              value={form.type}
-              onChange={(event) =>
-                setForm((current) => ({ ...current, type: event.target.value }))
-              }
-            >
-              <MenuItem value="writeoff">Write-off</MenuItem>
-              <MenuItem value="suggestion">Suggestion</MenuItem>
-              <MenuItem value="manual">Manual</MenuItem>
-            </TextField>
-          </Grid>
-          <Grid size={{ xs: 12, sm: 6 }}>
-            <TextField
-              fullWidth
-              label="Match Label Contains"
-              value={form.match_label}
-              onChange={(event) =>
-                setForm((current) => ({ ...current, match_label: event.target.value }))
-              }
-            />
-          </Grid>
-          <Grid size={{ xs: 12, sm: 6 }}>
-            <TextField
-              fullWidth
-              label="Match Journal"
-              value={form.match_journal}
-              onChange={(event) =>
-                setForm((current) => ({ ...current, match_journal: event.target.value }))
-              }
-            />
-          </Grid>
-          <Grid size={{ xs: 12, sm: 6 }}>
-            <TextField
-              fullWidth
-              label="Counterpart Account"
-              value={form.account}
-              onChange={(event) =>
-                setForm((current) => ({ ...current, account: event.target.value }))
-              }
-            />
-          </Grid>
-          <Grid size={{ xs: 12, sm: 6 }}>
-            <TextField
-              fullWidth
-              label="Tax"
-              value={form.tax}
-              onChange={(event) =>
-                setForm((current) => ({ ...current, tax: event.target.value }))
-              }
-            />
-          </Grid>
-          <Grid size={{ xs: 12, sm: 6 }}>
-            <TextField
-              fullWidth
-              label="Amount Rule"
-              value={form.amount_rule}
-              onChange={(event) =>
-                setForm((current) => ({ ...current, amount_rule: event.target.value }))
-              }
-            />
-          </Grid>
-          <Grid size={{ xs: 12, sm: 6 }}>
-            <TextField
-              fullWidth
-              label="Text Rule"
-              value={form.text_rule}
-              onChange={(event) =>
-                setForm((current) => ({ ...current, text_rule: event.target.value }))
-              }
-            />
-          </Grid>
-          <Grid size={{ xs: 12, sm: 6 }}>
-            <TextField
-              fullWidth
-              label="Version"
-              value={form.change_version}
-              onChange={(event) =>
-                setForm((current) => ({ ...current, change_version: event.target.value }))
-              }
-            />
-          </Grid>
-          <Grid size={{ xs: 12 }}>
-            <Button
-              variant={form.auto_validate ? 'contained' : 'outlined'}
-              onClick={() =>
-                setForm((current) => ({ ...current, auto_validate: !current.auto_validate }))
-              }
-            >
-              {form.auto_validate ? 'Auto validate enabled' : 'Enable auto validate'}
-            </Button>
-          </Grid>
-        </Grid>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={() => { setOpen(false); setEditTarget(null); setForm(EMPTY_FORM); }}>Cancel</Button>
-        <Button variant="contained" onClick={saveModel} disabled={submitting}>
-          Save
-        </Button>
-      </DialogActions>
-    </Dialog>
-    </Box >
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => {
+              setOpen(false);
+              setEditTarget(null);
+              setForm(EMPTY_FORM);
+            }}
+          >
+            Cancel
+          </Button>
+          <Button variant="contained" onClick={saveModel} disabled={submitting}>
+            Save
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </Box>
   );
 }

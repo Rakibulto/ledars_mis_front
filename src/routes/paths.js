@@ -32,6 +32,7 @@ export const paths = {
     general: {
       app: `${ROOTS.DASHBOARD}/app`,
     },
+    hrm: `${ROOTS.DASHBOARD}/hrm`,
     beneficiaries: {
       root: `${ROOTS.DASHBOARD}/beneficiaries`,
       // Dashboard
@@ -424,7 +425,8 @@ export const paths = {
         root: `${ROOTS.DASHBOARD}/procurement/quotations`,
         list: `${ROOTS.DASHBOARD}/procurement/quotations/list`,
         opening: (id) => `${ROOTS.DASHBOARD}/procurement/quotations/opening/${id}`,
-        directEvaluation: `${ROOTS.DASHBOARD}/procurement/request-for-quotation/direct-evaluation`,
+        directEvaluation: `${ROOTS.DASHBOARD}/procurement/quotations/direct-evaluation`,
+        manualSubmitQuotation: `${ROOTS.DASHBOARD}/procurement/quotations/manual-submit-quotation`,
       },
       comparative: {
         root: `${ROOTS.DASHBOARD}/procurement/comparative`,
@@ -446,6 +448,7 @@ export const paths = {
         list: `${ROOTS.DASHBOARD}/procurement/work-orders/list`,
         pendingApprovals: `${ROOTS.DASHBOARD}/procurement/work-orders/pending`,
         create: `${ROOTS.DASHBOARD}/procurement/work-orders/create`,
+        edit: (id) => `${ROOTS.DASHBOARD}/procurement/work-orders/${id}/edit`,
         detail: (id) => `${ROOTS.DASHBOARD}/procurement/work-orders/${id}`,
         approval: (id) => `${ROOTS.DASHBOARD}/procurement/work-orders/${id}/approval`,
         print: (id) => `${ROOTS.DASHBOARD}/procurement/work-orders/${id}/print`,
@@ -752,6 +755,7 @@ export const paths = {
       configuration: {
         root: `${ROOTS.DASHBOARD}/accounting-finance/configuration`,
         chartOfAccounts: `${ROOTS.DASHBOARD}/accounting-finance/configuration/chart-of-accounts`,
+        coaList: `${ROOTS.DASHBOARD}/accounting-finance/configuration/coa-list`,
         accountTypes: `${ROOTS.DASHBOARD}/accounting-finance/configuration/account-types`,
         journals: `${ROOTS.DASHBOARD}/accounting-finance/configuration/journals`,
         fiscalYear: `${ROOTS.DASHBOARD}/accounting-finance/configuration/fiscal-year`,
@@ -769,6 +773,12 @@ export const paths = {
         incoterms: `${ROOTS.DASHBOARD}/accounting-finance/configuration/incoterms`,
         currencyExchangeRates: `${ROOTS.DASHBOARD}/accounting-finance/configuration/currency-exchange-rates`,
         lockDates: `${ROOTS.DASHBOARD}/accounting-finance/configuration/lock-dates`,
+        perdium: `${ROOTS.DASHBOARD}/accounting-finance/configuration/perdium`,
+        perdiumDetail: (id) => `${ROOTS.DASHBOARD}/accounting-finance/configuration/perdium/${id}`,
+        perdiumClaim: `${ROOTS.DASHBOARD}/accounting-finance/configuration/perdium-claim`,
+        perdiumClaimCreate: `${ROOTS.DASHBOARD}/accounting-finance/configuration/perdium-claim/create`,
+        perdiumClaimDetail: (id) =>
+          `${ROOTS.DASHBOARD}/accounting-finance/configuration/perdium-claim/${id}`,
       },
       // Transactions
       transactions: {
@@ -781,6 +791,8 @@ export const paths = {
         generalLedgerPosting: `${ROOTS.DASHBOARD}/accounting-finance/transactions/general-ledger-posting`,
         generalLedgerPostingDetail: (id) =>
           `${ROOTS.DASHBOARD}/accounting-finance/transactions/general-ledger-posting/${id}`,
+        generalLedgerItemDetail: (id) =>
+          `${ROOTS.DASHBOARD}/accounting-finance/transactions/general-ledger-posting/item/${id}`,
         customerInvoices: `${ROOTS.DASHBOARD}/accounting-finance/transactions/customer-invoices`,
         invoiceDetail: (id) =>
           `${ROOTS.DASHBOARD}/accounting-finance/transactions/customer-invoices/${id}`,
@@ -827,6 +839,10 @@ export const paths = {
         deferredExpenses: `${ROOTS.DASHBOARD}/accounting-finance/transactions/deferred-expenses`,
         deferredExpenseDetail: (id) =>
           `${ROOTS.DASHBOARD}/accounting-finance/transactions/deferred-expenses/${id}`,
+        travelExpense: `${ROOTS.DASHBOARD}/accounting-finance/transactions/travel-expence`,
+        travelExpenseCreate: `${ROOTS.DASHBOARD}/accounting-finance/transactions/travel-expence/create`,
+        travelExpenseDetail: (id) =>
+          `${ROOTS.DASHBOARD}/accounting-finance/transactions/travel-expence/${id}`,
       },
       // Banking
       banking: {
@@ -882,6 +898,11 @@ export const paths = {
         supplierStatements: `${ROOTS.DASHBOARD}/accounting-finance/payables/supplier-statements`,
         supplierStatementDetail: (id) =>
           `${ROOTS.DASHBOARD}/accounting-finance/payables/supplier-statements/${id}`,
+        moneyReceipt: {
+          root: `${ROOTS.DASHBOARD}/accounting-finance/payables/money-receipt`,
+          create: `${ROOTS.DASHBOARD}/accounting-finance/payables/money-receipt/create`,
+          detail: (id) => `${ROOTS.DASHBOARD}/accounting-finance/payables/money-receipt/${id}`,
+        },
       },
       // Assets
       assets: {
@@ -954,6 +975,39 @@ export const paths = {
         auditLog: `${ROOTS.DASHBOARD}/accounting-finance/settings/audit-log`,
         currencyRates: `${ROOTS.DASHBOARD}/accounting-finance/settings/currency-rates`,
       },
+      // Provident Fund
+      providentFund: {
+        root: `${ROOTS.DASHBOARD}/accounting-finance/provident-fund`,
+        list: `${ROOTS.DASHBOARD}/accounting-finance/provident-fund`,
+        create: `${ROOTS.DASHBOARD}/accounting-finance/provident-fund/create`,
+        detail: (id) => `${ROOTS.DASHBOARD}/accounting-finance/provident-fund/${id}`,
+        edit: (id) => `${ROOTS.DASHBOARD}/accounting-finance/provident-fund/create?editId=${id}`,
+      },
+    },
+    crm: {
+      root: `${ROOTS.DASHBOARD}/crm`,
+      leads: {
+        root: `${ROOTS.DASHBOARD}/crm/leads`,
+        list: `${ROOTS.DASHBOARD}/crm/leads`,
+        create: `${ROOTS.DASHBOARD}/crm/leads/create`,
+        detail: (id) => `${ROOTS.DASHBOARD}/crm/leads/${id}`,
+        edit: (id) => `${ROOTS.DASHBOARD}/crm/leads/${id}/edit`,
+      },
+      movementManagement: {
+        root: `${ROOTS.DASHBOARD}/movement-management`,
+        list: `${ROOTS.DASHBOARD}/movement-management`,
+        create: `${ROOTS.DASHBOARD}/movement-management/create`,
+        detail: (id) => `${ROOTS.DASHBOARD}/movement-management/${id}`,
+        edit: (id) => `${ROOTS.DASHBOARD}/movement-management/create?editId=${id}`,
+      },
+    },
+    meetingManagement: {
+      root: `${ROOTS.DASHBOARD}/meeting-management`,
+      list: `${ROOTS.DASHBOARD}/meeting-management/list`,
+      create: `${ROOTS.DASHBOARD}/meeting-management/create`,
+      calendar: `${ROOTS.DASHBOARD}/meeting-management/calendar`,
+      detail: (id) => `${ROOTS.DASHBOARD}/meeting-management/${id}`,
+      edit: (id) => `${ROOTS.DASHBOARD}/meeting-management/${id}/edit`,
     },
     formAutomation: {
       root: `${ROOTS.DASHBOARD}/form-automation`,
@@ -971,9 +1025,11 @@ export const paths = {
     },
     settings: {
       root: `${ROOTS.DASHBOARD}/settings`,
+      permissions: `${ROOTS.DASHBOARD}/settings/permissions`,
       department: `${ROOTS.DASHBOARD}/settings/department`,
       designation: `${ROOTS.DASHBOARD}/settings/designation`,
       branch: `${ROOTS.DASHBOARD}/settings/branch`,
+      grade: `${ROOTS.DASHBOARD}/settings/grade`,
       shift: `${ROOTS.DASHBOARD}/settings/shift`,
       role: `${ROOTS.DASHBOARD}/settings/role`,
       preapprovedip: `${ROOTS.DASHBOARD}/settings/pre-approved-ip`,
@@ -986,6 +1042,7 @@ export const paths = {
         reset: `${ROOTS.DASHBOARD}/settings/leave/reset-period`,
         special: `${ROOTS.DASHBOARD}/settings/leave/special-leave-policies`,
       },
+      modulePermissions: `${ROOTS.DASHBOARD}/module-permissions`,
     },
     attendance: {
       root: `${ROOTS.DASHBOARD}/attendance`,
@@ -1004,6 +1061,7 @@ export const paths = {
     leave: {
       root: `${ROOTS.DASHBOARD}/leave`,
       request: `${ROOTS.DASHBOARD}/leave/request`,
+      requestDetail: (id) => `${ROOTS.DASHBOARD}/leave/request/${id}`,
       approval: `${ROOTS.DASHBOARD}/leave/approval`,
       calendar: `${ROOTS.DASHBOARD}/leave/calendar`,
       balance: `${ROOTS.DASHBOARD}/leave/balance`,
@@ -1019,6 +1077,7 @@ export const paths = {
       list: `${ROOTS.DASHBOARD}/todo/list`,
       create: `${ROOTS.DASHBOARD}/todo/create`,
       edit: (id) => `${ROOTS.DASHBOARD}/todo/${id}/edit`,
+      details: (id) => `${ROOTS.DASHBOARD}/todo/details/${id}`,
     },
     projectManagements: {
       root: `${ROOTS.DASHBOARD}/project-managements`,
@@ -1043,8 +1102,35 @@ export const paths = {
         root: `${ROOTS.DASHBOARD}/project-managements/expenses`,
         create: `${ROOTS.DASHBOARD}/project-managements/expenses/create`,
         detail: (id) => `${ROOTS.DASHBOARD}/project-managements/expenses/${id}`,
+        advances: {
+          root: `${ROOTS.DASHBOARD}/project-managements/expenses/advances`,
+          create: `${ROOTS.DASHBOARD}/project-managements/expenses/advances/create`,
+          detail: (id) => `${ROOTS.DASHBOARD}/project-managements/expenses/advances/${id}`,
+          edit: (id) => `${ROOTS.DASHBOARD}/project-managements/expenses/advances/${id}/edit`,
+        },
       },
     },
+    ledarsManagement: {
+      templates: `${ROOTS.DASHBOARD}/ledars-management/templates`,
+    },
+    finalSettlement: {
+      root: `${ROOTS.DASHBOARD}/final-settlement`,
+      list: `${ROOTS.DASHBOARD}/final-settlement`,
+      create: `${ROOTS.DASHBOARD}/final-settlement/create`,
+      detail: (id) => `${ROOTS.DASHBOARD}/final-settlement/${id}`,
+      edit: (id) => `${ROOTS.DASHBOARD}/final-settlement/create?editId=${id}`,
+    },
+    advances: {
+      root: `${ROOTS.DASHBOARD}/project-managements/expenses/advances`,
+      create: `${ROOTS.DASHBOARD}/project-managements/expenses/advances/create`,
+      detail: (id) => `${ROOTS.DASHBOARD}/project-managements/expenses/advances/${id}`,
+      edit: (id) => `${ROOTS.DASHBOARD}/project-managements/expenses/advances/${id}/edit`,
+    },
+  },
+  moneyReceipt: {
+    root: '/dashboard/accounting-finance/payables/money-receipt',
+    create: '/dashboard/accounting-finance/payables/money-receipt/create',
+    detail: (id) => `/dashboard/accounting-finance/payables/money-receipt/${id}`,
   },
 };
 

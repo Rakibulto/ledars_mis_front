@@ -34,8 +34,8 @@ export function enrichJournalEntry(entry) {
     // locked: date < lock date
     locked: entry.date ? new Date(entry.date) < new Date(TRANSACTION_LOCK_DATE) : false,
     tags: [],
-    lines: [],
-    attachments: [],
+    lines: entry.items || entry.lines || [],
+    attachments: entry.attachments || [],
     activity: [],
   };
 }
@@ -140,7 +140,10 @@ export function useJournalEntriesApi() {
       }));
     }
 
-    const { data } = await axiosInstance.patch(endpoints.accounting.journal_entry_by_id(entryId), body);
+    const { data } = await axiosInstance.patch(
+      endpoints.accounting.journal_entry_by_id(entryId),
+      body
+    );
     await mutate(entriesUrl);
     return enrichJournalEntry(data);
   };

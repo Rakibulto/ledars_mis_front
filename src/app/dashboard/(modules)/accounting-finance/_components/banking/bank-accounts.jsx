@@ -10,22 +10,16 @@ import Chip from '@mui/material/Chip';
 import { Button } from '@mui/material';
 import Alert from '@mui/material/Alert';
 import Stack from '@mui/material/Stack';
-import Table from '@mui/material/Table';
 import Dialog from '@mui/material/Dialog';
 import Avatar from '@mui/material/Avatar';
 import Divider from '@mui/material/Divider';
 import MenuItem from '@mui/material/MenuItem';
-import TableRow from '@mui/material/TableRow';
-import TableBody from '@mui/material/TableBody';
-import TableCell from '@mui/material/TableCell';
-import TableHead from '@mui/material/TableHead';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import CardContent from '@mui/material/CardContent';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
-import TableContainer from '@mui/material/TableContainer';
 import CircularProgress from '@mui/material/CircularProgress';
 
 import { paths } from 'src/routes/paths';
@@ -468,7 +462,7 @@ export default function BankAccountsList() {
         </Grid>
       </Grid>
 
-        {/* <Grid size={{ xs: 12, lg: 4 }}>
+      {/* <Grid size={{ xs: 12, lg: 4 }}>
           <Card sx={{ borderRadius: 3, mb: 3 }}>
             <CardContent>
               <Typography variant="h6" fontWeight={800} sx={{ mb: 2 }}>
@@ -547,7 +541,6 @@ export default function BankAccountsList() {
             </CardContent>
           </Card>
         </Grid> */}
-  
 
       <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} fullWidth maxWidth="md">
         <DialogTitle>Add Bank Account</DialogTitle>

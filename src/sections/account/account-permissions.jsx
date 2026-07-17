@@ -598,9 +598,9 @@ export function AccountPermissions({ employee }) {
                 </TableRow>
               ) : (
                 filteredModules.map((module) => (
-                  <>
+                  <Fragment key={module.title}>
                     {/* Module Header Row */}
-                    <TableRow key={module.title} sx={{ bgcolor: 'background.neutral' }}>
+                    <TableRow sx={{ bgcolor: 'background.neutral' }}>
                       <TableCell>
                         <IconButton
                           size="small"
@@ -795,7 +795,7 @@ export function AccountPermissions({ employee }) {
                         </Collapse>
                       </TableCell>
                     </TableRow>
-                  </>
+                  </Fragment>
                 ))
               )}
             </TableBody>

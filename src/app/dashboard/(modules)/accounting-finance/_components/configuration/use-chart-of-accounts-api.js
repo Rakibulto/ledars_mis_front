@@ -9,14 +9,10 @@ import axiosInstance, { fetcher, endpoints } from 'src/utils/axios';
 // Maps a single raw backend account + fetched account types
 // into the enriched shape the chart-of-accounts UI expects.
 // ------------------------------------------------------------
-function enrichAccount(account, accountTypes) {
+function enrichAccount(account, accountTypes, accountMap) {
   const type = accountTypes.find((t) => Number(t.id) === Number(account.account_type));
   const classification = account.classification || type?.classification || '';
-  const isBalanceSheet = ['asset', 'liability', 'equity'].includes(classification);
   const balance = Number(account.current_balance || 0);
-  const code = String(account.code || '');
-  const hierarchyLevel = code.length <= 1 ? 0 : Math.max(0, Math.floor((code.length - 1) / 2));
-  const parentCode = hierarchyLevel > 0 ? code.slice(0, Math.max(1, code.length - 2)) : 'ROOT';
 
   return {
     ...account,
@@ -26,42 +22,15 @@ function enrichAccount(account, accountTypes) {
     reconcile: account.is_reconcilable ?? false,
     archived: account.is_deprecated ?? false,
     active: account.is_active !== false,
+    is_contra: account.is_contra ?? false,
 
-    // Derived display fields (same logic as the old mock enrichAccounts)
+    // Derived display fields
     typeName: account.account_type_name || type?.name || 'Unassigned',
-    category: isBalanceSheet ? 'balance_sheet' : 'profit_loss',
-    controlBand:
-      Math.abs(balance) > 150000
-        ? 'High exposure'
-        : Math.abs(balance) > 50000
-          ? 'Monitored'
-          : 'Routine',
-    reportingRole: isBalanceSheet ? 'Statement of financial position' : 'Profit and loss reporting',
-    hierarchyLevel,
-    parentCode,
-    numberingScheme:
-      classification === 'asset'
-        ? '1xxx assets band'
-        : classification === 'liability'
-          ? '2xxx liabilities band'
-          : classification === 'equity'
-            ? '3xxx equity band'
-            : classification === 'income'
-              ? '4xxx income band'
-              : '5xxx expense band',
-    defaultMappings: isBalanceSheet
-      ? 'Mapped to statement of financial position and close carry-forward'
-      : 'Mapped to P&L close and retained earnings transfer',
-    postingRestriction: ['asset', 'liability'].includes(classification)
-      ? 'Operational journals plus controller override'
-      : 'All operational journals',
-    usageAnalytics:
-      Math.abs(balance) > 150000
-        ? 'High-usage ledger with frequent month-end review'
-        : Math.abs(balance) > 50000
-          ? 'Moderate posting volume and periodic reconciliation'
-          : 'Low-volume account monitored by exception',
-    archiveCandidate: Math.abs(balance) < 1 && account.is_active !== false,
+    category: ['asset', 'liability', 'equity'].includes(classification)
+      ? 'balance_sheet'
+      : 'profit_loss',
+    parentName: account.parent_name || (account.parent && accountMap[account.parent]) || '',
+    tags: account.tag_names || [],
   };
 }
 
@@ -86,6 +55,20 @@ export function useChartOfAccountsApi() {
     return [];
   }, [rawTypes]);
 
+  // Build a quick id→name lookup for parent resolution
+  const accountMap = useMemo(() => {
+    const list = Array.isArray(rawAccounts)
+      ? rawAccounts
+      : Array.isArray(rawAccounts?.results)
+        ? rawAccounts.results
+        : [];
+    const map = {};
+    list.forEach((a) => {
+      map[a.id] = a.name;
+    });
+    return map;
+  }, [rawAccounts]);
+
   const accounts = useMemo(() => {
     const list = Array.isArray(rawAccounts)
       ? rawAccounts
@@ -93,36 +76,50 @@ export function useChartOfAccountsApi() {
         ? rawAccounts.results
         : [];
     return list
-      .sort((a, b) => String(a.code).localeCompare(String(b.code)))
-      .map((account) => enrichAccount(account, accountTypes));
-  }, [rawAccounts, accountTypes]);
+      .sort((a, b) => String(a.code).localeCompare(String(b.code), undefined, { numeric: true }))
+      .map((account) => enrichAccount(account, accountTypes, accountMap));
+  }, [rawAccounts, accountTypes, accountMap]);
 
   const overview = useMemo(
     () => ({
       activeAccounts: accounts.filter((a) => a.active).length,
       reconcilableAccounts: accounts.filter((a) => a.reconcile).length,
-      highExposureAccounts: accounts.filter((a) => a.controlBand === 'High exposure').length,
-      archiveCandidates: accounts.filter((a) => a.archiveCandidate).length,
+      highExposureAccounts: accounts.filter((a) => Math.abs(a.balance) > 150000).length,
+      archiveCandidates: accounts.filter((a) => Math.abs(a.balance) < 1 && a.active).length,
     }),
     [accounts]
   );
 
   // ── Mutations ──────────────────────────────────────────────
 
+  const resolveAccountTypeId = (classification) => {
+    if (!classification) return undefined;
+    // If it's already a number, return it as-is (backward compat)
+    if (typeof classification === 'number' || (typeof classification === 'string' && /^\d+$/.test(classification))) {
+      return Number(classification);
+    }
+    // Match classification string to AccountType record
+    const match = accountTypes.find(
+      (t) => String(t.classification).toLowerCase() === String(classification).toLowerCase()
+    );
+    return match ? match.id : undefined;
+  };
+
   const createAccount = async (payload) => {
     const body = {
+      code: payload.code || undefined,
       name: payload.name,
-      account_type: Number(payload.type_id),
-      opening_balance: Number(payload.balance || 0),
+      account_type: resolveAccountTypeId(payload.type_id),
+      opening_balance: Number(payload.opening_balance || 0),
       is_reconcilable: Boolean(payload.reconcile),
-      is_active: true,
+      is_active: payload.status !== 'inactive',
+      is_contra: Boolean(payload.is_contra),
+      description: payload.description || '',
     };
-    // Only include parent if a real existing account was selected
     if (payload.parent_id) body.parent = Number(payload.parent_id);
     const response = await axiosInstance.post(accountsUrl, body);
-    // Tell SWR to re-fetch the accounts list so the table refreshes
     await mutate(accountsUrl);
-    return response.data; // Return the newly created account
+    return response.data;
   };
 
   const archiveAccount = async (accountId) => {
@@ -146,10 +143,15 @@ export function useChartOfAccountsApi() {
     const body = {
       code: payload.code,
       name: payload.name,
-      account_type: Number(payload.type_id),
+      account_type: resolveAccountTypeId(payload.type_id),
       is_reconcilable: Boolean(payload.reconcile),
+      is_active: payload.status !== 'inactive',
+      is_contra: Boolean(payload.is_contra),
+      description: payload.description || '',
+      opening_balance: Number(payload.opening_balance || 0),
     };
     if (payload.parent_id) body.parent = Number(payload.parent_id);
+    else body.parent = null;
     await axiosInstance.patch(endpoints.accounting.account_by_id(id), body);
     await mutate(accountsUrl);
   };
@@ -157,6 +159,16 @@ export function useChartOfAccountsApi() {
   const deleteAccount = async (id) => {
     await axiosInstance.delete(endpoints.accounting.account_by_id(id));
     await mutate(accountsUrl);
+  };
+
+  const seedChartOfAccounts = async () => {
+    const res = await axiosInstance.post(endpoints.accounting.account_seed);
+    await Promise.all([
+      mutate(accountsUrl),
+      mutate(typesUrl),
+      mutate(endpoints.accounting.account_groups),
+    ]);
+    return res.data;
   };
 
   return {
@@ -171,6 +183,7 @@ export function useChartOfAccountsApi() {
       toggleAccountStatus,
       updateAccount,
       deleteAccount,
+      seedChartOfAccounts,
     },
   };
 }

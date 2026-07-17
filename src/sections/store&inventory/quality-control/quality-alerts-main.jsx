@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { mutate } from 'swr';
 import { toast } from 'sonner';
@@ -49,8 +49,8 @@ import TableRowSkeleton from 'src/components/table/tableRowSkeleton';
 
 import QualityAlertFormDialog from './quality-alert-form-dialog';
 import {
-  formatDateTime,
   normalizeText,
+  formatDateTime,
   normalizeCollection,
   getAlertStatusChipProps,
   getAlertSeverityChipProps,
@@ -303,7 +303,11 @@ export default function QualityAlertsMain() {
     [debouncedSearch, severityFilter, statusFilter, officeFilter, page]
   );
 
-  const { data: rawAlertList, loading: alertListLoading, error: alertListError } = useGetRequest(listUrl);
+  const {
+    data: rawAlertList,
+    loading: alertListLoading,
+    error: alertListError,
+  } = useGetRequest(listUrl);
   const { data: rawAlertSummary } = useGetRequest(summaryUrl);
   const { data: rawOffices } = useGetRequest(`${PM.office_management}?pagination=false`);
 
@@ -565,7 +569,11 @@ export default function QualityAlertsMain() {
               </Grid>
             </Grid>
 
-            <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" spacing={2}>
+            <Stack
+              direction={{ xs: 'column', sm: 'row' }}
+              justifyContent="space-between"
+              spacing={2}
+            >
               <Typography variant="body2" color="text.secondary">
                 {totalMatches} alert{totalMatches !== 1 ? 's' : ''} matched on the server.
               </Typography>
@@ -673,11 +681,7 @@ export default function QualityAlertsMain() {
           >
             <FormControlLabel
               control={
-                <Switch
-                  checked={dense}
-                  onChange={(e) => setDense(e.target.checked)}
-                  size="small"
-                />
+                <Switch checked={dense} onChange={(e) => setDense(e.target.checked)} size="small" />
               }
               label={
                 <Typography variant="body2" color="text.secondary">
@@ -715,12 +719,7 @@ export default function QualityAlertsMain() {
                   border: '1px solid #fed7aa',
                 }}
               >
-                <Typography
-                  variant="subtitle2"
-                  fontWeight={700}
-                  color="#0f172a"
-                  sx={{ mb: 1.5 }}
-                >
+                <Typography variant="subtitle2" fontWeight={700} color="#0f172a" sx={{ mb: 1.5 }}>
                   Alert Overview
                 </Typography>
                 <Grid container spacing={1.5}>
@@ -747,8 +746,7 @@ export default function QualityAlertsMain() {
               </Box>
               <Divider />
               <Typography variant="body2" color="text.secondary">
-                Choose{' '}
-                <strong>In Progress</strong> to start the investigation or{' '}
+                Choose <strong>In Progress</strong> to start the investigation or{' '}
                 <strong>Resolve</strong> to close this alert with the corrective action on record.
               </Typography>
             </Stack>

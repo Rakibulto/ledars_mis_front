@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useMemo } from 'react';
 import { toast } from 'sonner';
+import { useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 
 import Box from '@mui/material/Box';
@@ -305,7 +305,10 @@ export default function PaymentMethodDetail() {
       {/* Edit Dialog */}
       <Dialog
         open={open}
-        onClose={() => { setOpen(false); setForm(EMPTY_FORM); }}
+        onClose={() => {
+          setOpen(false);
+          setForm(EMPTY_FORM);
+        }}
         maxWidth="sm"
         fullWidth
       >
@@ -403,7 +406,14 @@ export default function PaymentMethodDetail() {
           </Grid>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => { setOpen(false); setForm(EMPTY_FORM); }}>Cancel</Button>
+          <Button
+            onClick={() => {
+              setOpen(false);
+              setForm(EMPTY_FORM);
+            }}
+          >
+            Cancel
+          </Button>
           <Button variant="contained" onClick={saveMethod} disabled={submitting}>
             Update
           </Button>

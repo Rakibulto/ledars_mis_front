@@ -31,11 +31,9 @@ import {
 
 import { useBoolean } from 'src/hooks/use-boolean';
 
-import { endpoints } from 'src/utils/axios';
+import axiosInstance, { endpoints } from 'src/utils/axios';
 
 import { useGetRequest, useDeleteRequest } from 'src/actions/ledars-hook';
-
-import axiosInstance from 'src/utils/axios';
 
 import { Iconify } from 'src/components/iconify';
 import { ConfirmDialog } from 'src/components/custom-dialog';

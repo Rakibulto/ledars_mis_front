@@ -1,13 +1,14 @@
 'use client';
 
-import { useMemo } from 'react';
 import useSWR from 'swr';
+import { useMemo } from 'react';
 
 import Box from '@mui/material/Box';
 import CircularProgress from '@mui/material/CircularProgress';
 
-import { fetcher, endpoints } from 'src/utils/axios';
 import { paths } from 'src/routes/paths';
+
+import { fetcher, endpoints } from 'src/utils/axios';
 
 import { formatCurrency } from '../utils';
 import {
@@ -70,27 +71,28 @@ function buildBillDetailFromApi(data) {
     subTotal: Number(line.subtotal) || Number(line.sub_total) || 0,
   }));
 
-  const billLinesTable = lines.length > 0
-    ? {
-        title: 'Bill Lines',
-        columns: [
-          { key: 'line', label: 'Line' },
-          { key: 'description', label: 'Description' },
-          { key: 'account', label: 'Account' },
-          { key: 'qty', label: 'Qty' },
-          { key: 'unitPrice', label: 'Unit Price' },
-          { key: 'total', label: 'Total', align: 'right' },
-        ],
-        rows: lines.map((line) => ({
-          line: line.lineNumber,
-          description: line.description,
-          account: line.account,
-          qty: line.quantity,
-          unitPrice: formatCurrency(line.unitPrice),
-          total: formatCurrency(line.totalPrice),
-        })),
-      }
-    : null;
+  const billLinesTable =
+    lines.length > 0
+      ? {
+          title: 'Bill Lines',
+          columns: [
+            { key: 'line', label: 'Line' },
+            { key: 'description', label: 'Description' },
+            { key: 'account', label: 'Account' },
+            { key: 'qty', label: 'Qty' },
+            { key: 'unitPrice', label: 'Unit Price' },
+            { key: 'total', label: 'Total', align: 'right' },
+          ],
+          rows: lines.map((line) => ({
+            line: line.lineNumber,
+            description: line.description,
+            account: line.account,
+            qty: line.quantity,
+            unitPrice: formatCurrency(line.unitPrice),
+            total: formatCurrency(line.totalPrice),
+          })),
+        }
+      : null;
 
   return {
     title: 'Bill Detail',
@@ -129,7 +131,10 @@ function buildBillDetailFromApi(data) {
         items: [
           { label: 'Payment stage', value: paymentStage },
           { label: 'Approval route', value: data.approval_route || 'Standard' },
-          { label: 'Payment proposal', value: data.payment_proposal || 'Standard treasury proposal' },
+          {
+            label: 'Payment proposal',
+            value: data.payment_proposal || 'Standard treasury proposal',
+          },
           { label: 'Match status', value: data.match_status || 'Pending', fullWidth: true },
           { label: 'Goods receipt ref', value: data.goods_receipt_ref || 'N/A', fullWidth: true },
         ],
@@ -147,7 +152,10 @@ function buildBillDetailFromApi(data) {
           { metric: 'Paid amount', value: formatCurrency(amountPaid) },
           { metric: 'Balance due', value: formatCurrency(balanceDue) },
           { metric: 'Overdue days', value: overdueDays },
-          { metric: 'Supplier invoice ref', value: data.vendor_reference || data.supplier_invoice_ref || 'N/A' },
+          {
+            metric: 'Supplier invoice ref',
+            value: data.vendor_reference || data.supplier_invoice_ref || 'N/A',
+          },
         ],
       },
       ...(billLinesTable ? [billLinesTable] : []),
@@ -181,7 +189,9 @@ function buildBillDetailFromApi(data) {
       status: 'done',
       tone: 'success',
       time: pmt.created_at ? formatDetailDate(pmt.created_at) : 'Unknown',
-      description: pmt.payment_reference ? `Reference: ${pmt.payment_reference}` : 'Payment recorded',
+      description: pmt.payment_reference
+        ? `Reference: ${pmt.payment_reference}`
+        : 'Payment recorded',
     })),
     auditTrail: [
       { primary: 'Supplier', secondary: 'Payables counterparty', meta: vendorName },
@@ -297,7 +307,8 @@ function buildSupplierDetail(id) {
     controlChecks: [
       {
         label: 'Hold resolution',
-        description: 'Suppliers with holds should remain visible in controller review until released.',
+        description:
+          'Suppliers with holds should remain visible in controller review until released.',
         status: detail.supplier.holdFlags ? 'warning' : 'success',
         value: detail.supplier.holdFlags ? 'open holds' : 'clear',
       },
@@ -635,15 +646,21 @@ function buildBucketView(bucketId) {
 }
 
 export default function PayableDetail({ mode, id }) {
-  const { data: apiBill, isLoading, error } = useSWR(
-    mode === 'bill' ? `${endpoints.accounting.bill_by_id(id)}` : null,
-    fetcher
-  );
+  const {
+    data: apiBill,
+    isLoading,
+    error,
+  } = useSWR(mode === 'bill' ? `${endpoints.accounting.bill_by_id(id)}` : null, fetcher);
 
   const config = useMemo(() => {
     if (mode === 'bill') {
       if (isLoading) return { loading: true };
-      if (error || !apiBill) return { notFound: true, title: 'Bill Detail', backHref: paths.dashboard.accountingFinance.payables.unpaidBills };
+      if (error || !apiBill)
+        return {
+          notFound: true,
+          title: 'Bill Detail',
+          backHref: paths.dashboard.accountingFinance.payables.unpaidBills,
+        };
       return buildBillDetailFromApi(apiBill);
     }
 

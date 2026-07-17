@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { mutate } from 'swr';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useCallback } from 'react';
 import {
   Save,
   Send,
@@ -17,7 +17,10 @@ import {
   Calculator,
   CheckCircle,
   ShieldCheck,
+  Zap,
   Link as LinkIcon,
+  Info,
+  RotateCcw,
 } from 'lucide-react';
 
 import { paths } from 'src/routes/paths';
@@ -35,11 +38,13 @@ import {
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { Card, CardBody, CardHeader } from '../../components/ui/card';
+import { DatePicker } from '../../components/ui/date-picker';
 
 const EMPTY_ITEM = {
   description: '',
   quantity: 1,
   unit_price: '',
+  source: 'manual',
 };
 
 const formatBDT = (amount) => {
@@ -64,6 +69,36 @@ const asText = (value) => (value || value === 0 ? String(value) : '');
 
 const getWorkOrderLabel = (workOrder) =>
   `${workOrder.workOrderNumber || workOrder.wo_number || `WO-${workOrder.id}`} - ${workOrder.vendor?.name || 'Unknown vendor'}`;
+
+const DisabledFieldWrapper = ({ label, required, disabled, disabledReason, children }) => (
+  <div>
+    <label className="block text-sm font-medium text-foreground mb-2">
+      {label}
+      {required && <span className="text-error ml-1">*</span>}
+      {disabled && disabledReason && (
+        <span className="ml-2 inline-flex items-center gap-1 text-xs text-muted-foreground font-normal">
+          <Info className="w-3 h-3" />
+          {disabledReason}
+        </span>
+      )}
+    </label>
+    {children}
+  </div>
+);
+
+const inputClass = (disabled) =>
+  `w-full px-3 py-2 border border-input rounded-lg text-base transition-colors ${
+    disabled
+      ? 'bg-muted/50 text-muted-foreground cursor-not-allowed'
+      : 'focus:outline-none focus:ring-2 focus:ring-primary'
+  }`;
+
+const selectClass = (disabled) =>
+  `w-full px-3 py-2 border border-input rounded-lg text-base transition-colors ${
+    disabled
+      ? 'bg-muted/50 text-muted-foreground cursor-not-allowed'
+      : 'focus:outline-none focus:ring-2 focus:ring-primary'
+  }`;
 
 export function CreatePRF() {
   const router = useRouter();
@@ -90,6 +125,8 @@ export function CreatePRF() {
   const [items, setItems] = useState([EMPTY_ITEM]);
   const [attachment, setAttachment] = useState(null);
   const [workOrderSearch, setWorkOrderSearch] = useState('');
+  const [autoFilledFrom, setAutoFilledFrom] = useState(null);
+
   const { trigger: createPRF, isMutating: submitting } = useCreateMutation(
     endpoints.procurement_management.payment_requisitions
   );
@@ -128,6 +165,8 @@ export function CreatePRF() {
     () => workOrders.find((item) => String(item.id) === String(form.workOrder)),
     [form.workOrder, workOrders]
   );
+
+  const woIsSelected = !!selectedWorkOrder;
 
   useEffect(() => {
     if (!form.workOrder) {
@@ -186,83 +225,200 @@ export function CreatePRF() {
   const totalQuantity = items.reduce((sum, item) => sum + numericValue(item.quantity), 0);
   const approvalRoute = totalAmount >= 500000 ? 'Country Director' : 'Head of Finance';
 
-  const updateForm = (field, value) => {
+  const updateForm = useCallback((field, value) => {
     setForm((current) => ({ ...current, [field]: value }));
-  };
+  }, []);
 
-  const handleWorkOrderChange = (value) => {
-    const workOrder = workOrders.find((item) => String(item.id) === value);
-    const linkedGrn = grns.find((item) => String(item.work_order) === value);
+  const findSupplierId = useCallback(
+    (vendorId) => {
+      if (!vendorId) return '';
+      const match = suppliers.find((s) => String(s.id) === String(vendorId));
+      return match ? String(match.id) : '';
+    },
+    [suppliers]
+  );
 
-    setForm((current) => ({
-      ...current,
-      workOrder: value,
-      grnSelections: value ? (linkedGrn ? [String(linkedGrn.id)] : current.grnSelections) : [],
-      supplier: linkedGrn?.supplier
+  const findBudgetId = useCallback(
+    (budgetCode) => {
+      if (!budgetCode) return '';
+      const match = budgets.find(
+        (b) =>
+          String(b.code) === String(budgetCode) ||
+          String(b.id) === String(budgetCode) ||
+          String(b.name) === String(budgetCode)
+      );
+      return match ? String(match.id) : '';
+    },
+    [budgets]
+  );
+
+  const findProjectId = useCallback(
+    (projectRef) => {
+      if (!projectRef) return '';
+      const match = projects.find(
+        (p) =>
+          String(p.id) === String(projectRef) ||
+          String(p.name) === String(projectRef) ||
+          String(p.project_name) === String(projectRef)
+      );
+      return match ? String(match.id) : '';
+    },
+    [projects]
+  );
+
+  const handleWorkOrderChange = useCallback(
+    (value) => {
+      const workOrder = workOrders.find((item) => String(item.id) === value);
+      const linkedGrn = grns.find((item) => String(item.work_order) === value);
+
+      if (!value) {
+        setForm((current) => ({
+          ...current,
+          workOrder: '',
+          grnSelections: [],
+          supplier: '',
+          invoiceNumber: '',
+          invoiceDate: '',
+          invoiceAmount: '',
+          totalAmount: '',
+          budgetCode: '',
+          project: '',
+          purpose: '',
+        }));
+        setItems([EMPTY_ITEM]);
+        setAutoFilledFrom(null);
+        return;
+      }
+
+      const supplierId = linkedGrn?.supplier
         ? String(linkedGrn.supplier)
         : workOrder?.vendor?.id
-          ? String(workOrder.vendor.id)
-          : current.supplier,
-      invoiceNumber: current.invoiceNumber || linkedGrn?.invoice_number || '',
-      invoiceDate: current.invoiceDate || linkedGrn?.receipt_date || '',
-      invoiceAmount: current.invoiceAmount,
-      totalAmount: current.totalAmount,
-    }));
+          ? findSupplierId(workOrder.vendor.id)
+          : '';
 
-    if (linkedGrn?.grn_items?.length) {
-      setItems(
-        linkedGrn.grn_items.map((item) => ({
-          description: item.item_name || item.remarks || 'GRN line item',
-          quantity: item.accepted_quantity || item.received_quantity || 1,
-          unit_price: asText(item.unit_price),
-        }))
-      );
-    }
-  };
+      const budgetId = workOrder?.budgetCode ? findBudgetId(workOrder.budgetCode) : '';
+      const projectId = workOrder?.project ? findProjectId(workOrder.project) : '';
 
-  const handleGRNSelectionChange = (selectedValues) => {
-    const selectedGrnRecords = grns.filter((item) => selectedValues.includes(String(item.id)));
-    const primaryGRN = selectedGrnRecords[0];
+      const woTotal = workOrder?.totalAmount || workOrder?.total_amount || 0;
+      const woNumber = workOrder?.workOrderNumber || workOrder?.wo_number || '';
+      const invoiceNum = linkedGrn?.invoice_number || '';
+      const invoiceDt = linkedGrn?.receipt_date || '';
 
-    setForm((current) => ({
-      ...current,
-      grnSelections: selectedValues,
-      workOrder: primaryGRN?.work_order ? String(primaryGRN.work_order) : current.workOrder,
-      supplier: primaryGRN?.supplier ? String(primaryGRN.supplier) : current.supplier,
-      invoiceNumber: current.invoiceNumber || primaryGRN?.invoice_number || '',
-      invoiceDate: current.invoiceDate || primaryGRN?.receipt_date || '',
-      invoiceAmount: current.invoiceAmount,
-      totalAmount: current.totalAmount,
-    }));
+      setForm((current) => ({
+        ...current,
+        workOrder: value,
+        grnSelections: linkedGrn ? [String(linkedGrn.id)] : current.grnSelections,
+        supplier: supplierId || current.supplier,
+        invoiceNumber: invoiceNum || woNumber || current.invoiceNumber,
+        invoiceDate: invoiceDt || current.invoiceDate,
+        invoiceAmount: woTotal ? String(woTotal) : current.invoiceAmount,
+        totalAmount: woTotal ? String(woTotal) : current.totalAmount,
+        budgetCode: budgetId || current.budgetCode,
+        project: projectId || current.project,
+        purpose: workOrder?.title
+          ? `Payment for ${workOrder.title}${workOrder.category ? ` (${workOrder.category})` : ''}`
+          : current.purpose,
+      }));
 
-    const mergedItems = selectedGrnRecords.flatMap((grn) =>
-      Array.isArray(grn?.grn_items)
-        ? grn.grn_items.map((item) => ({
+      if (linkedGrn?.grn_items?.length) {
+        setItems(
+          linkedGrn.grn_items.map((item) => ({
             description: item.item_name || item.remarks || 'GRN line item',
             quantity: item.accepted_quantity || item.received_quantity || 1,
             unit_price: asText(item.unit_price),
+            source: 'wo',
           }))
-        : []
-    );
+        );
+      } else if (workOrder?.items?.length) {
+        setItems(
+          workOrder.items.map((item) => ({
+            description: item.description || item.name || item.item_name || '',
+            quantity: Number(item.quantity) || 1,
+            unit_price: asText(item.unitPrice ?? item.unit_price),
+            source: 'wo',
+          }))
+        );
+      }
 
-    if (mergedItems.length) {
-      setItems(mergedItems);
-    }
-  };
+      setAutoFilledFrom(linkedGrn ? 'grn' : workOrder ? 'work-order' : null);
+    },
+    [workOrders, grns, findSupplierId, findBudgetId, findProjectId]
+  );
 
-  const updateItem = (index, field, value) => {
+  const handleGRNSelectionChange = useCallback(
+    (selectedValues) => {
+      const selectedGrnRecords = grns.filter((item) => selectedValues.includes(String(item.id)));
+      const primaryGRN = selectedGrnRecords[0];
+
+      setForm((current) => ({
+        ...current,
+        grnSelections: selectedValues,
+        workOrder: primaryGRN?.work_order ? String(primaryGRN.work_order) : current.workOrder,
+        supplier: primaryGRN?.supplier ? String(primaryGRN.supplier) : current.supplier,
+        invoiceNumber: current.invoiceNumber || primaryGRN?.invoice_number || '',
+        invoiceDate: current.invoiceDate || primaryGRN?.receipt_date || '',
+        invoiceAmount: current.invoiceAmount,
+        totalAmount: current.totalAmount,
+      }));
+
+      const mergedItems = selectedGrnRecords.flatMap((grn) =>
+        Array.isArray(grn?.grn_items)
+          ? grn.grn_items.map((item) => ({
+              description: item.item_name || item.remarks || 'GRN line item',
+              quantity: item.accepted_quantity || item.received_quantity || 1,
+              unit_price: asText(item.unit_price),
+              source: 'wo',
+            }))
+          : []
+      );
+
+      if (mergedItems.length) {
+        setItems(mergedItems);
+      }
+    },
+    [grns]
+  );
+
+  const updateItem = useCallback((index, field, value) => {
     setItems((current) =>
       current.map((item, itemIndex) => (itemIndex === index ? { ...item, [field]: value } : item))
     );
-  };
+  }, []);
 
-  const addItem = () => setItems((current) => [...current, { ...EMPTY_ITEM }]);
+  const addItem = useCallback(() => setItems((current) => [...current, { ...EMPTY_ITEM }]), []);
 
-  const removeItem = (index) => {
+  const removeItem = useCallback((index) => {
     setItems((current) =>
       current.length === 1 ? current : current.filter((_, itemIndex) => itemIndex !== index)
     );
-  };
+  }, []);
+
+  const resetForm = useCallback(() => {
+    setForm({
+      workOrder: '',
+      grnSelections: [],
+      supplier: '',
+      invoiceNumber: '',
+      invoiceDate: '',
+      tentativePaymentScheduleDate: '',
+      invoiceAmount: '',
+      totalAmount: '',
+      taxAmount: '',
+      vatPercentage: '',
+      budgetCode: '',
+      accountCode: '',
+      project: '',
+      department: '',
+      priority: 'Medium',
+      paymentMethod: 'Bank Transfer',
+      purpose: '',
+      remarks: '',
+    });
+    setItems([EMPTY_ITEM]);
+    setAttachment(null);
+    setWorkOrderSearch('');
+    setAutoFilledFrom(null);
+  }, []);
 
   const handleSubmit = async () => {
     if (!form.supplier || !form.invoiceNumber || !totalAmount) {
@@ -340,22 +496,30 @@ export function CreatePRF() {
 
   return (
     <div className="p-4 sm:p-6 md:p-8 max-w-5xl mx-auto">
+      {/* Header */}
       <div className="mb-6 flex items-center gap-4">
         <Link href={paths.dashboard.procurement.paymentRequisitions.list}>
           <button type="button" className="p-2 hover:bg-muted rounded-lg transition-colors">
             <ArrowLeft className="w-5 h-5" />
           </button>
         </Link>
-        <div>
+        <div className="flex-1">
           <h1 className="text-xl sm:text-2xl font-semibold text-foreground">
             Create Payment Requisition Form
           </h1>
           <p className="text-muted-foreground text-sm">
-            Submit a live payment request against a work order, GRN, and vendor invoice.
+            Submit a payment request against a work order, GRN, and vendor invoice.
           </p>
         </div>
+        {woIsSelected && (
+          <Button type="button" variant="ghost" size="sm" onClick={resetForm}>
+            <RotateCcw className="w-4 h-4 mr-1.5" />
+            Reset
+          </Button>
+        )}
       </div>
 
+      {/* Approval Routing Preview */}
       <Card className="mb-6 bg-primary/5 border-primary/20">
         <CardBody>
           <p className="text-sm font-medium text-foreground mb-3">Approval Routing Preview</p>
@@ -388,6 +552,7 @@ export function CreatePRF() {
         </CardBody>
       </Card>
 
+      {/* Financial Summary */}
       <Card className="mb-6 border-primary bg-primary/5">
         <CardBody>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
@@ -411,6 +576,7 @@ export function CreatePRF() {
         </CardBody>
       </Card>
 
+      {/* Work Order & GRN Selection */}
       <Card className="mb-6">
         <CardHeader
           title="Linked Procurement Records"
@@ -451,7 +617,16 @@ export function CreatePRF() {
                             : 'hover:bg-muted/40 text-foreground'
                         }`}
                       >
-                        {getWorkOrderLabel(workOrder)}
+                        <span className="font-medium">
+                          {workOrder.workOrderNumber || workOrder.wo_number || `WO-${workOrder.id}`}
+                        </span>
+                        <span className="mx-1.5 text-muted-foreground">&mdash;</span>
+                        <span>{workOrder.vendor?.name || 'Unknown vendor'}</span>
+                        {workOrder.totalAmount ? (
+                          <span className="ml-2 text-xs opacity-70">
+                            ({formatBDT(workOrder.totalAmount)})
+                          </span>
+                        ) : null}
                       </button>
                     );
                   })
@@ -465,7 +640,9 @@ export function CreatePRF() {
               <div className="max-h-40 overflow-y-auto border border-input rounded-lg p-2 space-y-1">
                 {availableGrns.length === 0 ? (
                   <p className="text-xs text-muted-foreground px-2 py-1">
-                    No GRNs available for selected work order.
+                    {woIsSelected
+                      ? 'No GRNs available for selected work order.'
+                      : 'Select a work order first to see GRNs.'}
                   </p>
                 ) : (
                   availableGrns.map((grn) => {
@@ -502,9 +679,20 @@ export function CreatePRF() {
             </div>
           </div>
 
+          {/* Auto-linked Details Card */}
           {(selectedWorkOrder || selectedPrimaryGRN) && (
             <div className="p-4 bg-success/5 border border-success/20 rounded-lg">
-              <p className="text-sm font-medium text-foreground mb-3">Auto-linked details</p>
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-sm font-medium text-foreground flex items-center gap-2">
+                  <Zap className="w-4 h-4 text-success" />
+                  Auto-linked details
+                </p>
+                {autoFilledFrom && (
+                  <Badge variant="success" size="sm">
+                    {autoFilledFrom === 'grn' ? 'Filled from GRN' : 'Filled from Work Order'}
+                  </Badge>
+                )}
+              </div>
               <div className="flex gap-2 flex-wrap mb-3">
                 {selectedWorkOrder ? (
                   <Badge variant="outline">
@@ -519,7 +707,7 @@ export function CreatePRF() {
                   </Badge>
                 ))}
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
                 <div>
                   <span className="text-muted-foreground">Supplier:</span>{' '}
                   <span className="font-medium">
@@ -527,23 +715,54 @@ export function CreatePRF() {
                   </span>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Invoice reference:</span>{' '}
+                  <span className="text-muted-foreground">Category:</span>{' '}
+                  <span className="font-medium">{selectedWorkOrder?.category || 'N/A'}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Invoice ref:</span>{' '}
                   <span className="font-medium">
-                    {selectedPrimaryGRN?.invoice_number || 'Not provided'}
+                    {selectedPrimaryGRN?.invoice_number ||
+                      selectedWorkOrder?.csNumber ||
+                      'Not provided'}
                   </span>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Received value:</span>{' '}
+                  <span className="text-muted-foreground">Order value:</span>{' '}
                   <span className="font-medium text-primary">
                     {formatBDT(selectedGrnReceivedTotal || selectedWorkOrder?.totalAmount)}
                   </span>
                 </div>
+                {selectedWorkOrder?.paymentTerms && (
+                  <div>
+                    <span className="text-muted-foreground">Payment terms:</span>{' '}
+                    <span className="font-medium">{selectedWorkOrder.paymentTerms}</span>
+                  </div>
+                )}
+                {selectedWorkOrder?.budgetCode && (
+                  <div>
+                    <span className="text-muted-foreground">Budget:</span>{' '}
+                    <span className="font-medium">{selectedWorkOrder.budgetCode}</span>
+                  </div>
+                )}
+                {selectedWorkOrder?.deliveryDeadline && (
+                  <div>
+                    <span className="text-muted-foreground">Delivery deadline:</span>{' '}
+                    <span className="font-medium">{selectedWorkOrder.deliveryDeadline}</span>
+                  </div>
+                )}
+                {selectedWorkOrder?.warrantyPeriod && (
+                  <div>
+                    <span className="text-muted-foreground">Warranty:</span>{' '}
+                    <span className="font-medium">{selectedWorkOrder.warrantyPeriod}</span>
+                  </div>
+                )}
               </div>
             </div>
           )}
         </CardBody>
       </Card>
 
+      {/* Invoice & Allocation */}
       <Card className="mb-6">
         <CardHeader
           title="Invoice & Allocation"
@@ -551,12 +770,18 @@ export function CreatePRF() {
         />
         <CardBody>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-2">Supplier *</label>
+            {/* Supplier */}
+            <DisabledFieldWrapper
+              label="Supplier"
+              required
+              disabled={woIsSelected}
+              disabledReason={woIsSelected ? 'Auto-filled from work order' : undefined}
+            >
               <select
                 value={form.supplier}
                 onChange={(event) => updateForm('supplier', event.target.value)}
-                className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-base"
+                disabled={woIsSelected}
+                className={selectClass(woIsSelected)}
               >
                 <option value="">Select supplier</option>
                 {suppliers.map((supplier) => (
@@ -565,82 +790,106 @@ export function CreatePRF() {
                   </option>
                 ))}
               </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-2">
-                Invoice Number *
-              </label>
+            </DisabledFieldWrapper>
+
+            {/* Invoice Number */}
+            <DisabledFieldWrapper
+              label="Invoice Number"
+              required
+              disabled={woIsSelected && !!form.invoiceNumber}
+              disabledReason={
+                woIsSelected && form.invoiceNumber ? 'Auto-filled from Work Order / GRN' : undefined
+              }
+            >
               <input
                 type="text"
                 value={form.invoiceNumber}
                 onChange={(event) => updateForm('invoiceNumber', event.target.value)}
-                className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-base"
+                disabled={woIsSelected && !!form.invoiceNumber}
+                className={inputClass(woIsSelected && !!form.invoiceNumber)}
                 placeholder="Enter invoice number"
               />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-2">Invoice Date</label>
-              <input
-                type="date"
+            </DisabledFieldWrapper>
+
+            {/* Invoice Date */}
+            <DisabledFieldWrapper
+              label="Invoice Date"
+              disabled={woIsSelected && !!form.invoiceDate}
+              disabledReason={woIsSelected && form.invoiceDate ? 'Auto-filled from GRN' : undefined}
+            >
+              <DatePicker
                 value={form.invoiceDate}
-                onChange={(event) => updateForm('invoiceDate', event.target.value)}
-                className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-base"
+                onChange={(date) => updateForm('invoiceDate', date)}
+                placeholder="Select invoice date"
+                disabled={woIsSelected && !!form.invoiceDate}
               />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-2">
-                Tentative Payment Schedule Date
-              </label>
-              <input
-                type="date"
+            </DisabledFieldWrapper>
+
+            {/* Tentative Payment Schedule Date */}
+            <DisabledFieldWrapper label="Tentative Payment Schedule Date">
+              <DatePicker
                 value={form.tentativePaymentScheduleDate}
-                onChange={(event) => updateForm('tentativePaymentScheduleDate', event.target.value)}
-                className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-base"
+                onChange={(date) => updateForm('tentativePaymentScheduleDate', date)}
+                placeholder="Select payment date"
               />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-2">
-                Invoice Amount
-              </label>
+            </DisabledFieldWrapper>
+
+            {/* Invoice Amount */}
+            <DisabledFieldWrapper
+              label="Invoice Amount"
+              disabled={woIsSelected && !!form.invoiceAmount}
+              disabledReason={
+                woIsSelected && form.invoiceAmount ? 'Auto-filled from work order' : undefined
+              }
+            >
               <input
                 type="number"
                 min="0"
                 step="0.01"
                 value={form.invoiceAmount}
                 onChange={(event) => updateForm('invoiceAmount', event.target.value)}
-                className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-base"
+                disabled={woIsSelected && !!form.invoiceAmount}
+                className={inputClass(woIsSelected && !!form.invoiceAmount)}
               />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-2">
-                Total Amount *
-              </label>
+            </DisabledFieldWrapper>
+
+            {/* Total Amount */}
+            <DisabledFieldWrapper label="Total Amount" required>
               <input
                 type="number"
                 min="0"
                 step="0.01"
                 value={form.totalAmount}
                 onChange={(event) => updateForm('totalAmount', event.target.value)}
-                className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-base"
+                className={inputClass(false)}
               />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-2">Tax Amount</label>
+            </DisabledFieldWrapper>
+
+            {/* Tax Amount */}
+            <DisabledFieldWrapper label="Tax Amount">
               <input
                 type="number"
                 min="0"
                 step="0.01"
                 value={form.taxAmount}
                 onChange={(event) => updateForm('taxAmount', event.target.value)}
-                className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-base"
+                className={inputClass(false)}
               />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-2">Budget Code</label>
+            </DisabledFieldWrapper>
+
+            {/* Budget Code */}
+            <DisabledFieldWrapper
+              label="Budget Code"
+              disabled={woIsSelected && !!form.budgetCode}
+              disabledReason={
+                woIsSelected && form.budgetCode ? 'Auto-filled from work order' : undefined
+              }
+            >
               <select
                 value={form.budgetCode}
                 onChange={(event) => updateForm('budgetCode', event.target.value)}
-                className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-base"
+                disabled={woIsSelected && !!form.budgetCode}
+                className={selectClass(woIsSelected && !!form.budgetCode)}
               >
                 <option value="">Select budget</option>
                 {budgets.map((budget) => (
@@ -649,13 +898,14 @@ export function CreatePRF() {
                   </option>
                 ))}
               </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-2">Account Code</label>
+            </DisabledFieldWrapper>
+
+            {/* Account Code */}
+            <DisabledFieldWrapper label="Account Code">
               <select
                 value={form.accountCode}
                 onChange={(event) => updateForm('accountCode', event.target.value)}
-                className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-base"
+                className={selectClass(false)}
               >
                 <option value="">Select account</option>
                 {accounts.map((account) => (
@@ -664,13 +914,21 @@ export function CreatePRF() {
                   </option>
                 ))}
               </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-2">Project</label>
+            </DisabledFieldWrapper>
+
+            {/* Project */}
+            <DisabledFieldWrapper
+              label="Project"
+              disabled={woIsSelected && !!form.project}
+              disabledReason={
+                woIsSelected && form.project ? 'Auto-filled from work order' : undefined
+              }
+            >
               <select
                 value={form.project}
                 onChange={(event) => updateForm('project', event.target.value)}
-                className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-base"
+                disabled={woIsSelected && !!form.project}
+                className={selectClass(woIsSelected && !!form.project)}
               >
                 <option value="">Select project</option>
                 {projects.map((project) => (
@@ -679,13 +937,14 @@ export function CreatePRF() {
                   </option>
                 ))}
               </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-2">Department</label>
+            </DisabledFieldWrapper>
+
+            {/* Department */}
+            <DisabledFieldWrapper label="Department">
               <select
                 value={form.department}
                 onChange={(event) => updateForm('department', event.target.value)}
-                className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-base"
+                className={selectClass(false)}
               >
                 <option value="">Select department</option>
                 {departments.map((department) => (
@@ -694,56 +953,70 @@ export function CreatePRF() {
                   </option>
                 ))}
               </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-2">Priority</label>
+            </DisabledFieldWrapper>
+
+            {/* Priority */}
+            <DisabledFieldWrapper label="Priority">
               <select
                 value={form.priority}
                 onChange={(event) => updateForm('priority', event.target.value)}
-                className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-base"
+                className={selectClass(false)}
               >
                 <option value="Low">Low</option>
                 <option value="Medium">Medium</option>
                 <option value="High">High</option>
                 <option value="Urgent">Urgent</option>
               </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-2">
-                Payment Method
-              </label>
+            </DisabledFieldWrapper>
+
+            {/* Payment Method */}
+            <DisabledFieldWrapper label="Payment Method">
               <select
                 value={form.paymentMethod}
                 onChange={(event) => updateForm('paymentMethod', event.target.value)}
-                className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-base"
+                className={selectClass(false)}
               >
                 <option value="Bank Transfer">Bank Transfer</option>
                 <option value="Cheque">Cheque</option>
                 <option value="Cash">Cash</option>
               </select>
-            </div>
+            </DisabledFieldWrapper>
           </div>
 
+          {/* Purpose */}
           <div className="mb-4">
-            <label className="block text-sm font-medium text-foreground mb-2">Purpose</label>
-            <textarea
-              rows={3}
-              value={form.purpose}
-              onChange={(event) => updateForm('purpose', event.target.value)}
-              className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-base"
-              placeholder="Why is this payment being requested?"
-            />
+            <DisabledFieldWrapper
+              label="Purpose"
+              disabled={woIsSelected && !!form.purpose}
+              disabledReason={
+                woIsSelected && form.purpose ? 'Auto-filled from work order' : undefined
+              }
+            >
+              <textarea
+                rows={3}
+                value={form.purpose}
+                onChange={(event) => updateForm('purpose', event.target.value)}
+                disabled={woIsSelected && !!form.purpose}
+                className={`${inputClass(woIsSelected && !!form.purpose)} resize-none`}
+                placeholder="Why is this payment being requested?"
+              />
+            </DisabledFieldWrapper>
           </div>
+
+          {/* Remarks */}
           <div className="mb-4">
-            <label className="block text-sm font-medium text-foreground mb-2">Remarks</label>
-            <textarea
-              rows={3}
-              value={form.remarks}
-              onChange={(event) => updateForm('remarks', event.target.value)}
-              className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-base"
-              placeholder="Additional notes for reviewers"
-            />
+            <DisabledFieldWrapper label="Remarks">
+              <textarea
+                rows={3}
+                value={form.remarks}
+                onChange={(event) => updateForm('remarks', event.target.value)}
+                className={`${inputClass(false)} resize-none`}
+                placeholder="Additional notes for reviewers"
+              />
+            </DisabledFieldWrapper>
           </div>
+
+          {/* Attachment */}
           <div>
             <label className="block text-sm font-medium text-foreground mb-2">
               Supporting Attachment
@@ -765,10 +1038,15 @@ export function CreatePRF() {
         </CardBody>
       </Card>
 
+      {/* PRF Items */}
       <Card className="mb-6">
         <CardHeader
           title="PRF Items"
-          description="Break down the invoice into one or more payment lines"
+          description={
+            autoFilledFrom
+              ? `${items.length} items auto-populated — edit quantities and prices as needed`
+              : 'Break down the invoice into one or more payment lines'
+          }
           action={
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Calculator className="w-4 h-4" />
@@ -791,6 +1069,7 @@ export function CreatePRF() {
                     </label>
                     <input
                       type="text"
+                      readOnly
                       value={item.description}
                       onChange={(event) => updateItem(index, 'description', event.target.value)}
                       className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-base"
@@ -803,6 +1082,7 @@ export function CreatePRF() {
                       type="number"
                       min="0"
                       step="1"
+                      readOnly
                       value={item.quantity}
                       onChange={(event) => updateItem(index, 'quantity', event.target.value)}
                       className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-base"
@@ -814,6 +1094,7 @@ export function CreatePRF() {
                     </label>
                     <input
                       type="number"
+                      readOnly
                       min="0"
                       step="0.01"
                       value={item.unit_price}
@@ -831,6 +1112,9 @@ export function CreatePRF() {
                     type="button"
                     variant="outline"
                     size="sm"
+                    disabled={item.source === 'wo'}
+                    title={item.source === 'wo' ? 'Work order items cannot be removed' : 'Remove item'}
+                    className={item.source === 'wo' ? 'opacity-50 cursor-not-allowed' : ''}
                     onClick={() => removeItem(index)}
                   >
                     <Trash2 className="w-4 h-4" />
@@ -892,6 +1176,7 @@ export function CreatePRF() {
         </CardBody>
       </Card>
 
+      {/* Submit */}
       <div className="flex justify-end gap-3">
         <Link href={paths.dashboard.procurement.paymentRequisitions.list}>
           <Button variant="outline">Cancel</Button>

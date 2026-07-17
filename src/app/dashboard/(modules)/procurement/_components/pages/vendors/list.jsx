@@ -108,7 +108,11 @@ export function VendorList() {
         );
       case 'approved':
         return (
-          <Badge variant="success" size="sm" className="bg-green-100 text-green-700 border-green-200">
+          <Badge
+            variant="success"
+            size="sm"
+            className="bg-green-100 text-green-700 border-green-200"
+          >
             <CheckCircle className="w-3 h-3 mr-1" />
             Approved
           </Badge>
@@ -393,7 +397,11 @@ export function VendorList() {
                           Expiring
                         </Badge>
                       ) : vendor.allDocsVerified ? (
-                        <Badge variant="success" size="sm" className="bg-green-100 text-green-700 border-green-200">
+                        <Badge
+                          variant="success"
+                          size="sm"
+                          className="bg-green-100 text-green-700 border-green-200"
+                        >
                           <CheckCircle className="w-3 h-3 mr-1" />
                           Verified
                         </Badge>

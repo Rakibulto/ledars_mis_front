@@ -235,7 +235,9 @@ export function WorkflowApproval() {
     [authUser]
   );
 
-  const filtered = (activeStep === 'all' ? pendingMRFs : pendingMRFs.filter((m) => m.step === activeStep))
+  const filtered = (
+    activeStep === 'all' ? pendingMRFs : pendingMRFs.filter((m) => m.step === activeStep)
+  )
     .slice()
     .sort((a, b) => a.step - b.step);
 
@@ -349,7 +351,9 @@ export function WorkflowApproval() {
             variant={activeStep === s.step ? 'primary' : 'outline'}
             onClick={() => setActiveStep(s.step)}
           >
-            <span className="inline-flex items-center justify-center w-4 h-4 mr-2 text-xs font-bold">{s.step}</span>
+            <span className="inline-flex items-center justify-center w-4 h-4 mr-2 text-xs font-bold">
+              {s.step}
+            </span>
             {s.title} ({pendingMRFs.filter((m) => m.step === s.step).length})
           </Button>
         ))}

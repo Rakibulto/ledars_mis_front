@@ -55,6 +55,7 @@ export default function ChartOfAccountsPage() {
   const [formData, setFormData] = useState(INITIAL_FORM);
   const [editingItem, setEditingItem] = useState(null);
   const [deleteId, setDeleteId] = useState(null);
+  const [seeding, setSeeding] = useState(false);
 
   const handleFormChange = useCallback((e) => {
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -108,6 +109,21 @@ export default function ChartOfAccountsPage() {
       toast.error(err.message || 'Failed to delete');
     }
   }, [deleteId, confirm]);
+
+  const handleSeed = useCallback(async () => {
+    setSeeding(true);
+    try {
+      const res = await axiosInstance.post(EP.account_seed);
+      toast.success(res.data?.detail || 'Chart of accounts seeded successfully');
+      mutate(EP.accounts);
+      mutate(EP.account_types);
+      mutate(EP.account_groups);
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || err.message || 'Failed to seed');
+    } finally {
+      setSeeding(false);
+    }
+  }, []);
 
   const renderForm = () => (
     <Stack spacing={2} sx={{ mt: 1 }}>
@@ -167,13 +183,24 @@ export default function ChartOfAccountsPage() {
             Manage the chart of accounts
           </Typography>
         </Box>
-        <Button
-          variant="contained"
-          startIcon={<Iconify icon="mingcute:add-line" />}
-          onClick={createDialog.onTrue}
-        >
-          Add Account
-        </Button>
+        <Stack direction="row" spacing={1}>
+          <Button
+            variant="contained"
+            startIcon={<Iconify icon="mingcute:add-line" />}
+            onClick={createDialog.onTrue}
+          >
+            Add Account
+          </Button>
+          <Button
+            variant="outlined"
+            color="secondary"
+            startIcon={seeding ? null : <Iconify icon="solar:magic-stick-bold-duotone" />}
+            onClick={handleSeed}
+            disabled={seeding}
+          >
+            {seeding ? 'Seeding...' : 'Seed'}
+          </Button>
+        </Stack>
       </Stack>
 
       <Grid container spacing={3} sx={{ mb: 3 }}>

@@ -19,12 +19,12 @@ import TableRow from '@mui/material/TableRow';
 import TableBody from '@mui/material/TableBody';
 import TableCell from '@mui/material/TableCell';
 import TableHead from '@mui/material/TableHead';
+import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import DialogTitle from '@mui/material/DialogTitle';
 import CardContent from '@mui/material/CardContent';
 import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
-import TextField from '@mui/material/TextField';
 import TableContainer from '@mui/material/TableContainer';
 
 import { paths } from 'src/routes/paths';
@@ -159,10 +159,7 @@ export default function BillDetail({ id }) {
     let cancelled = false;
 
     async function loadSupplier() {
-      if (!bill?.supplier_id) {
-        if (!cancelled) setSupplier({ name: 'Unknown vendor' });
-        return;
-      }
+      if (!bill?.supplier_id) return;
       try {
         const { data } = await axiosInstance.get(
           `${endpoints.procurement_management.vendors_management}${bill.supplier_id}/`
@@ -181,7 +178,7 @@ export default function BillDetail({ id }) {
     return () => {
       cancelled = true;
     };
-  }, [bill]);
+  }, [bill?.supplier_id]);
 
   if (!bill) {
     return <Alert severity="error">Vendor bill not found.</Alert>;
@@ -212,7 +209,12 @@ export default function BillDetail({ id }) {
       toast.success(`Bill status changed to ${BILL_STATUS_LABELS[nextStatus] || nextStatus}`);
     } catch (error) {
       toast.dismiss(loadingToastId);
-      toast.error(error?.response?.data?.detail || error?.response?.data?.error || error?.message || 'Failed to update status');
+      toast.error(
+        error?.response?.data?.detail ||
+          error?.response?.data?.error ||
+          error?.message ||
+          'Failed to update status'
+      );
     } finally {
       setPendingAction(null);
       if (confirmationType) {
@@ -660,7 +662,12 @@ export default function BillDetail({ id }) {
               Resolve Dispute
             </Button>
           )}
-          <Dialog open={payDialogOpen} onClose={() => setPayDialogOpen(false)} maxWidth="xs" fullWidth>
+          <Dialog
+            open={payDialogOpen}
+            onClose={() => setPayDialogOpen(false)}
+            maxWidth="xs"
+            fullWidth
+          >
             <DialogTitle>Register Payment</DialogTitle>
             <DialogContent>
               <TextField
@@ -945,7 +952,7 @@ export default function BillDetail({ id }) {
                     </TableHead>
                     <TableBody>
                       {bill.lines.map((line, index) => (
-                        <TableRow key={`${line.description}-${index}`}>
+                        <TableRow key={line.id || `${line.description}-${index}`}>
                           <TableCell>{line.description}</TableCell>
                           <TableCell align="right">{line.quantity}</TableCell>
                           <TableCell align="right">{formatCurrency(line.unit_price)}</TableCell>
@@ -1017,7 +1024,12 @@ export default function BillDetail({ id }) {
                 <Typography variant="h6" fontWeight={700} sx={{ mb: 2 }}>
                   Payables Chatter
                 </Typography>
-                <Stack spacing={1.25}>
+                {bill.chatter.length === 0 ? (
+                  <Typography variant="body2" color="text.secondary">
+                    No notes or payment history yet.
+                  </Typography>
+                ) : (
+                  <Stack spacing={1.25}>
                   {bill.chatter.map((item) => (
                     <Box
                       key={item.id}
@@ -1037,6 +1049,7 @@ export default function BillDetail({ id }) {
                     </Box>
                   ))}
                 </Stack>
+                )}
               </CardContent>
             </Card>
           </Stack>
@@ -1090,23 +1103,60 @@ export default function BillDetail({ id }) {
             <Card sx={{ borderRadius: 3 }}>
               <CardContent>
                 <Typography variant="h6" fontWeight={700} sx={{ mb: 2 }}>
-                  Attachments
+                  Journal Entry Lines
                 </Typography>
-                <Stack spacing={1.25}>
-                  {bill.attachments.map((attachment) => (
-                    <Stack key={attachment.id} direction="row" justifyContent="space-between">
-                      <Box>
+                {bill.attachments.length === 0 ? (
+                  <Typography variant="body2" color="text.secondary">
+                    No journal entries yet. Post the bill to see journal lines here.
+                  </Typography>
+                ) : (
+                  <Stack spacing={1.25}>
+                    {bill.attachments.map((item) => (
+                      <Box
+                        key={item.id}
+                        sx={{
+                          p: 1.5,
+                          borderRadius: 2,
+                          bgcolor: 'background.neutral',
+                          border: '1px solid',
+                          borderColor: item.debit > 0 ? 'success.light' : 'info.light',
+                        }}
+                      >
+                        <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 0.5 }}>
+                          <Chip
+                            label={item.type}
+                            size="small"
+                            color={item.debit > 0 ? 'success' : 'info'}
+                            sx={{ height: 20, fontSize: 11 }}
+                          />
+                          <Typography variant="caption" color="text.secondary">
+                            {item.account_code}
+                          </Typography>
+                        </Stack>
                         <Typography variant="body2" fontWeight={600}>
-                          {attachment.name}
+                          {item.account_name || item.name}
                         </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {attachment.type}
-                        </Typography>
+                        {item.name && item.account_name !== item.name && (
+                          <Typography variant="caption" color="text.secondary">
+                            {item.name}
+                          </Typography>
+                        )}
+                        <Stack direction="row" spacing={2} sx={{ mt: 0.75 }}>
+                          {item.debit > 0 && (
+                            <Typography variant="caption" fontWeight={600} color="success.main">
+                              DR {formatCurrency(item.debit)}
+                            </Typography>
+                          )}
+                          {item.credit > 0 && (
+                            <Typography variant="caption" fontWeight={600} color="info.main">
+                              CR {formatCurrency(item.credit)}
+                            </Typography>
+                          )}
+                        </Stack>
                       </Box>
-                      <Iconify icon="solar:paperclip-bold" width={18} />
-                    </Stack>
-                  ))}
-                </Stack>
+                    ))}
+                  </Stack>
+                )}
               </CardContent>
             </Card>
           </Stack>

@@ -39,22 +39,22 @@ import { useDebounce } from 'src/hooks/use-debounce';
 
 import { endpoints } from 'src/utils/axios';
 
-import { useAuthContext } from 'src/auth/hooks';
-
 import { useGetRequest, useDeleteRequest as deleteRequest } from 'src/actions/ledars-hook';
 
 import { Iconify } from 'src/components/iconify';
 import { ConfirmDialog } from 'src/components/custom-dialog';
 import TableRowSkeleton from 'src/components/table/tableRowSkeleton';
 
-import SummaryCard from '../../_components/summary-card';
+import { useAuthContext } from 'src/auth/hooks';
+
 import AddStockDialog from './add-stock-dialog';
 import ApproveStockDialog from './approve-stock-dialog';
-import AdjustmentApprovalDialog from './adjustment-approval-dialog';
+import SummaryCard from '../../_components/summary-card';
 import AdjustmentApprovalInfo from './adjustment-approval-info';
+import AdjustmentApprovalDialog from './adjustment-approval-dialog';
 import {
-  STOCK_ADJUSTMENT_APPROVAL_WORKFLOW_URL,
   computeAdjustmentWorkflowInfo,
+  STOCK_ADJUSTMENT_APPROVAL_WORKFLOW_URL,
 } from './adjustment-approval-workflow';
 
 const EP = endpoints.storeInventory;
@@ -1015,10 +1015,11 @@ export default function StockAdjustmentMain() {
                           : null;
                         const canApproveProduct =
                           pendingAdjs.length > 0 &&
-                          pendingAdjs.some((adj) =>
-                            computeAdjustmentWorkflowInfo(adj, rawWorkflow, user?.email, {
-                              forceUnordered: true,
-                            }).canApprove
+                          pendingAdjs.some(
+                            (adj) =>
+                              computeAdjustmentWorkflowInfo(adj, rawWorkflow, user?.email, {
+                                forceUnordered: true,
+                              }).canApprove
                           );
                         return (
                           <TableRow key={product.id} hover>

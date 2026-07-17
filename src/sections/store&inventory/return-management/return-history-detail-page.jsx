@@ -2,7 +2,7 @@
 
 import { useRouter, useParams } from 'next/navigation';
 
-import { useTheme, alpha } from '@mui/material/styles';
+import { alpha, useTheme } from '@mui/material/styles';
 import {
   Box,
   Card,
@@ -12,19 +12,22 @@ import {
   Table,
   Button,
   Divider,
+  TableRow,
   TableBody,
   TableCell,
-  TableContainer,
   TableHead,
-  TableRow,
   Typography,
   CardContent,
+  TableContainer,
   CircularProgress,
 } from '@mui/material';
 
 import { paths } from 'src/routes/paths';
+
 import { endpoints } from 'src/utils/axios';
+
 import { useGetRequest } from 'src/actions/ledars-hook';
+
 import { Iconify } from 'src/components/iconify';
 
 const EP = endpoints.storeInventory;

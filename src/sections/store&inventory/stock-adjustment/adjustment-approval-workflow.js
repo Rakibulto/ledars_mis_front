@@ -16,8 +16,7 @@ export function getAdjustmentTotalValue(adjustment) {
   const lines = Array.isArray(adjustment?.lines) ? adjustment.lines : [];
   if (lines.length > 0) {
     const computed = lines.reduce(
-      (sum, line) =>
-        sum + Math.abs(Number(line.difference || 0)) * Number(line.unit_price || 0),
+      (sum, line) => sum + Math.abs(Number(line.difference || 0)) * Number(line.unit_price || 0),
       0
     );
     if (computed > 0) return computed;
@@ -124,19 +123,13 @@ export function computeAdjustmentWorkflowInfo(
   const approvedEmails = new Set(
     approvalLog.map((entry) => (entry.email ?? '').toLowerCase()).filter(Boolean)
   );
-  const approvedNames = approvalLog
-    .map((entry) => entry.name || entry.email || '')
-    .filter(Boolean);
+  const approvedNames = approvalLog.map((entry) => entry.name || entry.email || '').filter(Boolean);
 
   const approvalLevel = Number(adjustment?.approval_level ?? 0);
   const minRequired = Number(matchedLevel.minimum_approval_required ?? 1);
-  const orderedApproval = forceUnordered
-    ? false
-    : matchedLevel.level_maintain_require === 'yes';
+  const orderedApproval = forceUnordered ? false : matchedLevel.level_maintain_require === 'yes';
   const workflowComplete = approvalLevel >= minRequired || isApproved;
-  const remainingApprovalCount = workflowComplete
-    ? 0
-    : Math.max(0, minRequired - approvalLevel);
+  const remainingApprovalCount = workflowComplete ? 0 : Math.max(0, minRequired - approvalLevel);
 
   const pendingLevelUsers = workflowComplete
     ? []

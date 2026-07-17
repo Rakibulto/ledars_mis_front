@@ -1,45 +1,43 @@
 'use client';
 
-import { useRouter, useParams } from 'next/navigation';
-import { useState } from 'react';
-import { toast } from 'sonner';
 import { mutate } from 'swr';
-
+import { toast } from 'sonner';
+import { useState } from 'react';
 import { pdf } from '@react-pdf/renderer';
+import { useRouter, useParams } from 'next/navigation';
 
 import {
-  Alert,
   Box,
-  Button,
   Card,
-  CardContent,
-  CardHeader,
   Chip,
-  Divider,
   Grid,
-  IconButton,
+  Alert,
   Stack,
   Table,
+  Button,
+  TableRow,
   TableBody,
   TableCell,
-  TableContainer,
   TableHead,
-  TableRow,
+  CardHeader,
+  IconButton,
   Typography,
-  Paper,
-  Tooltip,
+  CardContent,
+  TableContainer,
 } from '@mui/material';
 
 import { paths } from 'src/routes/paths';
-import { endpoints } from 'src/utils/axios';
-import axiosInstance from 'src/utils/axios';
+
+import axiosInstance, { endpoints } from 'src/utils/axios';
+
 import { useGetRequest, extractErrorMessage } from 'src/actions/ledars-hook';
+
 import { Iconify } from 'src/components/iconify';
 import { ConfirmDialog } from 'src/components/custom-dialog';
 
 import ReturnReceiveDialog from './return-receive-dialog';
-import ReturnReleaseNotePDF from './return-release-note-pdf';
 import ReturnDispatchDialog from './return-dispatch-dialog';
+import ReturnReleaseNotePDF from './return-release-note-pdf';
 
 const EP = endpoints.storeInventory;
 
@@ -112,7 +110,7 @@ export default function ReturnDetailsPage() {
       if (!endpoint) return;
       await axiosInstance.post(endpoint);
       toast.success(
-        `Return ${actionKey === 'submit' ? 'submitted' : actionKey === 'dispatch' ? 'dispatched' : actionKey + 'ed'} successfully.`
+        `Return ${actionKey === 'submit' ? 'submitted' : actionKey === 'dispatch' ? 'dispatched' : `${actionKey}ed`} successfully.`
       );
       invalidate();
     } catch (err) {

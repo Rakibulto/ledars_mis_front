@@ -126,10 +126,7 @@ export default function CollectionFollowUp() {
     </table>
   );
 
-  const stageOptions = useMemo(
-    () => ['all', ...RECEIVABLE_COLLECTION_STAGE_ORDER],
-    []
-  );
+  const stageOptions = useMemo(() => ['all', ...RECEIVABLE_COLLECTION_STAGE_ORDER], []);
 
   const getAdvanceLabel = (nextStage) => {
     switch (nextStage) {

@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { mutate } from 'swr';
 import { toast } from 'sonner';
@@ -47,12 +47,11 @@ import TableRowSkeleton from 'src/components/table/tableRowSkeleton';
 
 import QualityControlPointFormDialog from './quality-control-point-form-dialog';
 import {
-  normalizeCollection,
-  getFrequencyChipProps,
-  getPriorityChipProps,
-  getStatusChipProps,
-  formatDateTime,
   truncateText,
+  getStatusChipProps,
+  normalizeCollection,
+  getPriorityChipProps,
+  getFrequencyChipProps,
 } from './quality-control-point-shared';
 
 const EP = endpoints.storeInventory;

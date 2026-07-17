@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 
 import LocationStockMain from 'src/sections/store&inventory/location-stock/location-stock-main';
 

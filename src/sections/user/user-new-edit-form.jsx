@@ -51,6 +51,7 @@ import {
 } from 'src/_mock/options';
 import {
   useGetShifts,
+  useGetGrades,
   useGetBranches,
   useGetDepartments,
   useGetLeaveGroups,
@@ -437,6 +438,7 @@ export function UserNewEditForm({ currentEmployee }) {
   const { branches, branchesLoading } = useGetBranches();
   const { shifts, shiftsLoading } = useGetShifts();
   const { leaveGroups, leaveGroupsLoading } = useGetLeaveGroups();
+  const { grades, gradesLoading } = useGetGrades();
   const { users } = useGetFilteredUsers({});
 
   const selectedUserId = currentEmployee?.user?.id;
@@ -482,6 +484,7 @@ export function UserNewEditForm({ currentEmployee }) {
       employment_type: currentEmployee?.employment_type?.id || '',
       salary: currentEmployee?.salary ?? '',
       rfid_or_machine_code: currentEmployee?.rfid_or_machine_code || '',
+      grade_id: currentEmployee?.grade?.id || null,
       status: currentEmployee?.status || 'active',
 
       // Termination details
@@ -510,6 +513,9 @@ export function UserNewEditForm({ currentEmployee }) {
 
       // Profile picture
       profile_picture: currentEmployee?.profile_picture || null,
+
+      // Signature
+      signature: currentEmployee?.signature || null,
 
       // Bank details
       bank_name: currentEmployee?.bank_name || '',
@@ -746,6 +752,58 @@ export function UserNewEditForm({ currentEmployee }) {
                     <br /> max size of {fData(3145728)}
                   </Typography>
                 }
+              />
+            </Box>
+
+            {/* Signature Upload */}
+            <Box sx={{ px: 3, pb: 3 }}>
+              <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
+                Signature
+              </Typography>
+              <Field.Upload
+                name="signature"
+                accept="image/*"
+                helperText={
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      mt: 1,
+                      display: 'block',
+                      color: 'text.disabled',
+                    }}
+                  >
+                    Allowed *.jpeg, *.jpg, *.png, *.gif
+                    <br /> max size of {fData(3145728)}
+                  </Typography>
+                }
+              />
+            </Box>
+
+            {/* Grade */}
+            <Box sx={{ px: 3, pb: 3 }}>
+              <Field.Autocomplete
+                name="grade_id"
+                label="Grade"
+                placeholder="Search grade"
+                disabled={!isAdmin}
+                options={grades || []}
+                getOptionLabel={(option) => {
+                  if (typeof option === 'number') {
+                    const grade = grades?.find((g) => g.id === option);
+                    return grade ? grade.name : '';
+                  }
+                  return option?.name || '';
+                }}
+                isOptionEqualToValue={(option, value) =>
+                  option.id === value || option.id === Number(value)
+                }
+                renderOption={(props, option) => (
+                  <li {...props} key={option.id}>
+                    <Typography variant="body2">{option.name}</Typography>
+                  </li>
+                )}
+                onChange={(_, value) => setValue('grade_id', value ? value.id : null)}
+                value={grades?.find((g) => g.id === watch('grade_id')) || null}
               />
             </Box>
 

@@ -433,10 +433,11 @@ function createNewTaskDraft(plan, projectUsers = [], offset = 0, preferredAssign
   const assignableUsers = getAssignableUsers(projectUsers, plan);
   const assignedUsers = normalizeAssignedUsers(plan?.assignedUsers || plan?.assigned_users);
   const taskAssignedUserId = assignedUsers[0]?.id ? String(assignedUsers[0].id) : '';
-  const defaultAssignee = assignableUsers.find((user) => String(user.id) === String(preferredAssigneeId))
-    || assignableUsers.find((user) => String(user.id) === taskAssignedUserId)
-    || assignableUsers[0]
-    || null;
+  const defaultAssignee =
+    assignableUsers.find((user) => String(user.id) === String(preferredAssigneeId)) ||
+    assignableUsers.find((user) => String(user.id) === taskAssignedUserId) ||
+    assignableUsers[0] ||
+    null;
 
   return {
     title: '',
@@ -952,7 +953,10 @@ export default function TaskAssignmentDetail({ projectId, taskId }) {
   );
   const defaultAssigneeId = assignableUsers[0]?.id ? String(assignableUsers[0].id) : '';
   const preferredDraftAssigneeId = useMemo(() => {
-    if (requestedAssigneeId && assignableUsers.some((user) => String(user.id) === String(requestedAssigneeId))) {
+    if (
+      requestedAssigneeId &&
+      assignableUsers.some((user) => String(user.id) === String(requestedAssigneeId))
+    ) {
       return String(requestedAssigneeId);
     }
 
@@ -960,7 +964,10 @@ export default function TaskAssignmentDetail({ projectId, taskId }) {
       ? String(activeTaskPlan.assignedUsers[0].id)
       : '';
 
-    if (taskAssignedUserId && assignableUsers.some((user) => String(user.id) === taskAssignedUserId)) {
+    if (
+      taskAssignedUserId &&
+      assignableUsers.some((user) => String(user.id) === taskAssignedUserId)
+    ) {
       return taskAssignedUserId;
     }
 
@@ -974,7 +981,14 @@ export default function TaskAssignmentDetail({ projectId, taskId }) {
   useEffect(() => {
     if (!activeTaskPlan) return;
 
-    setNewTaskDraft(createNewTaskDraft(activeTaskPlan, projectView?.assigned_users || [], 0, preferredDraftAssigneeId));
+    setNewTaskDraft(
+      createNewTaskDraft(
+        activeTaskPlan,
+        projectView?.assigned_users || [],
+        0,
+        preferredDraftAssigneeId
+      )
+    );
   }, [taskView?.id, activeTaskPlan?.id, projectView?.assigned_users, preferredDraftAssigneeId]);
 
   const filteredSelectedPlanItems = activeTaskPlan
@@ -1288,7 +1302,14 @@ export default function TaskAssignmentDetail({ projectId, taskId }) {
 
     if (!savedPlan) return;
 
-    setNewTaskDraft(createNewTaskDraft(activeTaskPlan, projectView?.assigned_users || [], 1, preferredDraftAssigneeId));
+    setNewTaskDraft(
+      createNewTaskDraft(
+        activeTaskPlan,
+        projectView?.assigned_users || [],
+        1,
+        preferredDraftAssigneeId
+      )
+    );
   };
 
   const handleUploadAttachments = async (acceptedFiles = []) => {
@@ -1815,7 +1836,8 @@ export default function TaskAssignmentDetail({ projectId, taskId }) {
 
             {isGuidedProjectSetup ? (
               <Alert severity="info" sx={{ borderRadius: 2 }}>
-                Guided setup step {guidedSetupStepLabel}. Add the real tasks for this roadmap step, then use the save button to continue through the remaining setup pages.
+                Guided setup step {guidedSetupStepLabel}. Add the real tasks for this roadmap step,
+                then use the save button to continue through the remaining setup pages.
               </Alert>
             ) : null}
           </Stack>
@@ -1838,7 +1860,9 @@ export default function TaskAssignmentDetail({ projectId, taskId }) {
             <CardContent sx={{ p: { xs: 2.5, md: 3 }, flex: 1, minHeight: 0, overflow: 'hidden' }}>
               <Stack spacing={2.25} sx={{ height: '100%', minHeight: 0 }}>
                 <Box>
-                  <Typography variant="h6" fontWeight={800}>Added Task Details</Typography>
+                  <Typography variant="h6" fontWeight={800}>
+                    Added Task Details
+                  </Typography>
                   <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
                     Detailed view of each assignee’s work inside this task, including dates,
                     progress, approvals, and remarks.
@@ -1880,26 +1904,56 @@ export default function TaskAssignmentDetail({ projectId, taskId }) {
                   }}
                 >
                   <Stack spacing={2}>
-                    {assignedTaskGroups.length ? assignedTaskGroups.map((group) => (
-                      <Card key={group.key} variant="outlined" sx={{ borderRadius: 2.5 }}>
-                        <CardContent sx={{ p: 2.25 }}>
-                          <Stack spacing={1.5}>
-                            <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" spacing={1.25}>
-                              <Box>
-                                <Typography variant="subtitle1" fontWeight={800}>
-                                  {group.assignee?.username || 'Unassigned work'}
-                                </Typography>
-                                <Typography variant="body2" color="text.secondary" sx={{ mt: 0.35 }}>
-                                  {group.total} item{group.total === 1 ? '' : 's'} assigned inside this task.
-                                </Typography>
-                              </Box>
-                              <Stack direction="row" spacing={0.75} useFlexGap flexWrap="wrap">
-                                <Chip size="small" color="warning" variant="outlined" label={`Todo ${group.todo}`} />
-                                <Chip size="small" color="success" variant="outlined" label={`Doing ${group.doing}`} sx={getChecklistChipSx(theme, 'Doing')} />
-                                <Chip size="small" color="success" variant="outlined" label={`Done ${group.done}`} />
-                                <Chip size="small" color="success" label={`Approved ${group.approved}`} />
+                    {assignedTaskGroups.length ? (
+                      assignedTaskGroups.map((group) => (
+                        <Card key={group.key} variant="outlined" sx={{ borderRadius: 2.5 }}>
+                          <CardContent sx={{ p: 2.25 }}>
+                            <Stack spacing={1.5}>
+                              <Stack
+                                direction={{ xs: 'column', sm: 'row' }}
+                                justifyContent="space-between"
+                                spacing={1.25}
+                              >
+                                <Box>
+                                  <Typography variant="subtitle1" fontWeight={800}>
+                                    {group.assignee?.username || 'Unassigned work'}
+                                  </Typography>
+                                  <Typography
+                                    variant="body2"
+                                    color="text.secondary"
+                                    sx={{ mt: 0.35 }}
+                                  >
+                                    {group.total} item{group.total === 1 ? '' : 's'} assigned inside
+                                    this task.
+                                  </Typography>
+                                </Box>
+                                <Stack direction="row" spacing={0.75} useFlexGap flexWrap="wrap">
+                                  <Chip
+                                    size="small"
+                                    color="warning"
+                                    variant="outlined"
+                                    label={`Todo ${group.todo}`}
+                                  />
+                                  <Chip
+                                    size="small"
+                                    color="success"
+                                    variant="outlined"
+                                    label={`Doing ${group.doing}`}
+                                    sx={getChecklistChipSx(theme, 'Doing')}
+                                  />
+                                  <Chip
+                                    size="small"
+                                    color="success"
+                                    variant="outlined"
+                                    label={`Done ${group.done}`}
+                                  />
+                                  <Chip
+                                    size="small"
+                                    color="success"
+                                    label={`Approved ${group.approved}`}
+                                  />
+                                </Stack>
                               </Stack>
-                            </Stack>
 
                               <Stack spacing={1.25}>
                                 {group.items.map((item) => (
@@ -2112,20 +2166,43 @@ export default function TaskAssignmentDetail({ projectId, taskId }) {
                                         </Stack>
                                       ) : null}
 
-                                <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" spacing={1}>
-                                  <Box>
-                                    <Typography variant="subtitle2" fontWeight={800}>
-                                      {item.displayIndex}. {item.title}
-                                    </Typography>
-                                    <Typography variant="caption" color="text.secondary">
-                                      {item.sequenceHelper}
-                                    </Typography>
-                                  </Box>
-                                  <Stack direction="row" spacing={0.75} useFlexGap flexWrap="wrap">
-                                    <Chip size="small" color={getChecklistTone(item.state)} label={getChecklistLabel(item.state)} sx={getChecklistChipSx(theme, item.state)} />
-                                    <Chip size="small" color={getWorkItemApprovalTone(item)} variant={getWorkItemApprovalStatus(item) === 'Approved' ? 'filled' : 'outlined'} label={getWorkItemApprovalLabel(item)} />
-                                  </Stack>
-                                </Stack>
+                                      <Stack
+                                        direction={{ xs: 'column', sm: 'row' }}
+                                        justifyContent="space-between"
+                                        spacing={1}
+                                      >
+                                        <Box>
+                                          <Typography variant="subtitle2" fontWeight={800}>
+                                            {item.displayIndex}. {item.title}
+                                          </Typography>
+                                          <Typography variant="caption" color="text.secondary">
+                                            {item.sequenceHelper}
+                                          </Typography>
+                                        </Box>
+                                        <Stack
+                                          direction="row"
+                                          spacing={0.75}
+                                          useFlexGap
+                                          flexWrap="wrap"
+                                        >
+                                          <Chip
+                                            size="small"
+                                            color={getChecklistTone(item.state)}
+                                            label={getChecklistLabel(item.state)}
+                                            sx={getChecklistChipSx(theme, item.state)}
+                                          />
+                                          <Chip
+                                            size="small"
+                                            color={getWorkItemApprovalTone(item)}
+                                            variant={
+                                              getWorkItemApprovalStatus(item) === 'Approved'
+                                                ? 'filled'
+                                                : 'outlined'
+                                            }
+                                            label={getWorkItemApprovalLabel(item)}
+                                          />
+                                        </Stack>
+                                      </Stack>
 
                                       <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.5}>
                                         <DetailItem
@@ -2376,7 +2453,7 @@ export default function TaskAssignmentDetail({ projectId, taskId }) {
                           </CardContent>
                         </Card>
                       ))
-                     : (
+                    ) : (
                       <Alert severity="info" sx={{ borderRadius: 2 }}>
                         No assignee-specific execution items exist yet for this task.
                       </Alert>
@@ -2393,9 +2470,12 @@ export default function TaskAssignmentDetail({ projectId, taskId }) {
             <CardContent sx={{ p: { xs: 2.5, md: 3 } }}>
               <Stack spacing={2.5}>
                 <Box>
-                  <Typography variant="h6" fontWeight={800}>Add Task Form</Typography>
+                  <Typography variant="h6" fontWeight={800}>
+                    Add Task Form
+                  </Typography>
                   <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                    Create a new task here. When you add it, the task is saved immediately and then appears on the left with its owner, date, status, remarks, and files.
+                    Create a new task here. When you add it, the task is saved immediately and then
+                    appears on the left with its owner, date, status, remarks, and files.
                   </Typography>
                 </Box>
 
@@ -2729,7 +2809,7 @@ export default function TaskAssignmentDetail({ projectId, taskId }) {
                   <Typography variant="caption" color="text.secondary">
                     {taskBoardItems.length
                       ? 'This step has saved tasks. Use the save button to continue when you are ready.'
-                          : 'Create at least one real task here before continuing to the next step.'}
+                      : 'Create at least one real task here before continuing to the next step.'}
                   </Typography>
                 ) : null}
               </Stack>

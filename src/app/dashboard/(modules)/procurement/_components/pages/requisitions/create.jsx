@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useRef, useMemo, useState, useEffect } from 'react';
+import { useRef, useMemo, useState, useEffect, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useForm, Controller, useFieldArray } from 'react-hook-form';
 import {
@@ -90,6 +90,9 @@ const DEFAULT_FORM_VALUES = {
   mr_items: [{ ...DEFAULT_ITEM }],
 };
 
+const DRAFT_CACHE_KEY = 'requisition_create_draft';
+const DRAFT_DEBOUNCE_MS = 400;
+
 export function CreateRequisition() {
   const searchParams = useSearchParams();
   const editId = searchParams.get('edit');
@@ -136,6 +139,49 @@ export function CreateRequisition() {
   }, [uomData]);
 
   const { fields, append, remove, replace } = useFieldArray({ control, name: 'mr_items' });
+
+  // ── Persistent Draft Cache ─────────────────────────────────────────────────
+  const isRestoringRef = useRef(false);
+  const watchedForm = watch();
+
+  // Restore draft from localStorage on mount
+  useEffect(() => {
+    if (isEditMode) return; // Don't restore in edit mode
+    try {
+      const cached = localStorage.getItem(DRAFT_CACHE_KEY);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        isRestoringRef.current = true;
+        Object.keys(parsed).forEach((key) => {
+          if (key === 'mr_items' && Array.isArray(parsed[key])) {
+            replace(parsed[key]);
+          } else if (parsed[key] !== undefined && parsed[key] !== null) {
+            setValue(key, parsed[key]);
+          }
+        });
+        setTimeout(() => { isRestoringRef.current = false; }, 100);
+      }
+    } catch (e) {
+      // Ignore invalid cache
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Save draft to localStorage with debounce
+  useEffect(() => {
+    if (isEditMode) return; // Don't save in edit mode
+    if (isRestoringRef.current) return; // Don't save while restoring
+
+    const timer = setTimeout(() => {
+      try {
+        const values = getValues();
+        localStorage.setItem(DRAFT_CACHE_KEY, JSON.stringify(values));
+      } catch (e) {
+        // Ignore save errors
+      }
+    }, DRAFT_DEBOUNCE_MS);
+
+    return () => clearTimeout(timer);
+  }, [watchedForm, isEditMode]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── UI state (not form data) ───────────────────────────────────────────────
   const [activeSection, setActiveSection] = useState(0);

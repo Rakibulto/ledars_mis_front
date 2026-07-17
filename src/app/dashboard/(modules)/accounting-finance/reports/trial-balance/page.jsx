@@ -1,5 +1,5 @@
-import TrialBalance from '../../_components/reports/trial-balance';
+import CoaHierarchicalList from '../../_components/configuration/coa-hierarchical-list';
 
 export default function Page() {
-  return <TrialBalance />;
+  return <CoaHierarchicalList />;
 }

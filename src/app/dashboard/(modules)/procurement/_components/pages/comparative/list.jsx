@@ -313,7 +313,9 @@ export function ComparativeStatementList() {
 
   const openVendorSelectionModal = (cs) => {
     const vendors = Array.isArray(cs?.vendors) ? cs.vendors : [];
-    const sortedVendors = [...vendors].sort((a, b) => (b.overall_score ?? 0) - (a.overall_score ?? 0));
+    const sortedVendors = [...vendors].sort(
+      (a, b) => (b.overall_score ?? 0) - (a.overall_score ?? 0)
+    );
     const topVendorId = sortedVendors[0]?.vendor_id ?? sortedVendors[0]?.id ?? '';
     setVendorSelectModal({
       open: true,
@@ -578,7 +580,10 @@ export function ComparativeStatementList() {
                           </Button>
                         )}
                         {cs.status === 'approved' && (
-                          <Link href={paths.dashboard.procurement.comparative.print(cs.id)} target="_blank">
+                          <Link
+                            href={paths.dashboard.procurement.comparative.print(cs.id)}
+                            target="_blank"
+                          >
                             <Button variant="outline" size="sm">
                               <Printer className="w-3.5 h-3.5 mr-1" />
                               Print
@@ -745,50 +750,55 @@ export function ComparativeStatementList() {
                 vendor proposals are available.
               </div>
             ) : (
-              ([...(vendorSelectModal.statement?.vendors ?? [])].sort((a, b) => (b.overall_score ?? 0) - (a.overall_score ?? 0))).map((vendor, idx) => {
-                const vendorId = String(vendor.vendor_id ?? vendor.id);
-                const isSelected = vendorSelectModal.selectedVendorId === vendorId;
-                const isRecommended = Boolean(vendor.is_recommended);
-                const grandTotal = vendor.financial_proposal?.grand_total;
+              [...(vendorSelectModal.statement?.vendors ?? [])]
+                .sort((a, b) => (b.overall_score ?? 0) - (a.overall_score ?? 0))
+                .map((vendor, idx) => {
+                  const vendorId = String(vendor.vendor_id ?? vendor.id);
+                  const isSelected = vendorSelectModal.selectedVendorId === vendorId;
+                  const isRecommended = Boolean(vendor.is_recommended);
+                  const grandTotal = vendor.financial_proposal?.grand_total;
 
-                return (
-                  <label
-                    key={vendorId}
-                    className={`block cursor-pointer rounded-lg border p-3 transition-colors ${
-                      isSelected
-                        ? 'border-primary bg-primary/5'
-                        : 'border-border hover:border-primary/40'
-                    }`}
-                  >
-                    <div className="flex items-start gap-3">
-                      <input
-                        type="radio"
-                        name="selected-vendor"
-                        className="mt-1"
-                        checked={isSelected}
-                        onChange={() =>
-                          setVendorSelectModal((prev) => ({ ...prev, selectedVendorId: vendorId }))
-                        }
-                      />
-                      <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <p className="text-sm font-semibold text-foreground">{vendor.name}</p>
-                          {isRecommended && (
-                            <Badge variant="success" size="sm">
-                              Recommended
-                            </Badge>
-                          )}
-                        </div>
-                        <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                          <span>Overall Score: {vendor.overall_score ?? '—'}</span>
-                          <span>Total: {grandTotal ? formatBDT(grandTotal) : 'N/A'}</span>
-                          <span>Rank #{idx + 1}</span>
+                  return (
+                    <label
+                      key={vendorId}
+                      className={`block cursor-pointer rounded-lg border p-3 transition-colors ${
+                        isSelected
+                          ? 'border-primary bg-primary/5'
+                          : 'border-border hover:border-primary/40'
+                      }`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <input
+                          type="radio"
+                          name="selected-vendor"
+                          className="mt-1"
+                          checked={isSelected}
+                          onChange={() =>
+                            setVendorSelectModal((prev) => ({
+                              ...prev,
+                              selectedVendorId: vendorId,
+                            }))
+                          }
+                        />
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="text-sm font-semibold text-foreground">{vendor.name}</p>
+                            {isRecommended && (
+                              <Badge variant="success" size="sm">
+                                Recommended
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                            <span>Overall Score: {vendor.overall_score ?? '—'}</span>
+                            <span>Total: {grandTotal ? formatBDT(grandTotal) : 'N/A'}</span>
+                            <span>Rank #{idx + 1}</span>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </label>
-                );
-              })
+                    </label>
+                  );
+                })
             )}
           </div>
         </Modal>

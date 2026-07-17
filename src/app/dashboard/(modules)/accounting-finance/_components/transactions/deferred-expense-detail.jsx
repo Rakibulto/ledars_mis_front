@@ -144,11 +144,7 @@ function SelectedScheduleCard({ record, onRecognize }) {
               />
             </Stack>
           </Stack>
-          <Button
-            variant="contained"
-            disabled={record.status === 'done'}
-            onClick={onRecognize}
-          >
+          <Button variant="contained" disabled={record.status === 'done'} onClick={onRecognize}>
             Recognize Current Period
           </Button>
         </Stack>

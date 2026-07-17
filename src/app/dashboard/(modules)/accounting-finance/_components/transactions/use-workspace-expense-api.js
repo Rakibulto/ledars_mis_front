@@ -14,6 +14,7 @@ export function enrichExpenseEntry(item) {
     ...item,
     number: item.number || item.entry_number || `EXP-${item.id}`,
     amount: Number(item.amount || 0),
+    categoryName: item.category_name ?? item.categoryName ?? '',
   };
 }
 

@@ -12,10 +12,8 @@ import Stack from '@mui/material/Stack';
 import Table from '@mui/material/Table';
 import Button from '@mui/material/Button';
 import Dialog from '@mui/material/Dialog';
-import Divider from '@mui/material/Divider';
 import Tooltip from '@mui/material/Tooltip';
 import MenuItem from '@mui/material/MenuItem';
-import Checkbox from '@mui/material/Checkbox';
 import TableRow from '@mui/material/TableRow';
 import TableBody from '@mui/material/TableBody';
 import TableCell from '@mui/material/TableCell';
@@ -125,6 +123,14 @@ export default function CreditNotes() {
     (invoice) => invoice.customer_id === draftNote.customer_id
   );
 
+  const unpaidInvoices = useMemo(() => {
+    if (!draftNote.customer_id) return [];
+    return invoices.filter(
+      (inv) =>
+        Number(inv.customer_id) === Number(draftNote.customer_id) && Number(inv.balance_due) > 0
+    );
+  }, [invoices, draftNote.customer_id]);
+
   const adjustmentSummary = useMemo(() => {
     const openInvoices = adjustmentInvoices.filter((invoice) => invoice.adjustmentState === 'open');
     const escalatedInvoices = adjustmentInvoices.filter(
@@ -226,9 +232,9 @@ export default function CreditNotes() {
     }
   };
 
-  const handleApply = async (noteId) => {
+  const handleApply = async (note) => {
     try {
-      await api.actions.applyCreditNote(noteId);
+      await api.actions.applyCreditNote(note.id, note.invoice_ref);
       toast.success('Credit note applied.');
     } catch (err) {
       toast.error(err?.response?.data?.detail || 'Failed to apply credit note.');
@@ -441,7 +447,7 @@ export default function CreditNotes() {
                               disabled={note.status === 'applied' || note.status === 'cancelled'}
                               onClick={(event) => {
                                 event.stopPropagation();
-                                handleApply(note.id);
+                                handleApply(note);
                               }}
                             >
                               Apply
@@ -691,7 +697,13 @@ export default function CreditNotes() {
                   size="small"
                   label="Customer"
                   value={draftNote.customer_id}
-                  onChange={(event) => updateDraft('customer_id', event.target.value)}
+                  onChange={(event) =>
+                    setDraftNote((current) => ({
+                      ...current,
+                      customer_id: event.target.value,
+                      invoice_ref: '',
+                    }))
+                  }
                 >
                   {customers.map((customer) => (
                     <MenuItem key={customer.id} value={customer.id}>
@@ -702,12 +714,21 @@ export default function CreditNotes() {
               </Grid>
               <Grid size={{ xs: 12 }}>
                 <TextField
+                  select
                   fullWidth
                   size="small"
                   label="Invoice reference"
                   value={draftNote.invoice_ref}
                   onChange={(event) => updateDraft('invoice_ref', event.target.value)}
-                />
+                >
+                  <MenuItem value="">Select invoice</MenuItem>
+                  {unpaidInvoices.map((inv) => (
+                    <MenuItem key={inv.number} value={inv.number}>
+                      {inv.number} — {new Date(inv.due_date).toLocaleDateString()} ·{' '}
+                      {Number(inv.balance_due).toLocaleString()}
+                    </MenuItem>
+                  ))}
+                </TextField>
               </Grid>
               <Grid size={{ xs: 12, md: 6 }}>
                 <TextField

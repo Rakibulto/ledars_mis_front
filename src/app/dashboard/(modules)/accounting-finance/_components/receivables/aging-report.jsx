@@ -275,8 +275,6 @@ export default function ReceivableAgingReport() {
           </Table>
         </TableContainer>
       </Card>
-
-
     </Box>
   );
 }

@@ -147,7 +147,9 @@ function renderValue(value) {
 }
 
 function getExecutionGroupTitle(group, fallback = 'Untitled task') {
-  const titles = (group?.entries || []).map((entry) => String(entry?.title || '').trim()).filter(Boolean);
+  const titles = (group?.entries || [])
+    .map((entry) => String(entry?.title || '').trim())
+    .filter(Boolean);
 
   if (!titles.length) return fallback;
   if (titles.length === 1) return titles[0];
@@ -290,7 +292,8 @@ function getPlanBoardItems(plan, projectUsers = []) {
     isLocked: false,
     canAdvance: true,
     sequenceLabel: item.state === 'Done' ? 'Completed' : 'Available',
-    sequenceHelper: item.state === 'Done' ? 'Marked completed.' : 'This task can be updated anytime.',
+    sequenceHelper:
+      item.state === 'Done' ? 'Marked completed.' : 'This task can be updated anytime.',
     assigned_to: item.assigned_to || getAssignableUsers(projectUsers, plan)[0] || null,
   }));
 }
@@ -598,8 +601,23 @@ function summarizeTasksForSlot(
   });
 }
 
-function summarizeTasksForEntryKeys(tasks, projectStatus, slot, projectUsers = [], assigneeId = null, statusFilter = 'all', entryKeys = []) {
-  const summary = summarizeTasksForSlot(tasks, projectStatus, slot, projectUsers, assigneeId, statusFilter);
+function summarizeTasksForEntryKeys(
+  tasks,
+  projectStatus,
+  slot,
+  projectUsers = [],
+  assigneeId = null,
+  statusFilter = 'all',
+  entryKeys = []
+) {
+  const summary = summarizeTasksForSlot(
+    tasks,
+    projectStatus,
+    slot,
+    projectUsers,
+    assigneeId,
+    statusFilter
+  );
 
   if (!entryKeys.length) {
     return {
@@ -609,7 +627,9 @@ function summarizeTasksForEntryKeys(tasks, projectStatus, slot, projectUsers = [
   }
 
   const entryKeySet = new Set(entryKeys.map((entryKey) => String(entryKey)));
-  const filteredEntries = summary.entries.filter((entry) => entryKeySet.has(String(entry.entryKey)));
+  const filteredEntries = summary.entries.filter((entry) =>
+    entryKeySet.has(String(entry.entryKey))
+  );
 
   return buildEntrySummary(filteredEntries, projectStatus, slot.start, slot.end, {
     key: slot.key,
@@ -620,7 +640,14 @@ function summarizeTasksForEntryKeys(tasks, projectStatus, slot, projectUsers = [
   });
 }
 
-function buildExecutionRangeGroups(tasks, projectStatus, slots, projectUsers = [], assigneeId = null, statusFilter = 'all') {
+function buildExecutionRangeGroups(
+  tasks,
+  projectStatus,
+  slots,
+  projectUsers = [],
+  assigneeId = null,
+  statusFilter = 'all'
+) {
   const entries = tasks
     .flatMap((plan) => buildShiftedWorkItemSchedule(plan, projectUsers))
     .filter((entry) =>
@@ -631,8 +658,17 @@ function buildExecutionRangeGroups(tasks, projectStatus, slots, projectUsers = [
   const groupedRanges = new Map();
 
   entries.forEach((entry, index) => {
-    const rangeStart = (entry.effectiveStartDate || entry.plannedDate || entry.effectiveDate).startOf('day');
-    const rangeEnd = (entry.effectiveEndDate || entry.plannedEndDate || entry.effectiveDate || entry.plannedDate).startOf('day');
+    const rangeStart = (
+      entry.effectiveStartDate ||
+      entry.plannedDate ||
+      entry.effectiveDate
+    ).startOf('day');
+    const rangeEnd = (
+      entry.effectiveEndDate ||
+      entry.plannedEndDate ||
+      entry.effectiveDate ||
+      entry.plannedDate
+    ).startOf('day');
     const key = `${entry.entryKey || buildExecutionEntryKey(entry.planId, entry, index)}__${rangeStart.format('YYYY-MM-DD')}__${rangeEnd.format('YYYY-MM-DD')}`;
 
     if (!groupedRanges.has(key)) {
@@ -1080,8 +1116,9 @@ export default function TaskStepDetail({ projectId, taskId }) {
   const openAssignmentWorkItem = (plan, item) => {
     const targetTaskId = plan?.id || plan?.serial_no;
     const workItemId = item?.id || item?.key;
-    const assigneeId = item?.assigned_to?.id
-      || (selectedWorkloadDetail?.user?.id && String(selectedWorkloadDetail.user.id) !== 'all'
+    const assigneeId =
+      item?.assigned_to?.id ||
+      (selectedWorkloadDetail?.user?.id && String(selectedWorkloadDetail.user.id) !== 'all'
         ? selectedWorkloadDetail.user.id
         : null);
 
@@ -2150,11 +2187,32 @@ export default function TaskStepDetail({ projectId, taskId }) {
                 <Grid size={{ xs: 12, md: 4 }}>
                   <Card variant="outlined" sx={{ borderRadius: 2.5, height: '100%' }}>
                     <CardContent sx={{ p: 2.25 }}>
-                      <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1.5 }}>Workload Summary</Typography>
-                      <Stack direction="row" spacing={0.75} useFlexGap flexWrap="wrap" sx={{ mb: 1.5 }}>
-                        <Chip size="small" color="success" label={`Doing ${selectedWorkloadDetail.slot.inProgress}`} sx={getChecklistChipSx(theme, 'Doing')} />
-                        <Chip size="small" color="success" label={`Done ${selectedWorkloadDetail.slot.completed}`} />
-                        <Chip size="small" color="warning" label={`Remaining ${selectedWorkloadDetail.slot.pending}`} />
+                      <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1.5 }}>
+                        Workload Summary
+                      </Typography>
+                      <Stack
+                        direction="row"
+                        spacing={0.75}
+                        useFlexGap
+                        flexWrap="wrap"
+                        sx={{ mb: 1.5 }}
+                      >
+                        <Chip
+                          size="small"
+                          color="success"
+                          label={`Doing ${selectedWorkloadDetail.slot.inProgress}`}
+                          sx={getChecklistChipSx(theme, 'Doing')}
+                        />
+                        <Chip
+                          size="small"
+                          color="success"
+                          label={`Done ${selectedWorkloadDetail.slot.completed}`}
+                        />
+                        <Chip
+                          size="small"
+                          color="warning"
+                          label={`Remaining ${selectedWorkloadDetail.slot.pending}`}
+                        />
                       </Stack>
                       <Typography variant="body2" color="text.secondary">
                         {selectedWorkloadDetail.slot.total} execution item
@@ -2236,7 +2294,14 @@ export default function TaskStepDetail({ projectId, taskId }) {
                                         label={getChecklistLabel(item.state)}
                                         onClick={() => toggleChecklistItem(taskItem, item)}
                                         disabled={!item.canAdvance || savingPlanId === taskItem.id}
-                                        sx={{ ...getChecklistChipSx(theme, item.state), mt: 0.1, cursor: !item.canAdvance || savingPlanId === taskItem.id ? 'not-allowed' : 'pointer' }}
+                                        sx={{
+                                          ...getChecklistChipSx(theme, item.state),
+                                          mt: 0.1,
+                                          cursor:
+                                            !item.canAdvance || savingPlanId === taskItem.id
+                                              ? 'not-allowed'
+                                              : 'pointer',
+                                        }}
                                       />
                                       <Box sx={{ flex: 1 }}>
                                         <Typography
@@ -2482,17 +2547,48 @@ export default function TaskStepDetail({ projectId, taskId }) {
                                 >
                                   <CardContent sx={{ p: 1.5 }}>
                                     <Stack spacing={1.25}>
-                                      <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" spacing={1}>
-                                        <Stack direction="row" spacing={0.75} alignItems="center" flexWrap="wrap">
-                                          <Chip size="small" color={item.isCurrent ? 'primary' : item.isLocked ? 'default' : 'success'} label={item.title || `Task ${index + 1}`} />
-                                          <Chip size="small" variant="outlined" label={item.sequenceLabel} />
+                                      <Stack
+                                        direction={{ xs: 'column', sm: 'row' }}
+                                        justifyContent="space-between"
+                                        spacing={1}
+                                      >
+                                        <Stack
+                                          direction="row"
+                                          spacing={0.75}
+                                          alignItems="center"
+                                          flexWrap="wrap"
+                                        >
+                                          <Chip
+                                            size="small"
+                                            color={
+                                              item.isCurrent
+                                                ? 'primary'
+                                                : item.isLocked
+                                                  ? 'default'
+                                                  : 'success'
+                                            }
+                                            label={item.title || `Task ${index + 1}`}
+                                          />
+                                          <Chip
+                                            size="small"
+                                            variant="outlined"
+                                            label={item.sequenceLabel}
+                                          />
                                           <Chip
                                             size="small"
                                             color={getChecklistTone(item.state)}
                                             label={getChecklistLabel(item.state)}
                                             onClick={() => toggleChecklistItem(selectedPlan, item)}
-                                            disabled={!item.canAdvance || savingPlanId === selectedPlan.id}
-                                            sx={{ ...getChecklistChipSx(theme, item.state), cursor: !item.canAdvance || savingPlanId === selectedPlan.id ? 'not-allowed' : 'pointer' }}
+                                            disabled={
+                                              !item.canAdvance || savingPlanId === selectedPlan.id
+                                            }
+                                            sx={{
+                                              ...getChecklistChipSx(theme, item.state),
+                                              cursor:
+                                                !item.canAdvance || savingPlanId === selectedPlan.id
+                                                  ? 'not-allowed'
+                                                  : 'pointer',
+                                            }}
                                           />
                                           <Chip
                                             size="small"

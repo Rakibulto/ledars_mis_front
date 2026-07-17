@@ -375,10 +375,7 @@ export function ComparativeStatementApproval() {
 
         {/* Vendor Ranking Table */}
         <Card className="mb-6">
-          <CardHeader
-            title="Vendor Ranking"
-            description="Ranked by overall score (descending)"
-          />
+          <CardHeader title="Vendor Ranking" description="Ranked by overall score (descending)" />
           <CardBody>
             <table className="w-full text-sm">
               <thead>
@@ -397,50 +394,52 @@ export function ComparativeStatementApproval() {
                 </tr>
               </thead>
               <tbody>
-                {[...(cs?.vendors ?? [])].sort((a, b) => (b.overall_score ?? 0) - (a.overall_score ?? 0)).map((v, idx) => (
-                  <tr
-                    key={v.vendor_id ?? v.id ?? idx}
-                    className={`border-b border-border/50 ${v.is_recommended ? 'bg-success/5' : ''}`}
-                  >
-                    <td className="py-2.5 px-3 font-semibold">#{idx + 1}</td>
-                    <td className="py-2.5 px-3">
-                      <span className="font-medium">{v.name}</span>
-                      {v.is_recommended && (
-                        <Badge variant="success" size="sm" className="ml-2">
-                          <Star className="w-3 h-3 mr-1" />
-                          Recommended
-                        </Badge>
-                      )}
-                    </td>
-                    <td className="text-center py-2.5 px-3">
-                      <span
-                        className={
-                          (v.overall_score ?? 0) >= 75
-                            ? 'text-success font-semibold'
-                            : (v.overall_score ?? 0) >= 50
-                              ? 'text-warning font-semibold'
-                              : 'text-destructive font-semibold'
-                        }
-                      >
-                        {v.overall_score ?? '—'}/100
-                      </span>
-                    </td>
-                    <td className="text-right py-2.5 px-3 font-medium">
-                      {formatBDT(v.financial_proposal?.grand_total)}
-                    </td>
-                    <td className="text-center py-2.5 px-3">
-                      {v.is_recommended ? (
-                        <Badge variant="success" size="sm">
-                          Selected
-                        </Badge>
-                      ) : (
-                        <Badge variant="secondary" size="sm">
-                          Evaluated
-                        </Badge>
-                      )}
-                    </td>
-                  </tr>
-                ))}
+                {[...(cs?.vendors ?? [])]
+                  .sort((a, b) => (b.overall_score ?? 0) - (a.overall_score ?? 0))
+                  .map((v, idx) => (
+                    <tr
+                      key={v.vendor_id ?? v.id ?? idx}
+                      className={`border-b border-border/50 ${v.is_recommended ? 'bg-success/5' : ''}`}
+                    >
+                      <td className="py-2.5 px-3 font-semibold">#{idx + 1}</td>
+                      <td className="py-2.5 px-3">
+                        <span className="font-medium">{v.name}</span>
+                        {v.is_recommended && (
+                          <Badge variant="success" size="sm" className="ml-2">
+                            <Star className="w-3 h-3 mr-1" />
+                            Recommended
+                          </Badge>
+                        )}
+                      </td>
+                      <td className="text-center py-2.5 px-3">
+                        <span
+                          className={
+                            (v.overall_score ?? 0) >= 75
+                              ? 'text-success font-semibold'
+                              : (v.overall_score ?? 0) >= 50
+                                ? 'text-warning font-semibold'
+                                : 'text-destructive font-semibold'
+                          }
+                        >
+                          {v.overall_score ?? '—'}/100
+                        </span>
+                      </td>
+                      <td className="text-right py-2.5 px-3 font-medium">
+                        {formatBDT(v.financial_proposal?.grand_total)}
+                      </td>
+                      <td className="text-center py-2.5 px-3">
+                        {v.is_recommended ? (
+                          <Badge variant="success" size="sm">
+                            Selected
+                          </Badge>
+                        ) : (
+                          <Badge variant="secondary" size="sm">
+                            Evaluated
+                          </Badge>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
               </tbody>
             </table>
           </CardBody>

@@ -1,8 +1,8 @@
 'use client';
 
-import { toast } from 'sonner';
-import { useState, useMemo } from 'react';
 import useSWR from 'swr';
+import { toast } from 'sonner';
+import { useMemo, useState } from 'react';
 
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
@@ -25,9 +25,9 @@ import Typography from '@mui/material/Typography';
 import CardContent from '@mui/material/CardContent';
 import TableContainer from '@mui/material/TableContainer';
 
-import { Iconify } from 'src/components/iconify';
-
 import { fetcher, endpoints } from 'src/utils/axios';
+
+import { Iconify } from 'src/components/iconify';
 
 import { formatCurrency } from '../utils';
 import { useCurrency } from '../currency-context';
@@ -71,7 +71,7 @@ export default function CustomerInvoiceNewForm() {
   const [submitting, setSubmitting] = useState(false);
 
   const { data: rawJournals } = useSWR(endpoints.accounting.journals, fetcher);
-  const { data: rawProjects } = useSWR(endpoints.projectManagements.projects, fetcher);
+  const { data: rawProjects } = useSWR(endpoints.projects.simple_projects, fetcher);
   const { data: rawCostCenters } = useSWR(endpoints.accounting.cost_centers, fetcher);
   const { data: rawCurrencies } = useSWR(endpoints.accounting.currencies, fetcher);
   const { data: rawFiscalPeriods } = useSWR(endpoints.accounting.fiscal_periods, fetcher);
@@ -79,37 +79,65 @@ export default function CustomerInvoiceNewForm() {
   const { data: rawAnalyticAccounts } = useSWR(endpoints.accounting.analytic_accounts, fetcher);
 
   const journals = useMemo(() => {
-    const list = Array.isArray(rawJournals) ? rawJournals : Array.isArray(rawJournals?.results) ? rawJournals.results : [];
+    const list = Array.isArray(rawJournals)
+      ? rawJournals
+      : Array.isArray(rawJournals?.results)
+        ? rawJournals.results
+        : [];
     return list;
   }, [rawJournals]);
 
   const projects = useMemo(() => {
-    const list = Array.isArray(rawProjects) ? rawProjects : Array.isArray(rawProjects?.results) ? rawProjects.results : [];
+    const list = Array.isArray(rawProjects)
+      ? rawProjects
+      : Array.isArray(rawProjects?.results)
+        ? rawProjects.results
+        : [];
     return list;
   }, [rawProjects]);
 
   const costCenters = useMemo(() => {
-    const list = Array.isArray(rawCostCenters) ? rawCostCenters : Array.isArray(rawCostCenters?.results) ? rawCostCenters.results : [];
+    const list = Array.isArray(rawCostCenters)
+      ? rawCostCenters
+      : Array.isArray(rawCostCenters?.results)
+        ? rawCostCenters.results
+        : [];
     return list;
   }, [rawCostCenters]);
 
   const currencies = useMemo(() => {
-    const list = Array.isArray(rawCurrencies) ? rawCurrencies : Array.isArray(rawCurrencies?.results) ? rawCurrencies.results : [];
+    const list = Array.isArray(rawCurrencies)
+      ? rawCurrencies
+      : Array.isArray(rawCurrencies?.results)
+        ? rawCurrencies.results
+        : [];
     return list;
   }, [rawCurrencies]);
 
   const fiscalPeriods = useMemo(() => {
-    const list = Array.isArray(rawFiscalPeriods) ? rawFiscalPeriods : Array.isArray(rawFiscalPeriods?.results) ? rawFiscalPeriods.results : [];
+    const list = Array.isArray(rawFiscalPeriods)
+      ? rawFiscalPeriods
+      : Array.isArray(rawFiscalPeriods?.results)
+        ? rawFiscalPeriods.results
+        : [];
     return list;
   }, [rawFiscalPeriods]);
 
   const accounts = useMemo(() => {
-    const list = Array.isArray(rawAccounts) ? rawAccounts : Array.isArray(rawAccounts?.results) ? rawAccounts.results : [];
-    return list;
+    const list = Array.isArray(rawAccounts)
+      ? rawAccounts
+      : Array.isArray(rawAccounts?.results)
+        ? rawAccounts.results
+        : [];
+    return list.filter((a) => a.is_active !== false);
   }, [rawAccounts]);
 
   const analyticAccounts = useMemo(() => {
-    const list = Array.isArray(rawAnalyticAccounts) ? rawAnalyticAccounts : Array.isArray(rawAnalyticAccounts?.results) ? rawAnalyticAccounts.results : [];
+    const list = Array.isArray(rawAnalyticAccounts)
+      ? rawAnalyticAccounts
+      : Array.isArray(rawAnalyticAccounts?.results)
+        ? rawAnalyticAccounts.results
+        : [];
     return list;
   }, [rawAnalyticAccounts]);
 
@@ -142,8 +170,18 @@ export default function CustomerInvoiceNewForm() {
       toast.success('Customer invoice created successfully.');
       window.close();
     } catch (err) {
-      console.error('Failed to create invoice:', err);
-      toast.error('Failed to create invoice.');
+      let msg = 'Unknown error';
+      if (err?.response?.data?.detail) {
+        msg = err.response.data.detail;
+      } else if (err?.response?.data && typeof err.response.data === 'object') {
+        msg = JSON.stringify(err.response.data);
+      } else if (err?.message) {
+        msg = err.message;
+      } else if (typeof err?.toString === 'function') {
+        msg = err.toString();
+      }
+      console.error('Failed to create invoice:', err, '→', msg);
+      toast.error(`Failed: ${msg}`);
     } finally {
       setSubmitting(false);
     }
@@ -303,7 +341,7 @@ export default function CustomerInvoiceNewForm() {
                   <MenuItem value="">Select project</MenuItem>
                   {projects.map((p) => (
                     <MenuItem key={p.id} value={p.id}>
-                      {p.name}
+                      {p.title || p.name || p.code || `Project ${p.id}`}
                     </MenuItem>
                   ))}
                 </TextField>
@@ -457,7 +495,9 @@ export default function CustomerInvoiceNewForm() {
                                 select
                                 size="small"
                                 value={line.analytic_account}
-                                onChange={(e) => updateLine(index, 'analytic_account', e.target.value)}
+                                onChange={(e) =>
+                                  updateLine(index, 'analytic_account', e.target.value)
+                                }
                                 variant="standard"
                                 sx={{ width: 120 }}
                               >

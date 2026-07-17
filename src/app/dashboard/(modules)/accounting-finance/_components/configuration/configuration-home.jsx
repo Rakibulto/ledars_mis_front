@@ -35,6 +35,10 @@ const GROUPS = [
         href: paths.dashboard.accountingFinance.configuration.chartOfAccounts,
       },
       {
+        label: 'Chart of Accounts List',
+        href: paths.dashboard.accountingFinance.configuration.coaList,
+      },
+      {
         label: 'Account Types',
         href: paths.dashboard.accountingFinance.configuration.accountTypes,
       },

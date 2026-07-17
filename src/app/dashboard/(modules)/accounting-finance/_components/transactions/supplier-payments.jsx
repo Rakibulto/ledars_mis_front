@@ -2,6 +2,7 @@
 
 import { toast } from 'sonner';
 import { useMemo, useState } from 'react';
+import useSWR from 'swr';
 
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
@@ -12,11 +13,9 @@ import Stack from '@mui/material/Stack';
 import Table from '@mui/material/Table';
 import Button from '@mui/material/Button';
 import Dialog from '@mui/material/Dialog';
-import Divider from '@mui/material/Divider';
 import Tooltip from '@mui/material/Tooltip';
 import MenuItem from '@mui/material/MenuItem';
 import TableRow from '@mui/material/TableRow';
-import Checkbox from '@mui/material/Checkbox';
 import TableBody from '@mui/material/TableBody';
 import TableCell from '@mui/material/TableCell';
 import TableHead from '@mui/material/TableHead';
@@ -33,6 +32,7 @@ import TableContainer from '@mui/material/TableContainer';
 
 import { paths } from 'src/routes/paths';
 import { RouterLink } from 'src/routes/components';
+import axiosInstance, { fetcher, endpoints } from 'src/utils/axios';
 
 import { Iconify } from 'src/components/iconify';
 
@@ -56,7 +56,8 @@ const EMPTY_PAYMENT = {
   supplier_id: '',
   date: '2026-03-29',
   method: 'Bank transfer',
-  bankAccount: 'AP Clearing',
+  bankAccount: '',
+  bank_account: '',
   paymentRun: 'RUN-APR-01',
   amount: '',
   billRefs: [],
@@ -65,12 +66,16 @@ const EMPTY_PAYMENT = {
   notes: '',
 };
 
-const PAYMENT_BANK_ACCOUNTS = ['AP Clearing', 'Operating Bank Account', 'Grant Settlement Bank'];
-
 export default function SupplierPayments() {
   const { activeCurrency } = useCurrency();
   const api = useSupplierPaymentsApi();
   const { payments, vendors, getVendorById, getRfqsByVendor } = api;
+
+  const { data: rawAccounts } = useSWR(endpoints.accounting.accounts, fetcher);
+  const accounts = useMemo(() => {
+    const list = Array.isArray(rawAccounts) ? rawAccounts : rawAccounts?.results ?? [];
+    return list.filter((a) => a.is_active !== false);
+  }, [rawAccounts]);
 
   const [search, setSearch] = useState('');
   const [releaseStatus, setReleaseStatus] = useState('all');
@@ -412,7 +417,7 @@ export default function SupplierPayments() {
       </Card>
 
       <Grid container spacing={3}>
-        <Grid size={{ xs: 12}}>
+        <Grid size={{ xs: 12 }}>
           <Card sx={{ borderRadius: 3, overflowX: 'auto' }}>
             <TableContainer>
               <Table>
@@ -845,12 +850,18 @@ export default function SupplierPayments() {
                   fullWidth
                   size="small"
                   label="Execution bank"
-                  value={draftPayment.bankAccount}
-                  onChange={(event) => updateDraft('bankAccount', event.target.value)}
+                  value={draftPayment.bank_account}
+                  onChange={(event) => {
+                    const selectedId = event.target.value;
+                    const selected = accounts.find((a) => String(a.id) === String(selectedId));
+                    updateDraft('bank_account', selectedId);
+                    updateDraft('bankAccount', selected ? `${selected.code} - ${selected.name}` : '');
+                  }}
                 >
-                  {PAYMENT_BANK_ACCOUNTS.map((account) => (
-                    <MenuItem key={account} value={account}>
-                      {account}
+                  <MenuItem value="">Select bank account</MenuItem>
+                  {accounts.map((a) => (
+                    <MenuItem key={a.id} value={a.id}>
+                      {a.code} — {a.name}
                     </MenuItem>
                   ))}
                 </TextField>

@@ -36,6 +36,11 @@ export function LeaveBalanceDashboard({ employee }) {
     filters.state.year
   );
 
+  // const leaveMap = leaveBalances.reduce((acc, item) => {
+  //   acc[item.leave_type_name] = item;
+  //   return acc;
+  // }, {});
+
   // Filter leave types by search
   const filteredBalances = useMemo(() => {
     if (!filters.state.search) return leaveBalances;
@@ -248,7 +253,12 @@ export function LeaveBalanceDashboard({ employee }) {
       </Grid>
 
       <Box sx={{ mt: 4 }}>
-        <LeaveRequestListView employeeId={employee?.employee_id} flag employee={employee} />
+        <LeaveRequestListView
+          employeeId={employee?.employee_id}
+          flag
+          employee={employee}
+          leaveBalances={leaveBalances}
+        />
       </Box>
     </Box>
   );

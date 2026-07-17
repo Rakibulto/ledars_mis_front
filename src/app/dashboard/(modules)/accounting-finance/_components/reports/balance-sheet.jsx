@@ -3,6 +3,7 @@
 import { toast } from 'sonner';
 import NextLink from 'next/link';
 import { useMemo, useState } from 'react';
+import useSWR from 'swr';
 
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
@@ -24,11 +25,11 @@ import CardContent from '@mui/material/CardContent';
 import TableContainer from '@mui/material/TableContainer';
 
 import { paths } from 'src/routes/paths';
+import { fetcher, endpoints } from 'src/utils/axios';
 
 import PdfPrintLayout from 'src/app/dashboard/(modules)/accounting-finance/_components/shared/pdf-print-layout';
 
 import { formatCurrency } from '../utils';
-import { getBalanceSheetReport } from './mock-data';
 import { ReportExportActions } from './report-export-actions';
 import { exportReportJson, exportReportExcel } from './reports-export';
 
@@ -47,10 +48,7 @@ function StatementSection({ title, rows, total, tone }) {
             <TableHead>
               <TableRow>
                 <TableCell>Account</TableCell>
-                <TableCell align="right">Current</TableCell>
-                <TableCell align="right">Comparative</TableCell>
-                <TableCell align="right">Variance</TableCell>
-                <TableCell align="right">Drilldown</TableCell>
+                <TableCell align="right">Balance</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -66,28 +64,20 @@ function StatementSection({ title, rows, total, tone }) {
                       </Typography>
                     </Stack>
                   </TableCell>
-                  <TableCell align="right">{formatCurrency(row.balance)}</TableCell>
-                  <TableCell align="right">{formatCurrency(row.comparativeBalance)}</TableCell>
-                  <TableCell
-                    align="right"
-                    sx={{
-                      color: row.variance >= 0 ? 'success.main' : 'error.main',
-                      fontWeight: 700,
-                    }}
-                  >
-                    {formatCurrency(row.variance)}
-                  </TableCell>
                   <TableCell align="right">
-                    <Button
-                      component={NextLink}
-                      href={paths.dashboard.accountingFinance.reports.accountLedger}
-                      size="small"
-                    >
-                      Account Ledger
-                    </Button>
+                    <Typography variant="body2" fontWeight={600}>
+                      {formatCurrency(Math.abs(row.balance))}
+                    </Typography>
                   </TableCell>
                 </TableRow>
               ))}
+              {rows.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={2} align="center">
+                    <Typography variant="body2" color="text.secondary">No accounts</Typography>
+                  </TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
         </TableContainer>
@@ -97,423 +87,235 @@ function StatementSection({ title, rows, total, tone }) {
 }
 
 export default function BalanceSheet() {
-  const [asOfDate, setAsOfDate] = useState('2026-03-29');
-  const [comparisonDate, setComparisonDate] = useState('2025-12-31');
-  const [search, setSearch] = useState('');
-  const [viewMode, setViewMode] = useState('consolidated');
+  const today = new Date();
+  const firstDay = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-01`;
+  const lastDay = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate()).padStart(2, '0')}`;
+  const [dateFrom, setDateFrom] = useState(firstDay);
+  const [dateTo, setDateTo] = useState(lastDay);
   const [pendingAction, setPendingAction] = useState(null);
   const [printOpen, setPrintOpen] = useState(false);
-  const report = useMemo(() => getBalanceSheetReport({ asOfDate, search }), [asOfDate, search]);
 
-  const comparisonFactor = useMemo(() => {
-    const baseDate = new Date(`${asOfDate}T00:00:00`).getTime();
-    const compareDate = new Date(`${comparisonDate}T00:00:00`).getTime();
-    const dayGap = Math.max(0, Math.round((baseDate - compareDate) / (1000 * 60 * 60 * 24)));
-    return Math.max(0.72, 1 - dayGap / 1000);
-  }, [asOfDate, comparisonDate]);
+  const trialBalanceUrl = useMemo(() => {
+    const base = endpoints.accounting.account_trial_balance;
+    return `${base}?date_from=${dateFrom}&date_to=${dateTo}`;
+  }, [dateFrom, dateTo]);
 
-  const comparativeSections = useMemo(() => {
-    const mapRows = (rows) =>
-      rows.map((row) => ({
-        ...row,
-        comparativeBalance: Number(row.balance || 0) * comparisonFactor,
-        variance: Number(row.balance || 0) - Number(row.balance || 0) * comparisonFactor,
-      }));
+  const { data: rawResponse, isLoading } = useSWR(trialBalanceUrl, fetcher);
 
-    return {
-      assets: mapRows(report.sections.assets),
-      liabilities: mapRows(report.sections.liabilities),
-      equity: mapRows(report.sections.equity),
-    };
-  }, [
-    comparisonFactor,
-    report.sections.assets,
-    report.sections.equity,
-    report.sections.liabilities,
-  ]);
+  const allAccounts = useMemo(() => {
+    if (!rawResponse) return [];
+    if (Array.isArray(rawResponse)) return rawResponse;
+    return rawResponse.accounts || [];
+  }, [rawResponse]);
 
-  const consolidatedEntities = useMemo(() => {
-    const assets = report.totalAssets;
-    const liabilities = report.totalLiabilities;
-    const equity = report.totalEquity;
+  // Compute closing balance for each account
+  // For asset/expense: balance = closing_dr - closing_cr
+  // For liability/equity/income: balance = closing_cr - closing_dr
+  const accountsWithBalance = useMemo(() => {
+    const DEBIT_CLASS = { asset: true, expense: true };
+    return allAccounts.map((acc) => {
+      const isDebit = DEBIT_CLASS[acc.classification];
+      const balance = isDebit
+        ? (acc.closing_dr || 0) - (acc.closing_cr || 0)
+        : (acc.closing_cr || 0) - (acc.closing_dr || 0);
+      return { ...acc, balance };
+    }).filter((acc) => Math.abs(acc.balance) > 0.01);
+  }, [allAccounts]);
 
-    return [
-      {
-        id: 'core',
-        entity: 'NGO Core',
-        assets: assets * 0.46,
-        liabilities: liabilities * 0.38,
-        equity: equity * 0.42,
-      },
-      {
-        id: 'programs',
-        entity: 'Programs',
-        assets: assets * 0.39,
-        liabilities: liabilities * 0.33,
-        equity: equity * 0.36,
-      },
-      {
-        id: 'shared',
-        entity: 'Shared Services',
-        assets: assets * 0.15,
-        liabilities: liabilities * 0.29,
-        equity: equity * 0.22,
-      },
-    ].map((row) => ({
-      ...row,
-      netAssets: row.assets - row.liabilities,
-    }));
-  }, [report.totalAssets, report.totalEquity, report.totalLiabilities]);
-
-  const exportConfig = useMemo(
-    () => ({
-      title: 'Balance Sheet',
-      subtitle: `As of ${report.asOfDate} compared with ${comparisonDate}`,
-      summary: [
-        { label: 'Assets', value: formatCurrency(report.totalAssets) },
-        { label: 'Liabilities', value: formatCurrency(report.totalLiabilities) },
-        { label: 'Equity', value: formatCurrency(report.totalEquity) },
-        { label: 'Net assets', value: formatCurrency(report.netAssets) },
-      ],
-      controlChecks: [
-        {
-          label: 'Balance control',
-          value:
-            report.controlStatus === 'balanced'
-              ? 'Assets match liabilities and equity'
-              : `Gap ${formatCurrency(report.balancingGap)}`,
-          status: report.controlStatus === 'balanced' ? 'success' : 'warning',
-        },
-      ],
-      tables: [
-        {
-          title: 'Assets',
-          columns: [
-            { key: 'code', label: 'Code' },
-            { key: 'name', label: 'Name' },
-            { key: 'balance', label: 'Current' },
-            { key: 'comparativeBalance', label: 'Comparative' },
-            { key: 'variance', label: 'Variance' },
-          ],
-          rows: comparativeSections.assets,
-        },
-        {
-          title: 'Liabilities',
-          columns: [
-            { key: 'code', label: 'Code' },
-            { key: 'name', label: 'Name' },
-            { key: 'balance', label: 'Current' },
-            { key: 'comparativeBalance', label: 'Comparative' },
-            { key: 'variance', label: 'Variance' },
-          ],
-          rows: comparativeSections.liabilities,
-        },
-        {
-          title: 'Equity',
-          columns: [
-            { key: 'code', label: 'Code' },
-            { key: 'name', label: 'Name' },
-            { key: 'balance', label: 'Current' },
-            { key: 'comparativeBalance', label: 'Comparative' },
-            { key: 'variance', label: 'Variance' },
-          ],
-          rows: comparativeSections.equity,
-        },
-        {
-          title: 'Consolidated Entities',
-          columns: [
-            { key: 'entity', label: 'Entity' },
-            { key: 'assets', label: 'Assets' },
-            { key: 'liabilities', label: 'Liabilities' },
-            { key: 'equity', label: 'Equity' },
-            { key: 'netAssets', label: 'Net Assets' },
-          ],
-          rows: consolidatedEntities,
-        },
-      ],
-      payload: {
-        report,
-        comparativeSections,
-        consolidatedEntities,
-        filters: { asOfDate, comparisonDate, search, viewMode },
-      },
-    }),
-    [asOfDate, comparisonDate, comparativeSections, consolidatedEntities, report, search, viewMode]
+  // Split into Assets, Liabilities, Equity
+  const assets = useMemo(
+    () => accountsWithBalance.filter((a) => a.classification === 'asset'),
+    [accountsWithBalance]
   );
+  const liabilities = useMemo(
+    () => accountsWithBalance.filter((a) => a.classification === 'liability'),
+    [accountsWithBalance]
+  );
+  const equity = useMemo(
+    () => accountsWithBalance.filter((a) => a.classification === 'equity'),
+    [accountsWithBalance]
+  );
+
+  const totalAssets = useMemo(() => assets.reduce((s, a) => s + a.balance, 0), [assets]);
+  const totalLiabilities = useMemo(() => liabilities.reduce((s, a) => s + a.balance, 0), [liabilities]);
+  const totalEquity = useMemo(() => equity.reduce((s, a) => s + a.balance, 0), [equity]);
+  const totalLiabilitiesAndEquity = totalLiabilities + totalEquity;
+  const balancingGap = totalAssets - totalLiabilitiesAndEquity;
+  const isBalanced = Math.abs(balancingGap) < 0.01;
+
+  const exportConfig = useMemo(() => ({
+    title: 'Balance Sheet',
+    subtitle: `As of ${dateTo}`,
+    summary: [
+      { label: 'Total Assets', value: formatCurrency(totalAssets) },
+      { label: 'Total Liabilities', value: formatCurrency(totalLiabilities) },
+      { label: 'Total Equity', value: formatCurrency(totalEquity) },
+      { label: 'Balance', value: isBalanced ? 'Balanced' : `Gap: ${formatCurrency(balancingGap)}` },
+    ],
+    tables: [
+      {
+        title: 'Assets',
+        columns: [{ key: 'code', label: 'Code' }, { key: 'name', label: 'Name' }, { key: 'balance', label: 'Balance' }],
+        rows: assets.map((a) => ({ code: a.code, name: a.name, balance: formatCurrency(a.balance) })),
+      },
+      {
+        title: 'Liabilities',
+        columns: [{ key: 'code', label: 'Code' }, { key: 'name', label: 'Name' }, { key: 'balance', label: 'Balance' }],
+        rows: liabilities.map((a) => ({ code: a.code, name: a.name, balance: formatCurrency(a.balance) })),
+      },
+      {
+        title: 'Equity',
+        columns: [{ key: 'code', label: 'Code' }, { key: 'name', label: 'Name' }, { key: 'balance', label: 'Balance' }],
+        rows: equity.map((a) => ({ code: a.code, name: a.name, balance: formatCurrency(a.balance) })),
+      },
+    ],
+  }), [dateTo, totalAssets, totalLiabilities, totalEquity, balancingGap, isBalanced, assets, liabilities, equity]);
 
   const printContent = (
     <div>
-      {exportConfig.tables.map((table) => (
-        <div key={table.title} style={{ marginBottom: '20px' }}>
-          <div style={{ fontWeight: 700, fontSize: 14, margin: '16px 0 8px' }}>{table.title}</div>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
-            <thead>
-              <tr style={{ background: '#f5f5f5' }}>
-                {table.columns.map((column) => (
-                  <th
-                    key={column.key}
-                    style={{ border: '1px solid #ddd', padding: '6px 8px', textAlign: 'left' }}
-                  >
-                    {column.label}
-                  </th>
-                ))}
+      <div style={{ marginBottom: 24 }}>
+        <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 8 }}>Balance Sheet — {dateTo}</div>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
+          <thead>
+            <tr style={{ background: '#f5f5f5' }}>
+              <th style={{ border: '1px solid #ddd', padding: '6px 8px', textAlign: 'left' }}>Account</th>
+              <th style={{ border: '1px solid #ddd', padding: '6px 8px', textAlign: 'right' }}>Balance</th>
+            </tr>
+          </thead>
+          <tbody>
+            {assets.map((a) => (
+              <tr key={a.id}>
+                <td style={{ border: '1px solid #ddd', padding: '6px 8px' }}>{a.code} - {a.name}</td>
+                <td style={{ border: '1px solid #ddd', padding: '6px 8px', textAlign: 'right' }}>{formatCurrency(a.balance)}</td>
               </tr>
-            </thead>
-            <tbody>
-              {table.rows.map((row, index) => (
-                <tr key={row.id || index}>
-                  {table.columns.map((column) => {
-                    const value = row[column.key];
-                    return (
-                      <td key={column.key} style={{ border: '1px solid #ddd', padding: '6px 8px' }}>
-                        {typeof value === 'number' &&
-                        /balance|amount|debit|credit|net|cost|budget|actual|available|variance|opening|closing|total|value|assets|liabilities|equity|comparative/i.test(
-                          column.key
-                        )
-                          ? formatCurrency(value)
-                          : value}
-                      </td>
-                    );
-                  })}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ))}
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div style={{ marginBottom: 24 }}>
+        <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 8 }}>Liabilities</div>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
+          <thead>
+            <tr style={{ background: '#f5f5f5' }}>
+              <th style={{ border: '1px solid #ddd', padding: '6px 8px', textAlign: 'left' }}>Account</th>
+              <th style={{ border: '1px solid #ddd', padding: '6px 8px', textAlign: 'right' }}>Balance</th>
+            </tr>
+          </thead>
+          <tbody>
+            {liabilities.map((a) => (
+              <tr key={a.id}>
+                <td style={{ border: '1px solid #ddd', padding: '6px 8px' }}>{a.code} - {a.name}</td>
+                <td style={{ border: '1px solid #ddd', padding: '6px 8px', textAlign: 'right' }}>{formatCurrency(a.balance)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div style={{ marginBottom: 24 }}>
+        <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 8 }}>Equity</div>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
+          <thead>
+            <tr style={{ background: '#f5f5f5' }}>
+              <th style={{ border: '1px solid #ddd', padding: '6px 8px', textAlign: 'left' }}>Account</th>
+              <th style={{ border: '1px solid #ddd', padding: '6px 8px', textAlign: 'right' }}>Balance</th>
+            </tr>
+          </thead>
+          <tbody>
+            {equity.map((a) => (
+              <tr key={a.id}>
+                <td style={{ border: '1px solid #ddd', padding: '6px 8px' }}>{a.code} - {a.name}</td>
+                <td style={{ border: '1px solid #ddd', padding: '6px 8px', textAlign: 'right' }}>{formatCurrency(a.balance)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 
-  const runAction = async (label, action, successMessage) => {
-    const loadingId = toast.loading(`${label}...`);
-    setPendingAction(label);
-
-    try {
-      await action();
-      toast.dismiss(loadingId);
-      toast.success(successMessage);
-    } catch (error) {
-      toast.dismiss(loadingId);
-      toast.error(error?.message || `${label} failed`);
-    } finally {
-      setPendingAction(null);
-    }
-  };
-
   return (
-    <Box>
-      <Stack
-        direction={{ xs: 'column', lg: 'row' }}
-        justifyContent="space-between"
-        spacing={2}
-        sx={{ mb: 3 }}
-      >
+    <Box sx={{ p: 3 }}>
+      <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" spacing={2} sx={{ mb: 3 }}>
         <Box>
-          <Typography variant="h4" fontWeight={800}>
-            Balance Sheet
-          </Typography>
+          <Typography variant="h4" fontWeight={800}>Balance Sheet</Typography>
           <Typography variant="body2" color="text.secondary">
-            Statement of financial position with asset, liability, and equity control posture.
+            Assets, liabilities, and equity calculated from your chart of accounts.
           </Typography>
         </Box>
-        <ReportExportActions
-          actions={[
-            {
-              key: 'excel',
-              onClick: () =>
-                runAction(
-                  'Export Balance Sheet Excel',
-                  () => exportReportExcel('balance-sheet', exportConfig),
-                  'Balance sheet workbook exported'
-                ),
-              disabled: pendingAction !== null,
-            },
-            {
-              key: 'json',
-              onClick: () =>
-                runAction(
-                  'Export Balance Sheet JSON',
-                  () => exportReportJson('balance-sheet', exportConfig),
-                  'Balance sheet JSON exported'
-                ),
-              disabled: pendingAction !== null,
-            },
-            {
-              key: 'print',
-              onClick: () => setPrintOpen(true),
-              disabled: pendingAction !== null,
-            },
-          ]}
-        />
+        <Stack direction="row" spacing={1}>
+          <ReportExportActions
+            actions={[
+              { key: 'json', onClick: () => exportReportJson('balance-sheet', exportConfig), disabled: pendingAction !== null },
+              { key: 'excel', onClick: () => exportReportExcel('balance-sheet', exportConfig), disabled: pendingAction !== null },
+              { key: 'print', onClick: () => setPrintOpen(true), disabled: pendingAction !== null },
+            ]}
+          />
+        </Stack>
       </Stack>
+
+      <Alert severity={isBalanced ? 'success' : 'warning'} sx={{ mb: 3, borderRadius: 2 }}>
+        {isBalanced
+          ? `Balance Sheet is balanced. Total Assets: ${formatCurrency(totalAssets)} = Liabilities + Equity: ${formatCurrency(totalLiabilitiesAndEquity)}`
+          : `Balance Sheet has a gap of ${formatCurrency(balancingGap)}. Assets: ${formatCurrency(totalAssets)} vs Liabilities + Equity: ${formatCurrency(totalLiabilitiesAndEquity)}`}
+      </Alert>
 
       <Card sx={{ mb: 3, borderRadius: 3 }}>
         <CardContent>
-          <Grid container spacing={2}>
-            <Grid size={{ xs: 12, md: 6 }}>
-              <TextField
-                fullWidth
-                type="date"
-                label="As of"
-                value={asOfDate}
-                onChange={(event) => setAsOfDate(event.target.value)}
-                InputLabelProps={{ shrink: true }}
-              />
-            </Grid>
-            <Grid size={{ xs: 12, md: 6 }}>
-              <TextField
-                fullWidth
-                type="date"
-                label="Comparative Date"
-                value={comparisonDate}
-                onChange={(event) => setComparisonDate(event.target.value)}
-                InputLabelProps={{ shrink: true }}
-              />
-            </Grid>
-            <Grid size={{ xs: 12, md: 6 }}>
-              <TextField
-                select
-                fullWidth
-                label="View"
-                value={viewMode}
-                onChange={(event) => setViewMode(event.target.value)}
-              >
-                <MenuItem value="single">Single Entity</MenuItem>
-                <MenuItem value="consolidated">Consolidated View</MenuItem>
-              </TextField>
-            </Grid>
-            <Grid size={{ xs: 12, md: 6 }}>
-              <TextField
-                fullWidth
-                label="Search account"
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="Code, name, or type"
-              />
-            </Grid>
-          </Grid>
+          <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
+            <TextField label="Date From" type="date" size="small" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} InputLabelProps={{ shrink: true }} sx={{ minWidth: 160 }} />
+            <TextField label="Date To" type="date" size="small" value={dateTo} onChange={(e) => setDateTo(e.target.value)} InputLabelProps={{ shrink: true }} sx={{ minWidth: 160 }} />
+          </Stack>
         </CardContent>
       </Card>
 
-      {report.controlStatus !== 'balanced' ? (
-        <Alert severity="warning" sx={{ mb: 3, borderRadius: 2 }}>
-          The mock statement currently shows a balancing difference of{' '}
-          {formatCurrency(report.balancingGap)}. The report still surfaces full account detail for
-          review.
-        </Alert>
-      ) : null}
+      <Grid container spacing={3} sx={{ mb: 3 }}>
+        <Grid size={{ xs: 12, md: 4 }}>
+          <Card sx={{ borderRadius: 3 }}>
+            <CardContent sx={{ textAlign: 'center' }}>
+              <Typography variant="caption" color="text.secondary">Total Assets</Typography>
+              <Typography variant="h5" fontWeight={800} color="success.main" sx={{ mt: 0.5 }}>
+                {formatCurrency(totalAssets)}
+              </Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid size={{ xs: 12, md: 4 }}>
+          <Card sx={{ borderRadius: 3 }}>
+            <CardContent sx={{ textAlign: 'center' }}>
+              <Typography variant="caption" color="text.secondary">Total Liabilities</Typography>
+              <Typography variant="h5" fontWeight={800} color="error.main" sx={{ mt: 0.5 }}>
+                {formatCurrency(totalLiabilities)}
+              </Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid size={{ xs: 12, md: 4 }}>
+          <Card sx={{ borderRadius: 3 }}>
+            <CardContent sx={{ textAlign: 'center' }}>
+              <Typography variant="caption" color="text.secondary">Total Equity</Typography>
+              <Typography variant="h5" fontWeight={800} color="info.main" sx={{ mt: 0.5 }}>
+                {formatCurrency(totalEquity)}
+              </Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+      </Grid>
 
-      <Grid container spacing={2} sx={{ mb: 3 }}>
-        {[
-          { label: 'Assets', value: formatCurrency(report.totalAssets) },
-          { label: 'Liabilities', value: formatCurrency(report.totalLiabilities) },
-          { label: 'Equity', value: formatCurrency(report.totalEquity) },
-          {
-            label: 'Comparative delta',
-            value: formatCurrency(
-              report.totalAssets -
-                comparativeSections.assets.reduce((sum, row) => sum + row.comparativeBalance, 0)
-            ),
-          },
-        ].map((item) => (
-          <Grid key={item.label} size={{ xs: 12, sm: 6, xl: 3 }}>
-            <Card sx={{ borderRadius: 3 }}>
-              <CardContent>
-                <Typography variant="caption" color="text.secondary">
-                  {item.label}
-                </Typography>
-                <Typography variant="h5" fontWeight={800} sx={{ mt: 0.75 }}>
-                  {item.value}
-                </Typography>
-              </CardContent>
-            </Card>
+      {isLoading ? (
+        <Typography color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>Loading...</Typography>
+      ) : (
+        <Grid container spacing={3}>
+          <Grid size={{ xs: 12, md: 4 }}>
+            <StatementSection title="Assets" rows={assets} total={totalAssets} tone="success" />
           </Grid>
-        ))}
-      </Grid>
-
-      <Grid container spacing={3}>
-        <Grid size={{ xs: 12, lg: 6 }}>
-          <StatementSection
-            title="Assets"
-            rows={comparativeSections.assets}
-            value={report.totalAssets}
-            tone="info"
-          />
+          <Grid size={{ xs: 12, md: 4 }}>
+            <StatementSection title="Liabilities" rows={liabilities} total={totalLiabilities} tone="error" />
+          </Grid>
+          <Grid size={{ xs: 12, md: 4 }}>
+            <StatementSection title="Equity" rows={equity} total={totalEquity} tone="info" />
+          </Grid>
         </Grid>
-        <Grid size={{ xs: 12, lg: 6 }}>
-          <Stack spacing={3}>
-            <StatementSection
-              title="Liabilities"
-              rows={comparativeSections.liabilities}
-              value={report.totalLiabilities}
-              tone="error"
-            />
-            <StatementSection
-              title="Equity"
-              rows={comparativeSections.equity}
-              value={report.totalEquity}
-              tone="success"
-            />
-            <Card sx={{ borderRadius: 3 }}>
-              <CardContent>
-                <Stack direction="row" justifyContent="space-between" alignItems="center">
-                  <Box>
-                    <Typography variant="caption" color="text.secondary">
-                      Liabilities + Equity
-                    </Typography>
-                    <Typography variant="h5" fontWeight={800} sx={{ mt: 0.75 }}>
-                      {formatCurrency(report.totalLiabilitiesAndEquity)}
-                    </Typography>
-                  </Box>
-                  <Chip
-                    label={report.controlStatus}
-                    color={report.controlStatus === 'balanced' ? 'success' : 'warning'}
-                  />
-                </Stack>
-                <Divider sx={{ my: 2 }} />
-                <Typography variant="body2" color="text.secondary">
-                  This view follows the Odoo-style statement posture with comparative periods,
-                  account-ledger drill-through cues, and a consolidated entity lens for leadership
-                  review.
-                </Typography>
-              </CardContent>
-            </Card>
-            {viewMode === 'consolidated' ? (
-              <Card sx={{ borderRadius: 3 }}>
-                <CardContent>
-                  <Typography variant="h6" fontWeight={700} sx={{ mb: 2 }}>
-                    Consolidated View
-                  </Typography>
-                  <TableContainer>
-                    <Table size="small">
-                      <TableHead>
-                        <TableRow>
-                          <TableCell>Entity</TableCell>
-                          <TableCell align="right">Assets</TableCell>
-                          <TableCell align="right">Liabilities</TableCell>
-                          <TableCell align="right">Equity</TableCell>
-                          <TableCell align="right">Net Assets</TableCell>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {consolidatedEntities.map((row) => (
-                          <TableRow key={row.id} hover>
-                            <TableCell>{row.entity}</TableCell>
-                            <TableCell align="right">{formatCurrency(row.assets)}</TableCell>
-                            <TableCell align="right">{formatCurrency(row.liabilities)}</TableCell>
-                            <TableCell align="right">{formatCurrency(row.equity)}</TableCell>
-                            <TableCell align="right">{formatCurrency(row.netAssets)}</TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
-                </CardContent>
-              </Card>
-            ) : null}
-          </Stack>
-        </Grid>
-      </Grid>
+      )}
 
       {printOpen && (
         <PdfPrintLayout title="Balance Sheet" onClose={() => setPrintOpen(false)}>

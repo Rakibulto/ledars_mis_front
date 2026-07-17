@@ -30,18 +30,9 @@ import { Card, CardBody, CardHeader } from '../../components/ui/card';
 import { useGetRequest } from '../../../../../../../actions/ledars-hook';
 
 const STEP_FIELDS = {
-  1: [
-    'name',
-    'legal_name',
-    'year_established',
-    'organization_type',
-    'annual_turnover',
-    'address',
-    'district',
-    'division',
-  ],
-  2: ['contact_person', 'designation', 'email', 'phone'],
-  4: [
+  1: ['name'],
+  3: ['contact_person', 'designation', 'email', 'phone'],
+  8: [
     'bank_name',
     'branch_name',
     'account_name',
@@ -64,6 +55,13 @@ export function CreateVendor() {
   const [uploadedFiles, setUploadedFiles] = useState({});
   const [confirmed, setConfirmed] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [lastYearClients, setLastYearClients] = useState([
+    { name: '', contact_number: '', email: '' },
+    { name: '', contact_number: '', email: '' },
+    { name: '', contact_number: '', email: '' },
+    { name: '', contact_number: '', email: '' },
+    { name: '', contact_number: '', email: '' },
+  ]);
 
   const {
     register,
@@ -76,21 +74,15 @@ export function CreateVendor() {
     defaultValues: {
       name: '',
       company_name_bn: '',
-      legal_name: '',
       year_established: '',
-      organization_type: '',
-      annual_turnover: '',
       address: '',
       district: '',
       division: '',
-      country: 'Bangladesh',
       contact_person: '',
       designation: '',
       email: '',
       phone: '',
-      office_phone: '',
       website: '',
-      nid_passport: '',
       bank_name: '',
       branch_name: '',
       account_name: '',
@@ -98,6 +90,30 @@ export function CreateVendor() {
       routing_number: '',
       account_type: '',
       swift_code: '',
+      // Enlistment form optional fields
+      village_road: '',
+      house_number: '',
+      postal_code: '',
+      city: '',
+      proprietor_name: '',
+      proprietor_title: '',
+      proprietor_cell: '',
+      proprietor_email: '',
+      nature_of_business: '',
+      other_branch_name: '',
+      other_branch_address: '',
+      other_branch_cell: '',
+      other_branch_email: '',
+      other_branch_website: '',
+      trade_license_valid_date: '',
+      trade_license_number: '',
+      tax_id: '',
+      bin_number: '',
+      tax_return_acknowledgement: false,
+      others_license_no: '',
+      declaration_name_title: '',
+      declaration_company_name: '',
+      declaration_date: '',
     },
   });
 
@@ -107,21 +123,15 @@ export function CreateVendor() {
       reset({
         name: editedDefaultData.name || '',
         company_name_bn: editedDefaultData.company_name_bn || '',
-        legal_name: editedDefaultData.legal_name || '',
         year_established: editedDefaultData.year_established || '',
-        organization_type: editedDefaultData.organization_type || '',
-        annual_turnover: editedDefaultData.annual_turnover || '',
         address: editedDefaultData.address || '',
         district: editedDefaultData.district || '',
         division: editedDefaultData.division || '',
-        country: editedDefaultData.country || 'Bangladesh',
         contact_person: editedDefaultData.contact_person || '',
         designation: editedDefaultData.designation || '',
         email: editedDefaultData.email || '',
         phone: editedDefaultData.phone || '',
-        office_phone: editedDefaultData.office_phone || '',
         website: editedDefaultData.website || '',
-        nid_passport: editedDefaultData.nid_passport || '',
         bank_name: editedDefaultData.bank_name || '',
         branch_name: editedDefaultData.branch_name || '',
         account_name: editedDefaultData.account_name || '',
@@ -129,9 +139,35 @@ export function CreateVendor() {
         routing_number: editedDefaultData.routing_number || '',
         account_type: editedDefaultData.account_type || '',
         swift_code: editedDefaultData.swift_code || '',
+        village_road: editedDefaultData.village_road || '',
+        house_number: editedDefaultData.house_number || '',
+        postal_code: editedDefaultData.postal_code || '',
+        city: editedDefaultData.city || '',
+        proprietor_name: editedDefaultData.proprietor_name || '',
+        proprietor_title: editedDefaultData.proprietor_title || '',
+        proprietor_cell: editedDefaultData.proprietor_cell || '',
+        proprietor_email: editedDefaultData.proprietor_email || '',
+        nature_of_business: editedDefaultData.nature_of_business || '',
+        other_branch_name: editedDefaultData.other_branch_name || '',
+        other_branch_address: editedDefaultData.other_branch_address || '',
+        other_branch_cell: editedDefaultData.other_branch_cell || '',
+        other_branch_email: editedDefaultData.other_branch_email || '',
+        other_branch_website: editedDefaultData.other_branch_website || '',
+        trade_license_valid_date: editedDefaultData.trade_license_valid_date || '',
+        trade_license_number: editedDefaultData.trade_license_number || '',
+        tax_id: editedDefaultData.tax_id || '',
+        bin_number: editedDefaultData.bin_number || '',
+        tax_return_acknowledgement: editedDefaultData.tax_return_acknowledgement || false,
+        others_license_no: editedDefaultData.others_license_no || '',
+        declaration_name_title: editedDefaultData.declaration_name_title || '',
+        declaration_company_name: editedDefaultData.declaration_company_name || '',
+        declaration_date: editedDefaultData.declaration_date || '',
       });
       if (Array.isArray(editedDefaultData.categories)) {
         setSelectedCategories(editedDefaultData.categories.map((c) => c.name));
+      }
+      if (Array.isArray(editedDefaultData.last_year_clients)) {
+        setLastYearClients(editedDefaultData.last_year_clients);
       }
     }
   }, [isEditMode, editedDefaultData, reset]);
@@ -187,11 +223,11 @@ export function CreateVendor() {
 
   const handleNext = async () => {
     const fields = STEP_FIELDS[step];
-    if (fields) {
+    if (fields && fields.length > 0) {
       const valid = await trigger(fields);
       if (!valid) return;
     }
-    setStep((s) => Math.min(6, s + 1));
+    setStep((s) => Math.min(12, s + 1));
   };
 
   const onSubmit = async (formValues) => {
@@ -207,6 +243,7 @@ export function CreateVendor() {
         ...formValues,
         year_established: formValues.year_established ? Number(formValues.year_established) : null,
         categories: categoryIds,
+        last_year_clients: lastYearClients.filter((c) => c.name || c.contact_number || c.email),
       };
 
       let vendorId;
@@ -265,12 +302,18 @@ export function CreateVendor() {
   const uploadedCount = Object.keys(uploadedFiles).filter((k) => uploadedFiles[k]?.file).length;
 
   const steps = [
-    { num: 1, label: 'Company Information' },
-    { num: 2, label: 'Contact Details' },
-    { num: 3, label: 'Compliance Documents' },
-    { num: 4, label: 'Bank Information' },
-    { num: 5, label: 'Assign Categories' },
-    { num: 6, label: 'Review & Submit' },
+    { num: 1, label: 'Company & Proprietor' },
+    { num: 2, label: 'Address' },
+    { num: 3, label: 'Contact Person' },
+    { num: 4, label: 'Business Info' },
+    { num: 5, label: 'Other Branch' },
+    { num: 6, label: 'Client History' },
+    { num: 7, label: 'Licensing & Tax' },
+    { num: 8, label: 'Bank Information' },
+    { num: 9, label: 'Declaration' },
+    { num: 10, label: 'Documents' },
+    { num: 11, label: 'Categories' },
+    { num: 12, label: 'Review & Submit' },
   ];
 
   return (
@@ -300,15 +343,15 @@ export function CreateVendor() {
       <form onSubmit={handleSubmit(onSubmit)}>
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           <div className="lg:col-span-9">
-            {/* Step 1 */}
+            {/* Step 1: Company & Proprietor */}
             {step === 1 && (
               <Card>
                 <CardHeader
-                  title="Step 1: Company Information"
-                  description="Legal business details of the vendor"
+                  title="Step 1: Company & Proprietor Information"
+                  description="Vendor company name and proprietor details"
                 />
                 <CardBody>
-                  <div className="space-y-4">
+                  <div className="space-y-6">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                         <p className="block text-sm font-medium text-foreground mb-1">
@@ -334,90 +377,98 @@ export function CreateVendor() {
                         />
                       </div>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div>
-                        <p className="block text-sm font-medium text-foreground mb-1">
-                          Legal Business Name <span className="text-red-500">*</span>
-                        </p>
-                        <input
-                          {...register('legal_name', { required: 'Legal name is required' })}
-                          className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                          placeholder="As per trade license"
-                        />
-                        {errors.legal_name && (
-                          <p className="text-xs text-red-500 mt-1">{errors.legal_name.message}</p>
-                        )}
-                      </div>
-                      <div>
-                        <p className="block text-sm font-medium text-foreground mb-1">
-                          Year Established <span className="text-red-500">*</span>
-                        </p>
-                        <input
-                          type="number"
-                          {...register('year_established', {
-                            required: 'Year is required',
-                            min: { value: 1900, message: 'Invalid year' },
-                            max: { value: new Date().getFullYear(), message: 'Invalid year' },
-                          })}
-                          className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                          placeholder="e.g. 2015"
-                        />
-                        {errors.year_established && (
-                          <p className="text-xs text-red-500 mt-1">
-                            {errors.year_established.message}
+                    <div>
+                      <p className="text-sm font-semibold text-foreground mb-3">
+                        Proprietor Information
+                      </p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <p className="block text-sm font-medium text-foreground mb-1">
+                            Proprietor Name
                           </p>
-                        )}
+                          <input
+                            {...register('proprietor_name')}
+                            className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                            placeholder="Full name"
+                          />
+                        </div>
+                        <div>
+                          <p className="block text-sm font-medium text-foreground mb-1">Title</p>
+                          <input
+                            {...register('proprietor_title')}
+                            className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                            placeholder="e.g. Proprietor / Director"
+                          />
+                        </div>
+                        <div>
+                          <p className="block text-sm font-medium text-foreground mb-1">Cell No</p>
+                          <input
+                            {...register('proprietor_cell')}
+                            className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                            placeholder="+880-1XXX-XXXXXX"
+                          />
+                        </div>
+                        <div>
+                          <p className="block text-sm font-medium text-foreground mb-1">Email</p>
+                          <input
+                            type="email"
+                            {...register('proprietor_email')}
+                            className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                            placeholder="proprietor@email.com"
+                          />
+                        </div>
                       </div>
                     </div>
+                  </div>
+                </CardBody>
+              </Card>
+            )}
+
+            {/* Step 2: Address */}
+            {step === 2 && (
+              <Card>
+                <CardHeader
+                  title="Step 2: Address"
+                  description="Detailed address from the Vendor Enlistment Form"
+                />
+                <CardBody>
+                  <div className="space-y-4">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                         <p className="block text-sm font-medium text-foreground mb-1">
-                          Type of Organization <span className="text-red-500">*</span>
+                          Village / Road
                         </p>
-                        <select
-                          {...register('organization_type', {
-                            required: 'Organization type is required',
-                          })}
+                        <input
+                          {...register('village_road')}
                           className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                        >
-                          <option value="">Select type...</option>
-                          <option value="sole_proprietorship">Sole Proprietorship</option>
-                          <option value="partnership">Partnership</option>
-                          <option value="limited_company">Limited Company</option>
-                          <option value="Cooperative Society">Cooperative Society</option>
-                          <option value="Private_Company">Private Company</option>
-                          <option value="NGO">NGO</option>
-                          <option value="Other">Other</option>
-                        </select>
-                        {errors.organization_type && (
-                          <p className="text-xs text-red-500 mt-1">
-                            {errors.organization_type.message}
-                          </p>
-                        )}
+                          placeholder="Village or Road name"
+                        />
+                      </div>
+                      <div>
+                        <p className="block text-sm font-medium text-foreground mb-1">House No</p>
+                        <input
+                          {...register('house_number')}
+                          className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                          placeholder="House number"
+                        />
                       </div>
                       <div>
                         <p className="block text-sm font-medium text-foreground mb-1">
-                          Annual Turnover (BDT) <span className="text-red-500">*</span>
+                          Postal Code
                         </p>
-                        <select
-                          {...register('annual_turnover', {
-                            required: 'Annual turnover is required',
-                          })}
+                        <input
+                          {...register('postal_code')}
                           className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                        >
-                          <option value="">Select range...</option>
-                          <option>Below BDT 10 Lakh</option>
-                          <option>BDT 10 Lakh - 50 Lakh</option>
-                          <option>BDT 50 Lakh - 1 Crore</option>
-                          <option>BDT 1 Crore - 5 Crore</option>
-                          <option>BDT 5 Crore - 10 Crore</option>
-                          <option>Above BDT 10 Crore</option>
-                        </select>
-                        {errors.annual_turnover && (
-                          <p className="text-xs text-red-500 mt-1">
-                            {errors.annual_turnover.message}
-                          </p>
-                        )}
+                          placeholder="e.g. 9455"
+                        />
+                      </div>
+                      <div>
+                        <p className="block text-sm font-medium text-foreground mb-1">City</p>
+                        <input
+                          {...register('city')}
+                          className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                          placeholder="City name"
+                        />
                       </div>
                     </div>
                     <div>
@@ -434,7 +485,7 @@ export function CreateVendor() {
                         <p className="text-xs text-red-500 mt-1">{errors.address.message}</p>
                       )}
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                         <p className="block text-sm font-medium text-foreground mb-1">
                           District <span className="text-red-500">*</span>
@@ -483,25 +534,17 @@ export function CreateVendor() {
                           <p className="text-xs text-red-500 mt-1">{errors.division.message}</p>
                         )}
                       </div>
-                      <div>
-                        <p className="block text-sm font-medium text-foreground mb-1">Country</p>
-                        <input
-                          {...register('country')}
-                          readOnly
-                          className="w-full px-3 py-2 border border-input rounded-lg bg-muted/50 text-muted-foreground"
-                        />
-                      </div>
                     </div>
                   </div>
                 </CardBody>
               </Card>
             )}
 
-            {/* Step 2 */}
-            {step === 2 && (
+            {/* Step 3: Contact Person */}
+            {step === 3 && (
               <Card>
                 <CardHeader
-                  title="Step 2: Contact Details"
+                  title="Step 3: Contact Person"
                   description="Primary contact person and communication details"
                 />
                 <CardBody>
@@ -573,34 +616,12 @@ export function CreateVendor() {
                         )}
                       </div>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div>
-                        <p className="block text-sm font-medium text-foreground mb-1">
-                          Office Phone
-                        </p>
-                        <input
-                          {...register('office_phone')}
-                          className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                          placeholder="+880-2-XXXXXXX"
-                        />
-                      </div>
-                      <div>
-                        <p className="block text-sm font-medium text-foreground mb-1">Website</p>
-                        <input
-                          {...register('website')}
-                          className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                          placeholder="https://www.company.com.bd"
-                        />
-                      </div>
-                    </div>
                     <div>
-                      <p className="block text-sm font-medium text-foreground mb-1">
-                        NID / Passport Number of Contact Person
-                      </p>
+                      <p className="block text-sm font-medium text-foreground mb-1">Website</p>
                       <input
-                        {...register('nid_passport')}
+                        {...register('website')}
                         className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                        placeholder="National ID or Passport number"
+                        placeholder="https://www.company.com.bd"
                       />
                     </div>
                     <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
@@ -615,63 +636,516 @@ export function CreateVendor() {
               </Card>
             )}
 
-            {/* Step 3 */}
-            {step === 3 && (
+            {/* Step 4: Business Info */}
+            {step === 4 && (
               <Card>
                 <CardHeader
-                  title="Step 3: Upload Compliance Documents"
+                  title="Step 4: Business Information"
+                  description="Year of establishment and nature of business"
+                />
+                <CardBody>
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <p className="block text-sm font-medium text-foreground mb-1">
+                          Year Established <span className="text-red-500">*</span>
+                        </p>
+                        <input
+                          type="number"
+                          {...register('year_established', {
+                            required: 'Year is required',
+                            min: { value: 1900, message: 'Invalid year' },
+                            max: { value: new Date().getFullYear(), message: 'Invalid year' },
+                          })}
+                          className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                          placeholder="e.g. 2015"
+                        />
+                        {errors.year_established && (
+                          <p className="text-xs text-red-500 mt-1">
+                            {errors.year_established.message}
+                          </p>
+                        )}
+                      </div>
+                      <div>
+                        <p className="block text-sm font-medium text-foreground mb-1">
+                          Nature of Business
+                        </p>
+                        <input
+                          {...register('nature_of_business')}
+                          className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                          placeholder="e.g. IT Equipment Supply, Construction Materials"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </CardBody>
+              </Card>
+            )}
+
+            {/* Step 5: Other Branch */}
+            {step === 5 && (
+              <Card>
+                <CardHeader
+                  title="Step 5: Other Branch Information"
+                  description="Details of other branches, if any (optional)"
+                />
+                <CardBody>
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <p className="block text-sm font-medium text-foreground mb-1">
+                          Branch Name
+                        </p>
+                        <input
+                          {...register('other_branch_name')}
+                          className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                          placeholder="Branch or sub-office name"
+                        />
+                      </div>
+                      <div>
+                        <p className="block text-sm font-medium text-foreground mb-1">Cell No</p>
+                        <input
+                          {...register('other_branch_cell')}
+                          className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                          placeholder="+880-1XXX-XXXXXX"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <p className="block text-sm font-medium text-foreground mb-1">
+                        Branch Address
+                      </p>
+                      <textarea
+                        rows={2}
+                        {...register('other_branch_address')}
+                        className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+                        placeholder="Full address of the other branch..."
+                      />
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <p className="block text-sm font-medium text-foreground mb-1">Email</p>
+                        <input
+                          type="email"
+                          {...register('other_branch_email')}
+                          className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                          placeholder="branch@email.com"
+                        />
+                      </div>
+                      <div>
+                        <p className="block text-sm font-medium text-foreground mb-1">Website</p>
+                        <input
+                          {...register('other_branch_website')}
+                          className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                          placeholder="https://..."
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </CardBody>
+              </Card>
+            )}
+
+            {/* Step 6: Client History */}
+            {step === 6 && (
+              <Card>
+                <CardHeader
+                  title="Step 6: Last Year's Client List"
+                  description="Key clients from the previous year (optional, up to 5)"
+                />
+                <CardBody>
+                  <div className="space-y-4">
+                    {lastYearClients.map((client, idx) => (
+                      <div key={idx} className="p-4 border border-border rounded-lg space-y-3">
+                        <p className="text-xs font-semibold text-muted-foreground">
+                          Client #{idx + 1}
+                        </p>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                          <div>
+                            <p className="block text-xs font-medium text-foreground mb-1">
+                              Client Name
+                            </p>
+                            <input
+                              value={client.name}
+                              onChange={(e) => {
+                                const updated = [...lastYearClients];
+                                updated[idx] = { ...updated[idx], name: e.target.value };
+                                setLastYearClients(updated);
+                              }}
+                              className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                              placeholder="Organization name"
+                            />
+                          </div>
+                          <div>
+                            <p className="block text-xs font-medium text-foreground mb-1">
+                              Contact Number
+                            </p>
+                            <input
+                              value={client.contact_number}
+                              onChange={(e) => {
+                                const updated = [...lastYearClients];
+                                updated[idx] = { ...updated[idx], contact_number: e.target.value };
+                                setLastYearClients(updated);
+                              }}
+                              className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                              placeholder="+880-..."
+                            />
+                          </div>
+                          <div>
+                            <p className="block text-xs font-medium text-foreground mb-1">Email</p>
+                            <input
+                              value={client.email}
+                              onChange={(e) => {
+                                const updated = [...lastYearClients];
+                                updated[idx] = { ...updated[idx], email: e.target.value };
+                                setLastYearClients(updated);
+                              }}
+                              className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                              placeholder="client@email.com"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardBody>
+              </Card>
+            )}
+
+            {/* Step 7: Licensing & Tax */}
+            {step === 7 && (
+              <Card>
+                <CardHeader
+                  title="Step 7: Licensing & Tax"
+                  description="Trade license, VAT, TIN, and tax compliance details"
+                />
+                <CardBody>
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <p className="block text-sm font-medium text-foreground mb-1">
+                          Trade License No.
+                        </p>
+                        <input
+                          {...register('trade_license_number')}
+                          className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                          placeholder="Trade license number"
+                        />
+                      </div>
+                      <div>
+                        <p className="block text-sm font-medium text-foreground mb-1">
+                          Trade License Valid Date
+                        </p>
+                        <input
+                          type="date"
+                          {...register('trade_license_valid_date')}
+                          className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                        />
+                      </div>
+                      <div>
+                        <p className="block text-sm font-medium text-foreground mb-1">TIN No.</p>
+                        <input
+                          {...register('tax_id')}
+                          className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                          placeholder="Tax Identification Number"
+                        />
+                      </div>
+                      <div>
+                        <p className="block text-sm font-medium text-foreground mb-1">
+                          VAT No / BIN No.
+                        </p>
+                        <input
+                          {...register('bin_number')}
+                          className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                          placeholder="Business Identification Number"
+                        />
+                      </div>
+                      <div>
+                        <p className="block text-sm font-medium text-foreground mb-1">
+                          Others License No
+                        </p>
+                        <input
+                          {...register('others_license_no')}
+                          className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                          placeholder="Other license numbers if any"
+                        />
+                      </div>
+                      <div className="sm:col-span-2">
+                        <label className="flex items-center gap-3 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            {...register('tax_return_acknowledgement')}
+                            className="w-4 h-4 rounded border-border"
+                          />
+                          <span className="text-sm font-medium text-foreground">
+                            Tax Return Acknowledgement submitted
+                          </span>
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                </CardBody>
+              </Card>
+            )}
+
+            {/* Step 8: Bank Information */}
+            {step === 8 && (
+              <Card>
+                <CardHeader
+                  title="Step 8: Bank Information"
+                  description="Payment and banking details for vendor payments"
+                />
+                <CardBody>
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <p className="block text-sm font-medium text-foreground mb-1">
+                          Bank Name <span className="text-red-500">*</span>
+                        </p>
+                        <select
+                          {...register('bank_name', { required: 'Bank name is required' })}
+                          className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                        >
+                          <option value="">Select bank...</option>
+                          <option>Sonali Bank PLC</option>
+                          <option>Janata Bank PLC</option>
+                          <option>Agrani Bank PLC</option>
+                          <option>Rupali Bank PLC</option>
+                          <option>Dutch-Bangla Bank Ltd</option>
+                          <option>BRAC Bank Ltd</option>
+                          <option>Eastern Bank Ltd</option>
+                          <option>City Bank Ltd</option>
+                          <option>Islami Bank Bangladesh Ltd</option>
+                          <option>Standard Chartered Bangladesh</option>
+                          <option>HSBC Bangladesh</option>
+                          <option>Prime Bank Ltd</option>
+                          <option>United Commercial Bank Ltd</option>
+                          <option>Mutual Trust Bank Ltd</option>
+                        </select>
+                        {errors.bank_name && (
+                          <p className="text-xs text-red-500 mt-1">{errors.bank_name.message}</p>
+                        )}
+                      </div>
+                      <div>
+                        <p className="block text-sm font-medium text-foreground mb-1">
+                          Branch Name <span className="text-red-500">*</span>
+                        </p>
+                        <input
+                          {...register('branch_name', { required: 'Branch name is required' })}
+                          className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                          placeholder="e.g. Motijheel Branch"
+                        />
+                        {errors.branch_name && (
+                          <p className="text-xs text-red-500 mt-1">{errors.branch_name.message}</p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <p className="block text-sm font-medium text-foreground mb-1">
+                          Account Name <span className="text-red-500">*</span>
+                        </p>
+                        <input
+                          {...register('account_name', { required: 'Account name is required' })}
+                          className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                          placeholder="As per bank records"
+                        />
+                        {errors.account_name && (
+                          <p className="text-xs text-red-500 mt-1">{errors.account_name.message}</p>
+                        )}
+                      </div>
+                      <div>
+                        <p className="block text-sm font-medium text-foreground mb-1">
+                          Account Number <span className="text-red-500">*</span>
+                        </p>
+                        <input
+                          {...register('account_number', {
+                            required: 'Account number is required',
+                          })}
+                          className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                          placeholder="13-digit account number"
+                        />
+                        {errors.account_number && (
+                          <p className="text-xs text-red-500 mt-1">
+                            {errors.account_number.message}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <p className="block text-sm font-medium text-foreground mb-1">
+                          Routing Number <span className="text-red-500">*</span>
+                        </p>
+                        <input
+                          {...register('routing_number', {
+                            required: 'Routing number is required',
+                          })}
+                          className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                          placeholder="9-digit routing number"
+                        />
+                        {errors.routing_number && (
+                          <p className="text-xs text-red-500 mt-1">
+                            {errors.routing_number.message}
+                          </p>
+                        )}
+                      </div>
+                      <div>
+                        <p className="block text-sm font-medium text-foreground mb-1">
+                          Account Type <span className="text-red-500">*</span>
+                        </p>
+                        <select
+                          {...register('account_type', { required: 'Account type is required' })}
+                          className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                        >
+                          <option value="">Select type...</option>
+                          <option>Current Account</option>
+                          <option>Savings Account</option>
+                        </select>
+                        {errors.account_type && (
+                          <p className="text-xs text-red-500 mt-1">{errors.account_type.message}</p>
+                        )}
+                      </div>
+                    </div>
+                    <div>
+                      <p className="block text-sm font-medium text-foreground mb-1">
+                        SWIFT Code (for international payments)
+                      </p>
+                      <input
+                        {...register('swift_code')}
+                        className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                        placeholder="e.g. DBBLBDDH"
+                      />
+                    </div>
+                    <div className="p-3 bg-muted/30 border border-border rounded-lg">
+                      <p className="text-xs text-muted-foreground">
+                        <CreditCard className="w-3 h-3 inline mr-1" />
+                        Bank information is encrypted and stored securely. Only authorized finance
+                        personnel can access banking details.
+                      </p>
+                    </div>
+                  </div>
+                </CardBody>
+              </Card>
+            )}
+
+            {/* Step 9: Declaration */}
+            {step === 9 && (
+              <Card>
+                <CardHeader
+                  title="Step 9: Declaration"
+                  description="Declaration from the Vendor Enlistment Form (optional)"
+                />
+                <CardBody>
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <p className="block text-sm font-medium text-foreground mb-1">
+                          Name & Title
+                        </p>
+                        <input
+                          {...register('declaration_name_title')}
+                          className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                          placeholder="e.g. John Doe, Managing Director"
+                        />
+                      </div>
+                      <div>
+                        <p className="block text-sm font-medium text-foreground mb-1">
+                          Company Name
+                        </p>
+                        <input
+                          {...register('declaration_company_name')}
+                          className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                          placeholder="Company name for declaration"
+                        />
+                      </div>
+                      <div>
+                        <p className="block text-sm font-medium text-foreground mb-1">
+                          Declaration Date
+                        </p>
+                        <input
+                          type="date"
+                          {...register('declaration_date')}
+                          className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                        />
+                      </div>
+                    </div>
+                    <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                      <p className="text-xs text-blue-700">
+                        <strong>Note:</strong> By completing this declaration, you confirm that all
+                        information provided is accurate and authentic. False information may result
+                        in vendor disqualification or blacklisting per LEDARS policy.
+                      </p>
+                    </div>
+                  </div>
+                </CardBody>
+              </Card>
+            )}
+
+            {/* Step 10: Documents */}
+            {step === 10 && (
+              <Card>
+                <CardHeader
+                  title="Step 10: Upload Compliance Documents"
                   description="All documents are mandatory for vendor enlistment"
                 />
                 <CardBody>
                   <div className="space-y-4">
                     {[
                       {
-                        id: 'trade-license',
-                        label: 'Trade License',
-                        desc: 'Up-to-date trade license issued by city corporation / municipality',
+                        id: 'organization-profile',
+                        label: 'Organization / Company Profile',
+                        desc: 'সংস্থা/কোম্পানির প্রোফাইল',
                         required: true,
-                        expiry: true,
+                        expiry: false,
                       },
                       {
-                        id: 'vat-registration',
-                        label: 'VAT Registration (BIN Certificate)',
-                        desc: 'Business Identification Number from NBR',
+                        id: 'trade-license',
+                        label: 'Valid Trade License',
+                        desc: 'বৈধ ট্রেড লাইসেন্স',
                         required: true,
                         expiry: false,
                       },
                       {
                         id: 'tin-certificate',
                         label: 'TIN Certificate',
-                        desc: 'Tax Identification Number certificate from NBR',
+                        desc: 'টিআইএন সার্টিফিকেট',
                         required: true,
                         expiry: false,
                       },
                       {
-                        id: 'tax-compliance',
-                        label: 'Tax Compliance Certificate',
-                        desc: 'Up-to-date tax payment clearance / return acknowledgment',
+                        id: 'bin-certificate',
+                        label: 'BIN Certificate',
+                        desc: 'BIN সার্টিফিকেট',
                         required: true,
-                        expiry: true,
+                        expiry: false,
                       },
                       {
-                        id: 'bank-solvency',
-                        label: 'Bank Solvency Certificate / Account Confirmation',
-                        desc: 'Bank solvency or letter confirming active business account',
-                        required: true,
-                        expiry: true,
-                      },
-                      {
-                        id: 'company-profile',
-                        label: 'Company Profile / Brochure',
-                        desc: 'Overview of services, experience, key clients (optional)',
+                        id: 'others-license',
+                        label: 'Others License',
+                        desc: 'অন্যান্য লাইসেন্স',
                         required: false,
                         expiry: false,
                       },
                       {
-                        id: 'rjsc-cert',
-                        label: 'Company Registration Certificate (RJSC)',
-                        desc: 'For limited companies — RJSC incorporation certificate',
+                        id: 'experience-certificate',
+                        label: 'Experience Certificate / PO',
+                        desc: 'অভিজ্ঞতা সার্টিফিকেট / PO',
                         required: false,
+                        expiry: false,
+                      },
+                      {
+                        id: 'bank-account-certificate',
+                        label: 'Bank Account Certificate',
+                        desc: 'ব্যাংক হিসাব সম্পর্কিত সার্টিফিকেট',
+                        required: true,
+                        expiry: false,
+                      },
+                      {
+                        id: 'vendor-enlistment-application',
+                        label: 'Vendor Enlistment Application',
+                        desc: 'বিক্রেতা তালিকাভুক্তি আবেদন',
+                        required: true,
                         expiry: false,
                       },
                     ].map((doc) => {
@@ -827,152 +1301,11 @@ export function CreateVendor() {
               </Card>
             )}
 
-            {/* Step 4 */}
-            {step === 4 && (
+            {/* Step 11: Categories */}
+            {step === 11 && (
               <Card>
                 <CardHeader
-                  title="Step 4: Bank Information"
-                  description="Payment and banking details for vendor payments"
-                />
-                <CardBody>
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div>
-                        <p className="block text-sm font-medium text-foreground mb-1">
-                          Bank Name <span className="text-red-500">*</span>
-                        </p>
-                        <select
-                          {...register('bank_name', { required: 'Bank name is required' })}
-                          className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                        >
-                          <option value="">Select bank...</option>
-                          <option>Sonali Bank PLC</option>
-                          <option>Janata Bank PLC</option>
-                          <option>Agrani Bank PLC</option>
-                          <option>Rupali Bank PLC</option>
-                          <option>Dutch-Bangla Bank Ltd</option>
-                          <option>BRAC Bank Ltd</option>
-                          <option>Eastern Bank Ltd</option>
-                          <option>City Bank Ltd</option>
-                          <option>Islami Bank Bangladesh Ltd</option>
-                          <option>Standard Chartered Bangladesh</option>
-                          <option>HSBC Bangladesh</option>
-                          <option>Prime Bank Ltd</option>
-                          <option>United Commercial Bank Ltd</option>
-                          <option>Mutual Trust Bank Ltd</option>
-                        </select>
-                        {errors.bank_name && (
-                          <p className="text-xs text-red-500 mt-1">{errors.bank_name.message}</p>
-                        )}
-                      </div>
-                      <div>
-                        <p className="block text-sm font-medium text-foreground mb-1">
-                          Branch Name <span className="text-red-500">*</span>
-                        </p>
-                        <input
-                          {...register('branch_name', { required: 'Branch name is required' })}
-                          className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                          placeholder="e.g. Motijheel Branch"
-                        />
-                        {errors.branch_name && (
-                          <p className="text-xs text-red-500 mt-1">{errors.branch_name.message}</p>
-                        )}
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div>
-                        <p className="block text-sm font-medium text-foreground mb-1">
-                          Account Name <span className="text-red-500">*</span>
-                        </p>
-                        <input
-                          {...register('account_name', { required: 'Account name is required' })}
-                          className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                          placeholder="As per bank records"
-                        />
-                        {errors.account_name && (
-                          <p className="text-xs text-red-500 mt-1">{errors.account_name.message}</p>
-                        )}
-                      </div>
-                      <div>
-                        <p className="block text-sm font-medium text-foreground mb-1">
-                          Account Number <span className="text-red-500">*</span>
-                        </p>
-                        <input
-                          {...register('account_number', {
-                            required: 'Account number is required',
-                          })}
-                          className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                          placeholder="13-digit account number"
-                        />
-                        {errors.account_number && (
-                          <p className="text-xs text-red-500 mt-1">
-                            {errors.account_number.message}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div>
-                        <p className="block text-sm font-medium text-foreground mb-1">
-                          Routing Number <span className="text-red-500">*</span>
-                        </p>
-                        <input
-                          {...register('routing_number', {
-                            required: 'Routing number is required',
-                          })}
-                          className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                          placeholder="9-digit routing number"
-                        />
-                        {errors.routing_number && (
-                          <p className="text-xs text-red-500 mt-1">
-                            {errors.routing_number.message}
-                          </p>
-                        )}
-                      </div>
-                      <div>
-                        <p className="block text-sm font-medium text-foreground mb-1">
-                          Account Type <span className="text-red-500">*</span>
-                        </p>
-                        <select
-                          {...register('account_type', { required: 'Account type is required' })}
-                          className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                        >
-                          <option value="">Select type...</option>
-                          <option>Current Account</option>
-                          <option>Savings Account</option>
-                        </select>
-                        {errors.account_type && (
-                          <p className="text-xs text-red-500 mt-1">{errors.account_type.message}</p>
-                        )}
-                      </div>
-                    </div>
-                    <div>
-                      <p className="block text-sm font-medium text-foreground mb-1">
-                        SWIFT Code (for international payments)
-                      </p>
-                      <input
-                        {...register('swift_code')}
-                        className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                        placeholder="e.g. DBBLBDDH"
-                      />
-                    </div>
-                    <div className="p-3 bg-muted/30 border border-border rounded-lg">
-                      <p className="text-xs text-muted-foreground">
-                        <CreditCard className="w-3 h-3 inline mr-1" />
-                        Bank information is encrypted and stored securely. Only authorized finance
-                        personnel can access banking details.
-                      </p>
-                    </div>
-                  </div>
-                </CardBody>
-              </Card>
-            )}
-
-            {/* Step 5 */}
-            {step === 5 && (
-              <Card>
-                <CardHeader
-                  title="Step 5: Assign Procurement Categories"
+                  title="Step 11: Assign Procurement Categories"
                   description={`Select one or multiple categories (${selectedCategories.length} selected of ${allCategories.length} available)`}
                 />
                 <CardBody>
@@ -1025,11 +1358,12 @@ export function CreateVendor() {
               </Card>
             )}
 
-            {/* Step 6 */}
-            {step === 6 && (
+            {/* Step 12: Review */}
+            {/* Step 12: Review & Submit */}
+            {step === 12 && (
               <Card>
                 <CardHeader
-                  title="Step 6: Review & Submit"
+                  title="Step 12: Review & Submit"
                   description="Verify all information before submitting for admin approval"
                 />
                 <CardBody>
@@ -1040,10 +1374,7 @@ export function CreateVendor() {
                           Company
                         </p>
                         <p className="text-sm font-semibold text-foreground">
-                          {watchedValues.name || '—'}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {watchedValues.organization_type || '—'}
+                          {watchedValues.name || '�'}
                         </p>
                         <p className="text-xs text-muted-foreground">
                           {watchedValues.district}, {watchedValues.division}
@@ -1054,13 +1385,13 @@ export function CreateVendor() {
                           Contact
                         </p>
                         <p className="text-sm font-semibold text-foreground">
-                          {watchedValues.contact_person || '—'}
+                          {watchedValues.contact_person || '�'}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {watchedValues.email || '—'}
+                          {watchedValues.email || '�'}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {watchedValues.phone || '—'}
+                          {watchedValues.phone || '�'}
                         </p>
                       </div>
                       <div className="p-4 border border-border rounded-lg space-y-1">
@@ -1068,7 +1399,7 @@ export function CreateVendor() {
                           Banking
                         </p>
                         <p className="text-sm font-semibold text-foreground">
-                          {watchedValues.bank_name || '—'}
+                          {watchedValues.bank_name || '�'}
                         </p>
                         <p className="text-xs text-muted-foreground">
                           {watchedValues.branch_name} &middot; {watchedValues.account_type}
@@ -1140,8 +1471,6 @@ export function CreateVendor() {
               </Card>
             )}
           </div>
-
-          {/* Sidebar */}
           <div className="lg:col-span-3 space-y-4">
             <Card>
               <CardBody>
@@ -1229,7 +1558,7 @@ export function CreateVendor() {
               <Save className="w-4 h-4 mr-2" />
               Save Draft
             </Button>
-            {step === 6 ? (
+            {step === 12 ? (
               <Button type="submit" variant="primary" disabled={submitting || !confirmed}>
                 <Send className="w-4 h-4 mr-2" />
                 {submitting

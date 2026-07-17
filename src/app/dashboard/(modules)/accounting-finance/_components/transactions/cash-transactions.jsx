@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import useSWR from 'swr';
 
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
@@ -32,6 +33,8 @@ import CircularProgress from '@mui/material/CircularProgress';
 import { paths } from 'src/routes/paths';
 import { RouterLink } from 'src/routes/components';
 
+import axiosInstance, { fetcher, endpoints } from 'src/utils/axios';
+
 import { Iconify } from 'src/components/iconify';
 
 import { formatCurrency } from '../utils';
@@ -48,15 +51,13 @@ const DIRECTION_COLORS = {
   outflow: 'warning',
 };
 
-const CASH_ACCOUNTS = ['Petty Cash', 'Emergency Cash', 'Program Cash Float'];
-
 const PAYMENT_METHODS = ['Cash voucher', 'Manual receipt', 'Field advance', 'Cash reimbursement'];
 
 const today = new Date().toISOString().slice(0, 10);
 
 const EMPTY_CASH_FORM = {
   date: today,
-  account: 'Petty Cash',
+  account: '',
   counterparty: '',
   direction: 'outflow',
   amount: '',
@@ -75,6 +76,13 @@ export default function CashTransactions() {
     deleteTransaction,
     postTransaction,
   } = useWorkspaceCashApi();
+
+  const { data: rawAccounts } = useSWR(endpoints.accounting.accounts, fetcher);
+
+  const accounts = useMemo(() => {
+    const list = Array.isArray(rawAccounts) ? rawAccounts : rawAccounts?.results ?? [];
+    return list.filter((a) => a.is_active !== false);
+  }, [rawAccounts]);
 
   const [search, setSearch] = useState('');
   const [direction, setDirection] = useState('all');
@@ -168,14 +176,14 @@ export default function CashTransactions() {
     }
   };
 
+  const handlePost = async (id) => {
+    await postTransaction(id);
+  };
+
   const canCreateDraft =
     draftTransaction.description.trim() &&
     draftTransaction.counterparty.trim() &&
     Number(draftTransaction.amount) > 0;
-
-  const handlePost = async (transactionId) => {
-    await postTransaction(transactionId);
-  };
 
   return (
     <Box sx={{ p: 3 }}>
@@ -190,7 +198,7 @@ export default function CashTransactions() {
             Cash Transactions
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Petty cash workspace with inflow and outflow visibility.
+            Track petty cash inflows and outflows with posting workflow.
           </Typography>
         </Box>
         <Button
@@ -198,36 +206,43 @@ export default function CashTransactions() {
           startIcon={<Iconify icon="solar:add-circle-bold" />}
           onClick={handleOpenDialog}
         >
-          New Cash Entry
+          New Transaction
         </Button>
       </Stack>
 
-      <Alert severity="info" sx={{ mb: 3, borderRadius: 2 }}>
-        <AlertTitle>Petty cash controls active</AlertTitle>
-        Cash entries use shared treasury data with posting actions and direction-based filtering.
-      </Alert>
-
       <Grid container spacing={2} sx={{ mb: 3 }}>
-        <Grid size={{ xs: 12, sm: 6 }}>
+        <Grid size={{ xs: 12, sm: 4 }}>
           <Card sx={{ borderRadius: 3 }}>
             <CardContent>
               <Typography variant="caption" color="text.secondary">
-                Cash inflow
+                Total Inflow
               </Typography>
-              <Typography variant="h5" fontWeight={800} sx={{ mt: 0.75 }}>
+              <Typography variant="h5" fontWeight={800} sx={{ mt: 0.75 }} color="success.main">
                 {formatCurrency(inflow)}
               </Typography>
             </CardContent>
           </Card>
         </Grid>
-        <Grid size={{ xs: 12, sm: 6 }}>
+        <Grid size={{ xs: 12, sm: 4 }}>
           <Card sx={{ borderRadius: 3 }}>
             <CardContent>
               <Typography variant="caption" color="text.secondary">
-                Cash outflow
+                Total Outflow
+              </Typography>
+              <Typography variant="h5" fontWeight={800} sx={{ mt: 0.75 }} color="warning.main">
+                {formatCurrency(outflow)}
+              </Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid size={{ xs: 12, sm: 4 }}>
+          <Card sx={{ borderRadius: 3 }}>
+            <CardContent>
+              <Typography variant="caption" color="text.secondary">
+                Net Balance
               </Typography>
               <Typography variant="h5" fontWeight={800} sx={{ mt: 0.75 }}>
-                {formatCurrency(outflow)}
+                {formatCurrency(inflow - outflow)}
               </Typography>
             </CardContent>
           </Card>
@@ -236,17 +251,17 @@ export default function CashTransactions() {
 
       <Card sx={{ mb: 3, borderRadius: 3 }}>
         <CardContent>
-          <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 2 }}>
             <TextField
-              fullWidth
               size="small"
-              placeholder="Search transaction or counterparty"
+              fullWidth
+              placeholder="Search transactions..."
               value={search}
-              onChange={(event) => setSearch(event.target.value)}
+              onChange={(e) => setSearch(e.target.value)}
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
-                    <Iconify icon="solar:magnifer-linear" />
+                    <Iconify icon="eva:search-fill" width={20} />
                   </InputAdornment>
                 ),
               }}
@@ -256,122 +271,93 @@ export default function CashTransactions() {
               size="small"
               label="Direction"
               value={direction}
-              onChange={(event) => setDirection(event.target.value)}
-              sx={{ minWidth: 180 }}
+              onChange={(e) => setDirection(e.target.value)}
+              sx={{ minWidth: 120 }}
             >
-              <MenuItem value="all">All directions</MenuItem>
+              <MenuItem value="all">All</MenuItem>
               <MenuItem value="inflow">Inflow</MenuItem>
               <MenuItem value="outflow">Outflow</MenuItem>
             </TextField>
           </Stack>
-        </CardContent>
-      </Card>
-
-      <Card sx={{ borderRadius: 3 }}>
-        {isLoading ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
-            <CircularProgress />
-          </Box>
-        ) : (
           <TableContainer>
-            <Table>
+            <Table size="small">
               <TableHead>
                 <TableRow>
-                  <TableCell>Number</TableCell>
+                  <TableCell>Transaction #</TableCell>
                   <TableCell>Date</TableCell>
-                  <TableCell>Description</TableCell>
+                  <TableCell>Account</TableCell>
                   <TableCell>Counterparty</TableCell>
                   <TableCell>Direction</TableCell>
-                  <TableCell align="right">Amount</TableCell>
+                  <TableCell>Amount</TableCell>
                   <TableCell>Status</TableCell>
                   <TableCell align="right">Actions</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
-                {filtered.map((transaction) => (
-                  <TableRow key={transaction.id} hover>
-                    <TableCell>
-                      <Typography variant="body2" fontWeight={700} sx={{ fontFamily: 'monospace' }}>
-                        {transaction.number}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>{new Date(transaction.date).toLocaleDateString()}</TableCell>
-                    <TableCell>{transaction.description}</TableCell>
-                    <TableCell>{transaction.counterparty}</TableCell>
-                    <TableCell>
-                      <Chip
-                        label={transaction.direction}
-                        size="small"
-                        color={DIRECTION_COLORS[transaction.direction]}
-                        sx={{ textTransform: 'capitalize' }}
-                      />
-                    </TableCell>
-                    <TableCell align="right">{formatCurrency(transaction.amount)}</TableCell>
-                    <TableCell>
-                      <Chip
-                        label={transaction.status}
-                        size="small"
-                        color={STATUS_COLORS[transaction.status]}
-                        sx={{ textTransform: 'capitalize' }}
-                      />
-                    </TableCell>
-                    <TableCell align="right">
-                      <Stack direction="row" justifyContent="flex-end" spacing={1}>
-                        <Tooltip title="Edit transaction">
-                          <IconButton
-                            size="small"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleOpenEditDialog(transaction);
-                            }}
-                            disabled={transaction.status === 'posted'}
-                          >
-                            <Iconify icon="solar:pen-bold" width={16} />
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title="Delete transaction">
-                          <IconButton
-                            size="small"
-                            color="error"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setDeleteTarget(transaction);
-                            }}
-                            disabled={transaction.status === 'posted'}
-                          >
-                            <Iconify icon="solar:trash-bin-trash-bold" width={16} />
-                          </IconButton>
-                        </Tooltip>
-                        <Button
-                          size="small"
-                          variant="text"
-                          component={RouterLink}
-                          href={paths.dashboard.accountingFinance.transactions.cashTransactionDetail(
-                            transaction.id
-                          )}
-                        >
-                          View
-                        </Button>
-                        <Button
-                          size="small"
-                          variant="outlined"
-                          disabled={transaction.status === 'posted'}
-                          onClick={() => handlePost(transaction.id)}
-                        >
-                          Post
-                        </Button>
-                      </Stack>
+                {isLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={8} align="center">
+                      <CircularProgress size={24} />
                     </TableCell>
                   </TableRow>
-                ))}
+                ) : filtered.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={8} align="center">
+                      <Typography variant="body2" color="text.secondary">
+                        No transactions found.
+                      </Typography>
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filtered.map((transaction) => (
+                    <TableRow key={transaction.id}>
+                      <TableCell>
+                        <Typography variant="subtitle2">{transaction.number}</Typography>
+                      </TableCell>
+                      <TableCell>{transaction.date}</TableCell>
+                      <TableCell>{transaction.accountName || transaction.account_name || transaction.account || '-'}</TableCell>
+                      <TableCell>{transaction.counterparty}</TableCell>
+                      <TableCell>
+                        <Chip
+                          label={transaction.direction}
+                          size="small"
+                          color={DIRECTION_COLORS[transaction.direction]}
+                          sx={{ textTransform: 'capitalize' }}
+                        />
+                      </TableCell>
+                      <TableCell>{formatCurrency(transaction.amount)}</TableCell>
+                      <TableCell>
+                        <Chip
+                          label={transaction.status}
+                          size="small"
+                          color={STATUS_COLORS[transaction.status]}
+                          sx={{ textTransform: 'capitalize' }}
+                        />
+                      </TableCell>
+                      <TableCell align="right">
+                        <Stack direction="row" spacing={1} justifyContent="flex-end">
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            disabled={transaction.status === 'posted'}
+                            onClick={() => handlePost(transaction.id)}
+                          >
+                            Post
+                          </Button>
+                        </Stack>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
               </TableBody>
             </Table>
           </TableContainer>
-        )}
+        </CardContent>
       </Card>
 
+      {/* Create / Edit Dialog */}
       <Dialog open={dialogOpen} onClose={handleCloseDialog} maxWidth="md" fullWidth>
-        <DialogTitle>Create Cash Transaction</DialogTitle>
+        <DialogTitle>{editTarget ? 'Edit Cash Transaction' : 'Create Cash Transaction'}</DialogTitle>
         <DialogContent>
           <Stack spacing={2.5} sx={{ pt: 1 }}>
             <Alert severity="info" sx={{ borderRadius: 2 }}>
@@ -397,9 +383,9 @@ export default function CashTransactions() {
                   value={draftTransaction.account}
                   onChange={(event) => updateDraftTransaction('account', event.target.value)}
                 >
-                  {CASH_ACCOUNTS.map((option) => (
-                    <MenuItem key={option} value={option}>
-                      {option}
+                  {accounts.map((acc) => (
+                    <MenuItem key={acc.id} value={acc.id}>
+                      {acc.code} - {acc.name}
                     </MenuItem>
                   ))}
                 </TextField>
@@ -443,7 +429,7 @@ export default function CashTransactions() {
                 <TextField
                   select
                   fullWidth
-                  label="Payment document"
+                  label="Payment method"
                   value={draftTransaction.paymentMethod}
                   onChange={(event) => updateDraftTransaction('paymentMethod', event.target.value)}
                 >
@@ -454,11 +440,10 @@ export default function CashTransactions() {
                   ))}
                 </TextField>
               </Grid>
-              <Grid size={{ xs: 12 }}>
+              <Grid size={{ xs: 12, md: 6 }}>
                 <TextField
                   fullWidth
                   label="Reference"
-                  placeholder="Voucher, advance, or receipt reference"
                   value={draftTransaction.reference}
                   onChange={(event) => updateDraftTransaction('reference', event.target.value)}
                 />
@@ -469,7 +454,6 @@ export default function CashTransactions() {
                   multiline
                   minRows={3}
                   label="Description"
-                  placeholder="Describe the cash movement purpose and reconciliation context"
                   value={draftTransaction.description}
                   onChange={(event) => updateDraftTransaction('description', event.target.value)}
                 />
@@ -484,24 +468,17 @@ export default function CashTransactions() {
             onClick={handleCreateDraft}
             disabled={!canCreateDraft || submitting}
           >
-            {submitting ? 'Saving…' : editTarget ? 'Save Changes' : 'Create Draft'}
+            {submitting ? <CircularProgress size={20} /> : editTarget ? 'Update' : 'Create Draft'}
           </Button>
         </DialogActions>
       </Dialog>
 
-      {/* Delete confirmation dialog */}
-      <Dialog
-        open={Boolean(deleteTarget)}
-        onClose={() => setDeleteTarget(null)}
-        maxWidth="xs"
-        fullWidth
-      >
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={!!deleteTarget} onClose={() => setDeleteTarget(null)} maxWidth="xs">
         <DialogTitle>Delete Transaction?</DialogTitle>
         <DialogContent>
           <Typography>
-            Are you sure you want to delete transaction{' '}
-            <strong>{deleteTarget?.number || deleteTarget?.reference}</strong>? This action cannot
-            be undone.
+            Are you sure you want to delete {deleteTarget?.number}? This action cannot be undone.
           </Typography>
         </DialogContent>
         <DialogActions>

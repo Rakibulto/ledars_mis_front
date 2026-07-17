@@ -140,6 +140,48 @@ export async function deleteBranch(id) {
   return res.data;
 }
 
+// === GRADES ===
+export function useGetGrades(enabled = true) {
+  const url = enabled ? endpoints.settings.grade : null;
+
+  const { data, error, isLoading } = useSWR(url, fetcher, swrOptions);
+
+  return useMemo(
+    () => ({
+      grades: data || [],
+      gradesLoading: isLoading,
+      gradesError: error,
+      gradesEmpty: !isLoading && !data?.length,
+    }),
+    [data, error, isLoading]
+  );
+}
+
+export async function createGrade(data) {
+  const res = await axios.post(endpoints.settings.grade, data);
+
+  await mutate(endpoints.settings.grade);
+
+  return res.data;
+}
+
+export async function updateGrade(id, data) {
+  const res = await axios.patch(endpoints.settings.gradeById(id), data);
+
+  await mutate(endpoints.settings.grade);
+  await mutate(endpoints.settings.gradeById(id));
+
+  return res.data;
+}
+
+export async function deleteGrade(id) {
+  const res = await axios.delete(endpoints.settings.gradeById(id));
+
+  await mutate(endpoints.settings.grade);
+
+  return res.data;
+}
+
 // === SHIFTS ===
 export function useGetShifts() {
   const url = endpoints.settings.shift;

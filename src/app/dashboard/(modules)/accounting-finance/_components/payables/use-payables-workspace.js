@@ -1,7 +1,7 @@
 'use client';
 
-import { useMemo, useSyncExternalStore } from 'react';
 import useSWR, { mutate } from 'swr';
+import { useMemo, useSyncExternalStore } from 'react';
 
 import axiosInstance, { fetcher, endpoints } from 'src/utils/axios';
 
@@ -73,7 +73,16 @@ function enrichUnpaidBills(rawBills) {
       approvalOwner: '',
       discountEligible: false,
       exceptionReason: bill.dispute_flag ? 'Dispute flagged' : '',
-      bucketId: overdueDays === 0 ? 'not-due' : overdueDays <= 30 ? '1-30' : overdueDays <= 60 ? '31-60' : overdueDays <= 90 ? '61-90' : '90-plus',
+      bucketId:
+        overdueDays === 0
+          ? 'not-due'
+          : overdueDays <= 30
+            ? '1-30'
+            : overdueDays <= 60
+              ? '31-60'
+              : overdueDays <= 90
+                ? '61-90'
+                : '90-plus',
     };
   });
 }
@@ -85,15 +94,70 @@ export function usePayablesWorkspace(cutoffDate) {
     getWorkspaceSnapshot
   );
 
-  const { data: rawUnpaid } = useSWR(
-    `${endpoints.accounting.bills}unpaid/`,
-    fetcher
-  );
+  const { data: rawUnpaid } = useSWR(`${endpoints.accounting.bills}unpaid/`, fetcher);
 
   const unpaidBills = useMemo(() => {
     const results = rawUnpaid?.results ?? rawUnpaid ?? [];
     return enrichUnpaidBills(results);
   }, [rawUnpaid]);
+
+  // Compute aging buckets from real unpaid bills data
+  const agingBuckets = useMemo(() => {
+    const bucketIds = ['not-due', '1-30', '31-60', '61-90', '90-plus'];
+    const openBills = unpaidBills.filter((bill) => bill.balanceDue > 0);
+
+    return bucketIds.map((bucketId) => {
+      const bills = openBills.filter((bill) => bill.bucketId === bucketId);
+      return {
+        id: bucketId,
+        label:
+          bucketId === 'not-due'
+            ? 'Not due'
+            : bucketId === '90-plus'
+              ? '90+ days'
+              : `${bucketId} days`,
+        amount: bills.reduce((sum, bill) => sum + bill.balanceDue, 0),
+        count: bills.length,
+        approvals: bills.filter((bill) => bill.approvalState !== 'approved').length,
+        holds: bills.filter((bill) => bill.holdReason).length,
+        disputed: bills.filter((bill) => bill.disputed).length,
+        discountEligible: bills.filter((bill) => bill.discountEligible).length,
+        blockedSuppliers: new Set(
+          bills.filter((bill) => bill.holdReason || bill.disputed).map((bill) => bill.supplierId)
+        ).size,
+        priorityMix: {
+          critical: bills.filter((bill) => bill.priority === 'critical').length,
+          high: bills.filter((bill) => bill.priority === 'high').length,
+          urgent: bills.filter((bill) => bill.priority === 'urgent').length,
+        },
+        bills,
+      };
+    });
+  }, [unpaidBills]);
+
+  // Compute payment schedule from real unpaid bills data
+  const paymentSchedule = useMemo(() => {
+    return unpaidBills
+      .filter((bill) => bill.balanceDue > 0)
+      .map((bill) => ({
+        ...bill,
+        dueGroup:
+          bill.overdueDays > 0
+            ? 'Overdue'
+            : bill.dueInDays <= 7
+              ? 'Due this week'
+              : bill.dueInDays <= 30
+                ? 'Due this month'
+                : 'Due next month',
+        cashForecastBucket:
+          bill.overdueDays > 0
+            ? 'Catch-up cash need'
+            : bill.dueInDays <= 7
+              ? 'Near-term liquidity'
+              : 'Planned cash run',
+      }))
+      .sort((left, right) => new Date(left.dueDate) - new Date(right.dueDate));
+  }, [unpaidBills]);
 
   return useMemo(
     () => ({
@@ -101,29 +165,35 @@ export function usePayablesWorkspace(cutoffDate) {
       overview: getPayablesOverview(cutoffDate),
       alerts: getPayablesAlerts(cutoffDate),
       supplierLedgerRows: getSupplierLedgerRows(cutoffDate),
-      agingBuckets: getPayableAgingBuckets(cutoffDate),
+      agingBuckets,
       unpaidBills,
-      paymentSchedule: getPaymentSchedule(cutoffDate),
+      paymentSchedule,
       statementList: getSupplierStatementList(cutoffDate),
       statementPeriods: getPayableStatementPeriods(),
       actions: {
-        scheduleBill: (id, draft) => axiosInstance.patch(endpoints.accounting.bill_by_id(id), {
-          payment_proposal: draft?.proposal || `Scheduled for ${draft?.date || 'next run'} via ${draft?.method || ''}`,
-          notes: draft?.note || `Scheduled for ${draft?.date || 'next run'}.`,
-        }).then(() => mutate(`${endpoints.accounting.bills}unpaid/`)),
+        scheduleBill: (id, draft) =>
+          axiosInstance
+            .patch(endpoints.accounting.bill_by_id(id), {
+              payment_proposal:
+                draft?.proposal ||
+                `Scheduled for ${draft?.date || 'next run'} via ${draft?.method || ''}`,
+              notes: draft?.note || `Scheduled for ${draft?.date || 'next run'}.`,
+            })
+            .then(() => mutate(`${endpoints.accounting.bills}unpaid/`)),
         scheduleBatch: schedulePayableBatch,
         applyBillWorkflow: applyPayableBillWorkflow,
-        toggleBillHold: (id, draft) => axiosInstance.patch(endpoints.accounting.bill_by_id(id), {
-          payment_proposal: draft?.reason ? `On hold: ${draft.reason}` : '',
-          notes: draft?.reason
-            ? `Hold applied: ${draft.reason}`
-            : 'Hold released.',
-        }).then(() => mutate(`${endpoints.accounting.bills}unpaid/`)),
+        toggleBillHold: (id, draft) =>
+          axiosInstance
+            .patch(endpoints.accounting.bill_by_id(id), {
+              payment_proposal: draft?.reason ? `On hold: ${draft.reason}` : '',
+              notes: draft?.reason ? `Hold applied: ${draft.reason}` : 'Hold released.',
+            })
+            .then(() => mutate(`${endpoints.accounting.bills}unpaid/`)),
         releaseStatement: releasePayableStatement,
         queueStatements: queuePayableStatements,
         reconcileStatement: reconcilePayableStatement,
       },
     }),
-    [cutoffDate, version, unpaidBills]
+    [cutoffDate, version, unpaidBills, agingBuckets, paymentSchedule]
   );
 }

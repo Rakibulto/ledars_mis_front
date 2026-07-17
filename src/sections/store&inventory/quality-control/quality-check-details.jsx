@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import Link from 'next/link';
 import { mutate } from 'swr';
@@ -33,7 +33,6 @@ import { Iconify } from 'src/components/iconify';
 import { ConfirmDialog } from 'src/components/custom-dialog';
 
 import QualityCheckFormDialog from './quality-check-form-dialog';
-
 import {
   formatDate,
   formatDateTime,

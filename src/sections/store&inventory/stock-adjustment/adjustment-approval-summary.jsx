@@ -1,6 +1,6 @@
 'use client';
 
-import { Box, Chip, Divider, Grid, Stack, Typography } from '@mui/material';
+import { Box, Chip, Grid, Stack, Divider, Typography } from '@mui/material';
 
 function SummaryField({ label, value }) {
   return (

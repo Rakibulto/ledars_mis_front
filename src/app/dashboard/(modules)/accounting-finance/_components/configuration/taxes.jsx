@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { toast } from 'sonner';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
@@ -21,14 +21,16 @@ import TableHead from '@mui/material/TableHead';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import IconButton from '@mui/material/IconButton';
-import GavelIcon from '@mui/icons-material/Gavel'; // Withholding rules — amber
+import GavelIcon from '@mui/icons-material/Gavel';
 import CardContent from '@mui/material/CardContent';
 import DialogTitle from '@mui/material/DialogTitle';
-import PercentIcon from '@mui/icons-material/Percent'; // Average tax rate  — blue
+import PercentIcon from '@mui/icons-material/Percent';
 import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
 import TableContainer from '@mui/material/TableContainer';
-import ReceiptLongIcon from '@mui/icons-material/ReceiptLong'; // Active taxes      — green
+import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
+import PaymentsIcon from '@mui/icons-material/Payments';
+import DescriptionIcon from '@mui/icons-material/Description';
 
 import { Iconify } from 'src/components/iconify';
 
@@ -57,6 +59,28 @@ export default function TaxesVAT() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [editTarget, setEditTarget] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [typeFilter, setTypeFilter] = useState('all');
+  const [sourceFilter, setSourceFilter] = useState('all');
+  const [search, setSearch] = useState('');
+
+  const filteredTaxes = useMemo(() => {
+    let list = workspace.taxes;
+    if (typeFilter !== 'all') {
+      list = list.filter((t) => t.type === typeFilter);
+    }
+    if (sourceFilter !== 'all') {
+      list = list.filter((t) => t.source === sourceFilter);
+    }
+    if (search) {
+      const q = search.toLowerCase();
+      list = list.filter(
+        (t) =>
+          String(t.code).toLowerCase().includes(q) ||
+          String(t.name).toLowerCase().includes(q)
+      );
+    }
+    return list;
+  }, [workspace.taxes, typeFilter, sourceFilter, search]);
 
   const handleCreate = async () => {
     if (!form.code.trim() || !form.name.trim()) {
@@ -127,13 +151,10 @@ export default function TaxesVAT() {
             <td style={{ border: '1px solid #ddd', padding: '6px 8px' }}>{tax.name}</td>
             <td style={{ border: '1px solid #ddd', padding: '6px 8px' }}>{tax.rate}%</td>
             <td style={{ border: '1px solid #ddd', padding: '6px 8px' }}>{tax.type}</td>
-            <td style={{ border: '1px solid #ddd', padding: '6px 8px' }}>{tax.tax_type}</td>
             <td style={{ border: '1px solid #ddd', padding: '6px 8px' }}>
-              {tax.settlementAccount}
+              {tax.totalTax > 0 ? Number(tax.totalTax).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}
             </td>
-            <td style={{ border: '1px solid #ddd', padding: '6px 8px' }}>
-              {tax.active ? 'Active' : 'Inactive'}
-            </td>
+            <td style={{ border: '1px solid #ddd', padding: '6px 8px' }}>{tax.docCount}</td>
           </tr>
         ))}
       </tbody>
@@ -168,7 +189,7 @@ export default function TaxesVAT() {
           <Card sx={{ borderRadius: 3 }}>
             <CardContent>
               <Typography variant="caption" color="text.secondary">
-                Active taxes
+                Input tax (from bills)
               </Typography>
               <Box
                 sx={{
@@ -179,7 +200,7 @@ export default function TaxesVAT() {
                 }}
               >
                 <Typography variant="h5" fontWeight={800}>
-                  {workspace.overview.activeTaxes}
+                  {workspace.overview.totalInputTax.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </Typography>
                 <ReceiptLongIcon sx={{ fontSize: 40, color: 'success.main' }} />
               </Box>
@@ -190,7 +211,7 @@ export default function TaxesVAT() {
           <Card sx={{ borderRadius: 3 }}>
             <CardContent>
               <Typography variant="caption" color="text.secondary">
-                Withholding rules
+                Output tax (from invoices)
               </Typography>
               <Box
                 sx={{
@@ -201,9 +222,9 @@ export default function TaxesVAT() {
                 }}
               >
                 <Typography variant="h5" fontWeight={800}>
-                  {workspace.overview.withholdingTaxes}
+                  {workspace.overview.totalOutputTax.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </Typography>
-                <GavelIcon sx={{ fontSize: 40, color: 'warning.main' }} />
+                <PaymentsIcon sx={{ fontSize: 40, color: 'warning.main' }} />
               </Box>
             </CardContent>
           </Card>
@@ -232,6 +253,43 @@ export default function TaxesVAT() {
         </Grid>
       </Grid>
 
+      <Card sx={{ borderRadius: 3, mb: 3 }}>
+        <CardContent sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
+          <TextField
+            select
+            size="small"
+            label="Tax Type"
+            value={typeFilter}
+            onChange={(event) => setTypeFilter(event.target.value)}
+            sx={{ minWidth: 180 }}
+          >
+            <MenuItem value="all">All Types</MenuItem>
+            <MenuItem value="input">Input (from bills)</MenuItem>
+            <MenuItem value="output">Output (from invoices)</MenuItem>
+          </TextField>
+          <TextField
+            select
+            size="small"
+            label="Source"
+            value={sourceFilter}
+            onChange={(event) => setSourceFilter(event.target.value)}
+            sx={{ minWidth: 160 }}
+          >
+            <MenuItem value="all">All sources</MenuItem>
+            <MenuItem value="computed">From bills/invoices</MenuItem>
+            <MenuItem value="definition">Manual definitions</MenuItem>
+          </TextField>
+          <TextField
+            size="small"
+            label="Search"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Code or name"
+            sx={{ minWidth: 200, maxWidth: 300 }}
+          />
+        </CardContent>
+      </Card>
+
       <Card sx={{ borderRadius: 3 }}>
         <TableContainer>
           <Table>
@@ -239,17 +297,17 @@ export default function TaxesVAT() {
               <TableRow>
                 <TableCell>Code</TableCell>
                 <TableCell>Name</TableCell>
-                <TableCell>Rate</TableCell>
+                <TableCell align="right">Rate</TableCell>
                 <TableCell>Type</TableCell>
-                <TableCell>Reporting</TableCell>
-                <TableCell>Settlement Account</TableCell>
-                <TableCell>Rate Logic</TableCell>
-                <TableCell>Status</TableCell>
+                <TableCell align="right">Taxable Base</TableCell>
+                <TableCell align="right">Tax Amount</TableCell>
+                <TableCell align="right">Documents</TableCell>
+                <TableCell>Source</TableCell>
                 <TableCell align="right">Actions</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
-              {workspace.taxes.map((tax) => (
+              {filteredTaxes.map((tax) => (
                 <TableRow key={tax.id} hover>
                   <TableCell>
                     <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>
@@ -260,42 +318,31 @@ export default function TaxesVAT() {
                     <Typography variant="body2" fontWeight={600}>
                       {tax.name}
                     </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      {tax.usageScope}
-                    </Typography>
                   </TableCell>
-                  <TableCell>
+                  <TableCell align="right">
                     <Typography variant="body2" fontWeight={700}>
                       {tax.rate}%
                     </Typography>
                   </TableCell>
                   <TableCell sx={{ textTransform: 'capitalize' }}>{tax.type}</TableCell>
+                  <TableCell align="right">
+                    {tax.totalBase > 0 ? Number(tax.totalBase).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}
+                  </TableCell>
+                  <TableCell align="right">
+                    <Typography variant="body2" fontWeight={700}>
+                      {tax.totalTax > 0 ? Number(tax.totalTax).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}
+                    </Typography>
+                  </TableCell>
+                  <TableCell align="right">{tax.docCount}</TableCell>
                   <TableCell>
                     <Chip
-                      label={tax.tax_type}
+                      label={tax.source === 'computed' ? 'From bills' : 'Manual'}
                       size="small"
-                      sx={{
-                        textTransform: 'capitalize',
-                        bgcolor: `${TAX_TYPE_COLORS[tax.tax_type] || '#6b7280'}15`,
-                        color: TAX_TYPE_COLORS[tax.tax_type] || '#6b7280',
-                      }}
+                      color={tax.source === 'computed' ? 'info' : 'default'}
+                      variant="outlined"
                     />
-                    <Typography
-                      variant="caption"
-                      color="text.secondary"
-                      sx={{ display: 'block', mt: 0.5 }}
-                    >
-                      {tax.reportingBox}
-                    </Typography>
                   </TableCell>
-                  <TableCell>{tax.settlementAccount}</TableCell>
-                  <TableCell>
-                    <Typography variant="body2">{tax.rateModel}</Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      {tax.reportingTags} • {tax.multiRateLogic}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
+                  <TableCell align="right">
                     <Chip
                       label={tax.active ? 'Active' : 'Inactive'}
                       size="small"

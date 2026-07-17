@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
@@ -58,7 +58,9 @@ export default function VendorBills() {
   const [deleteTarget, setDeleteTarget] = useState(null);
 
   useEffect(() => {
-    const onVisibility = () => { if (document.visibilityState === 'visible') revalidate(); };
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') revalidate();
+    };
     document.addEventListener('visibilitychange', onVisibility);
     return () => document.removeEventListener('visibilitychange', onVisibility);
   }, [revalidate]);

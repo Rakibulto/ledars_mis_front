@@ -146,15 +146,18 @@ export function useGetEmployee(id) {
 
 export async function createEmployee(data) {
   try {
-    // Always use FormData for consistent handling of profile pictures
+    // Always use FormData for consistent handling of profile pictures and signatures
     const formData = new FormData();
 
     // Process all fields
     Object.entries(data).forEach(([key, value]) => {
       if (value !== null && value !== undefined) {
-        if (key === 'profile_picture' && value instanceof File) {
+        if ((key === 'profile_picture' || key === 'signature') && value instanceof File) {
           formData.append(key, value);
-        } else if (key === 'profile_picture' && typeof value === 'string') {
+        } else if (
+          (key === 'profile_picture' || key === 'signature') &&
+          typeof value === 'string'
+        ) {
           formData.delete(key);
         } else if (Array.isArray(value) || typeof value === 'object') {
           formData.append(key, JSON.stringify(value));
@@ -181,29 +184,41 @@ export async function createEmployee(data) {
 export async function updateEmployee(id, data) {
   try {
     let res;
-    // If profile_picture is a File, make two separate API calls
-    if (data.profile_picture instanceof File) {
-      // First API call: Upload only the profile picture
+    const hasProfilePicture = data.profile_picture instanceof File;
+    const hasSignature = data.signature instanceof File;
+
+    // If either profile_picture or signature is a File, upload via FormData first
+    if (hasProfilePicture || hasSignature) {
       const formData = new FormData();
-      formData.append('profile_picture', data.profile_picture);
+
+      if (hasProfilePicture) {
+        formData.append('profile_picture', data.profile_picture);
+      }
+      if (hasSignature) {
+        formData.append('signature', data.signature);
+      }
 
       await axios.patch(endpoints.employee.details(id), formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
 
-      // Second API call: Send all other data as JSON (excluding profile_picture)
+      // Second API call: Send all other data as JSON (excluding file fields)
       const payload = { ...data };
       delete payload.profile_picture;
+      delete payload.signature;
 
       res = await axios.patch(endpoints.employee.details(id), payload, {
         headers: { 'Content-Type': 'application/json' },
       });
     } else {
-      // If profile_picture is a string (URL or empty) or not provided
-      // Make single API call with JSON data, excluding profile_picture
+      // If both are strings (URL or empty) or not provided
+      // Make single API call with JSON data, excluding file fields
       const payload = { ...data };
       if (typeof payload.profile_picture === 'string') {
         delete payload.profile_picture;
+      }
+      if (typeof payload.signature === 'string') {
+        delete payload.signature;
       }
       res = await axios.patch(endpoints.employee.details(id), payload, {
         headers: { 'Content-Type': 'application/json' },
@@ -227,7 +242,7 @@ export async function updateEmployee(id, data) {
 export async function createUser(data) {
   try {
     const res = await axios.post(endpoints.auth.create, data);
-    mutate(endpoints.employee.list);
+    mutate((key) => typeof key === 'string' && key.startsWith(endpoints.employee.list));
     return res.data;
   } catch (error) {
     console.error('API Error Details:', error);
@@ -332,7 +347,7 @@ export function useGetSupervisors() {
 
 export async function updateUserRole(userId, roleId, roles = []) {
   const roleObj = roles.find((r) => r.id === roleId);
-  const isSuperuser = roleObj?.name === 'Admin';
+  const isSuperuser = false;
 
   const url = endpoints.auth.updateUser(userId);
 

@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { mutate } from 'swr';
 import { toast } from 'sonner';
@@ -48,14 +48,13 @@ import { ConfirmDialog } from 'src/components/custom-dialog';
 import TableRowSkeleton from 'src/components/table/tableRowSkeleton';
 
 import QualityCheckFormDialog from './quality-check-form-dialog';
-
 import {
   formatDate,
   normalizeStatus,
   getStatusChipProps,
   getResultChipProps,
-  getPriorityChipProps,
   normalizeCollection,
+  getPriorityChipProps,
   QUALITY_TYPE_OPTIONS,
   QUALITY_STATUS_OPTIONS,
 } from './quality-check-shared';

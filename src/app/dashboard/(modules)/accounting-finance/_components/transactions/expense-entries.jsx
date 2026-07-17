@@ -230,7 +230,7 @@ export default function ExpenseEntries() {
                         {entry.number}
                       </Typography>
                     </TableCell>
-                    <TableCell>{entry.category}</TableCell>
+                    <TableCell>{entry.categoryName || entry.category_name || entry.category || '-'}</TableCell>
                     <TableCell>{entry.employee}</TableCell>
                     <TableCell>{entry.description}</TableCell>
                     <TableCell align="right">{formatCurrency(entry.amount)}</TableCell>

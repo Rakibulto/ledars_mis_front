@@ -23,8 +23,6 @@ import { paths } from 'src/routes/paths';
 
 import { endpoints } from 'src/utils/axios';
 
-import { useAuthContext } from 'src/auth/hooks';
-
 import {
   useGetRequest,
   extractErrorMessage,
@@ -33,6 +31,9 @@ import {
 
 import { Iconify } from 'src/components/iconify';
 import { ConfirmDialog } from 'src/components/custom-dialog';
+
+import { useAuthContext } from 'src/auth/hooks';
+
 import ScrapApprovalDialog from './scrap-approval-dialog';
 
 const EP = endpoints.storeInventory;

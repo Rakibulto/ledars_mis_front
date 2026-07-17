@@ -361,38 +361,36 @@ export function ApprovalMatrix() {
       ];
 
       for (const { level, value, users } of nextLevels) {
-          const existing = existingByLevel.get(level);
+        const existing = existingByLevel.get(level);
 
-          if (!value && users.length === 0 && existing) {
-            await deleteRequest(
-              endpoints.procurement_management.approval_matrix_by_id(existing.id)
-            );
-            continue;
-          }
-
-          if (!value && users.length === 0) {
-            continue;
-          }
-
-          const payload = {
-            ...basePayload,
-            approval_level: level,
-            approver_role: value || null,
-            approver: null,
-            approver_ids: users.map((u) => u.id),
-            approval_mode: form.approvalMode || 'all_approvers',
-          };
-
-          if (existing) {
-            await patchRequest(
-              endpoints.procurement_management.approval_matrix_by_id(existing.id),
-              payload
-            );
-            continue;
-          }
-
-          await createRule(payload);
+        if (!value && users.length === 0 && existing) {
+          await deleteRequest(endpoints.procurement_management.approval_matrix_by_id(existing.id));
+          continue;
         }
+
+        if (!value && users.length === 0) {
+          continue;
+        }
+
+        const payload = {
+          ...basePayload,
+          approval_level: level,
+          approver_role: value || null,
+          approver: null,
+          approver_ids: users.map((u) => u.id),
+          approval_mode: form.approvalMode || 'all_approvers',
+        };
+
+        if (existing) {
+          await patchRequest(
+            endpoints.procurement_management.approval_matrix_by_id(existing.id),
+            payload
+          );
+          continue;
+        }
+
+        await createRule(payload);
+      }
 
       await refreshRules();
       toast.success(editingGroupKey ? 'Approval rule updated.' : 'Approval rule created.');

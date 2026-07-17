@@ -1,5 +1,6 @@
 'use client';
 
+import { toast } from 'sonner';
 import { useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 
@@ -10,9 +11,9 @@ import Grid from '@mui/material/Grid';
 import Stack from '@mui/material/Stack';
 import Button from '@mui/material/Button';
 import Dialog from '@mui/material/Dialog';
-import TextField from '@mui/material/TextField';
 import Divider from '@mui/material/Divider';
 import Skeleton from '@mui/material/Skeleton';
+import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import CardHeader from '@mui/material/CardHeader';
 import CardContent from '@mui/material/CardContent';
@@ -21,7 +22,6 @@ import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
 
 import { Iconify } from 'src/components/iconify';
-import { toast } from 'sonner';
 
 import { usePaymentTermsApi } from './use-payment-terms-api';
 

@@ -2,6 +2,7 @@
 
 import { toast } from 'sonner';
 import { useMemo, useState } from 'react';
+import { Page, Text, View, Document, StyleSheet } from '@react-pdf/renderer';
 
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
@@ -31,13 +32,10 @@ import { RouterLink } from 'src/routes/components';
 import { Iconify } from 'src/components/iconify';
 
 import { formatCurrency } from '../utils';
+import CheckPrintView from './check-print-view';
 import { useCurrency } from '../currency-context';
 import { useBankingWorkspace } from './use-banking-workspace';
 import { BankingWorkspaceToolbar } from './banking-workspace-toolbar';
-import CheckPrintView from './check-print-view';
-
-import { pdf, Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
-import * as XLSX from 'xlsx';
 
 const STATUS_COLORS = {
   prepared: 'warning',

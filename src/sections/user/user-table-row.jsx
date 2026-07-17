@@ -33,18 +33,12 @@ export function UserTableRow({
   isSelf = false,
   currentUser,
 }) {
-  // Find the role id from the role name for initial value
-  const getRoleIdFromName = (roleName) => {
-    const found = roles.find((r) => r.name === roleName);
-    return found ? found.id : '';
-  };
-
   const hasChangeEmployeePermission = currentUser?.user_permissions_list?.some(
     (p) => p.codename === 'change_employee'
   );
 
-  // Compute selectedRole from row and roles
-  const selectedRole = getRoleIdFromName(row?.user?.role);
+  // user.role is already the role ID from the API
+  const selectedRole = row?.user?.role || '';
 
   const handleRoleChange = async (event) => {
     const newRoleId = event.target.value;
@@ -181,11 +175,13 @@ export function UserTableRow({
               <MenuItem value="" disabled>
                 Select Role
               </MenuItem>
-              {roles?.map((role) => (
-                <MenuItem key={role.id} value={role.id}>
-                  {role.name}
-                </MenuItem>
-              ))}
+              {roles
+                ?.filter((role) => role.name !== 'Vendor')
+                .map((role) => (
+                  <MenuItem key={role.id} value={role.id}>
+                    {role.name}
+                  </MenuItem>
+                ))}
             </Select>
           </FormControl>
         </TableCell>

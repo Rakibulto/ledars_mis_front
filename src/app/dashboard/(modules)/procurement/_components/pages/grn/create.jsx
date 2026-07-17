@@ -5,8 +5,8 @@ import Link from 'next/link';
 import { mutate } from 'swr';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
-import { useMemo, useState, useEffect } from 'react';
-import { Save, Trash2, ArrowLeft } from 'lucide-react';
+import { useMemo, useState, useEffect, useCallback } from 'react';
+import { Save, Trash2, ArrowLeft, FileText, Loader2 } from 'lucide-react';
 
 import { TextField } from '@mui/material';
 import Autocomplete from '@mui/material/Autocomplete';
@@ -14,7 +14,7 @@ import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 
 import { paths } from 'src/routes/paths';
 
-import { endpoints } from 'src/utils/axios';
+import axiosInstance, { endpoints } from 'src/utils/axios';
 
 import {
   useGetRequest,
@@ -26,6 +26,7 @@ import {
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { Card, CardBody, CardHeader } from '../../components/ui/card';
+import { DocumentInfoSidebar } from './document-info-sidebar';
 
 const EMPTY_ITEM = {
   description: '',
@@ -122,12 +123,15 @@ export function CreateGRN() {
   const [items, setItems] = useState([{ ...EMPTY_ITEM }]);
   const [workOrderInput, setWorkOrderInput] = useState('');
   const [dpInput, setDpInput] = useState('');
+  const [showDocSidebar, setShowDocSidebar] = useState(false);
+  const [fullWorkOrder, setFullWorkOrder] = useState(null);
+  const [loadingFullWO, setLoadingFullWO] = useState(false);
   const { trigger: createGRN, isMutating: submitting } = useCreateMutation(
     endpoints.procurement_management.grns
   );
 
   const { data: workOrderResponse } = useGetRequest(
-    `${endpoints.procurement_management.work_orders}?pagination=false&status=Approved&vendor_status=accepted`
+    `${endpoints.procurement_management.work_orders_lean}?pagination=false&status=Approved&vendor_status=accepted`
   );
   const { data: supplierResponse } = useGetRequest(
     `${endpoints.procurement_management.suppliers}?pagination=false`
@@ -144,10 +148,13 @@ export function CreateGRN() {
   const approvedDPs = useMemo(() => toList(dpResponse), [dpResponse]);
   const officeLocations = useMemo(() => toList(officeResponse), [officeResponse]);
 
-  const selectedWorkOrder = useMemo(
-    () => workOrders.find((item) => String(item.id) === String(form.workOrder)),
-    [form.workOrder, workOrders]
-  );
+  const selectedWorkOrder = useMemo(() => {
+    const lean = workOrders.find((item) => String(item.id) === String(form.workOrder));
+    if (fullWorkOrder && String(fullWorkOrder.id) === String(form.workOrder)) {
+      return { ...lean, ...fullWorkOrder };
+    }
+    return lean;
+  }, [form.workOrder, workOrders, fullWorkOrder]);
 
   const getWorkOrderReceivedQuantity = (item) =>
     item?.received_quantity ??
@@ -228,51 +235,92 @@ export function CreateGRN() {
     );
   };
 
-  const handleWorkOrderChange = (value) => {
-    const workOrder = workOrders.find((item) => String(item.id) === String(value));
-    const isDirectEvaluationVendor = Boolean(
-      workOrder && (!workOrder.vendor?.id || workOrder.vendor?.is_direct_evaluation)
-    );
+  const handleWorkOrderChange = useCallback(
+    async (value) => {
+      const leanWO = workOrders.find((item) => String(item.id) === String(value));
 
-    setForm((current) => ({
-      ...current,
-      workOrder: value ? String(value) : '',
-      supplier: workOrder?.vendor?.id ? String(workOrder.vendor.id) : '',
-      invoiceAmount: workOrder
-        ? asText(workOrder?.totalAmount ?? workOrder?.total_amount ?? workOrder?.net_amount ?? '')
-        : '',
-      directVendorName: isDirectEvaluationVendor ? workOrder.vendor?.name || '' : '',
-      directVendorEmail: isDirectEvaluationVendor ? workOrder.vendor?.email || '' : '',
-      directVendorPhone: isDirectEvaluationVendor ? workOrder.vendor?.phone || '' : '',
-      directVendorAddress: isDirectEvaluationVendor ? workOrder.vendor?.address || '' : '',
-    }));
+      // Immediately set basic form fields from lean data for instant feedback
+      setForm((current) => ({
+        ...current,
+        workOrder: value ? String(value) : '',
+        supplier: leanWO?.vendor?.id ? String(leanWO.vendor.id) : '',
+        invoiceAmount: leanWO
+          ? asText(leanWO?.totalAmount ?? leanWO?.total_amount ?? '')
+          : '',
+        directVendorName: '',
+        directVendorEmail: '',
+        directVendorPhone: '',
+        directVendorAddress: '',
+      }));
 
-    setItems(
-      workOrder?.items?.length
-        ? workOrder.items.map((item) => {
-            const orderedQuantity = asText(getWorkOrderItemQuantity(item));
-            const receivedQuantity = asText(
-              getWorkOrderReceivedQuantity(item) || getWorkOrderItemQuantity(item)
-            );
+      if (!value) {
+        setFullWorkOrder(null);
+        setItems([{ ...EMPTY_ITEM }]);
+        return;
+      }
 
-            const { accepted, rejected } = calculateAcceptedRejected(
-              orderedQuantity,
-              receivedQuantity
-            );
-            return {
-              description: getWorkOrderItemName(item),
-              ordered_quantity: orderedQuantity,
-              received_quantity: receivedQuantity,
-              accepted_quantity: accepted,
-              rejected_quantity: rejected,
-              unit_price: asText(getWorkOrderItemUnitPrice(item)),
-              condition: 'Good',
-              remarks: item.specification || item.specifications || '',
-            };
-          })
-        : [{ ...EMPTY_ITEM }]
-    );
-  };
+      // Fetch full work order details (items, attachments, vendor details)
+      setLoadingFullWO(true);
+      try {
+        const response = await axiosInstance.get(
+          endpoints.procurement_management.work_order_full(value)
+        );
+        const fullWO = response?.data || response;
+        setFullWorkOrder(fullWO);
+
+        const isDirectEvaluationVendor = Boolean(
+          fullWO && (!fullWO.vendor?.id || fullWO.vendor?.is_direct_evaluation)
+        );
+
+        // Update form with full work order data
+        setForm((current) => ({
+          ...current,
+          workOrder: String(value),
+          supplier: fullWO?.vendor?.id ? String(fullWO.vendor.id) : '',
+          invoiceAmount: fullWO
+            ? asText(fullWO?.totalAmount ?? fullWO?.total_amount ?? fullWO?.net_amount ?? '')
+            : '',
+          directVendorName: isDirectEvaluationVendor ? fullWO.vendor?.name || '' : '',
+          directVendorEmail: isDirectEvaluationVendor ? fullWO.vendor?.email || '' : '',
+          directVendorPhone: isDirectEvaluationVendor ? fullWO.vendor?.phone || '' : '',
+          directVendorAddress: isDirectEvaluationVendor ? fullWO.vendor?.address || '' : '',
+        }));
+
+        // Populate items from full work order
+        setItems(
+          fullWO?.items?.length
+            ? fullWO.items.map((item) => {
+                const orderedQuantity = asText(getWorkOrderItemQuantity(item));
+                const receivedQuantity = asText(
+                  getWorkOrderReceivedQuantity(item) || getWorkOrderItemQuantity(item)
+                );
+                const { accepted, rejected } = calculateAcceptedRejected(
+                  orderedQuantity,
+                  receivedQuantity
+                );
+                return {
+                  description: getWorkOrderItemName(item),
+                  ordered_quantity: orderedQuantity,
+                  received_quantity: receivedQuantity,
+                  accepted_quantity: accepted,
+                  rejected_quantity: rejected,
+                  unit_price: asText(getWorkOrderItemUnitPrice(item)),
+                  condition: 'Good',
+                  remarks: item.specification || item.specifications || '',
+                };
+              })
+            : [{ ...EMPTY_ITEM }]
+        );
+      } catch (error) {
+        toast.error('Failed to load work order details. Please try again.');
+        setFullWorkOrder(null);
+        setItems([{ ...EMPTY_ITEM }]);
+      } finally {
+        setLoadingFullWO(false);
+      }
+    },
+    [workOrders]
+  );
 
   const updateItem = (index, field, value) => {
     setItems((current) =>
@@ -400,29 +448,48 @@ export function CreateGRN() {
           </p>
         </div>
         {/* Mode toggle */}
-        <div className="flex items-center rounded-lg border border-input overflow-hidden">
-          <button
-            type="button"
-            onClick={() => handleModeSwitch('work_order')}
-            className={`px-4 py-2 text-sm font-medium transition-colors ${
-              grnMode === 'work_order'
-                ? 'bg-primary text-white'
-                : 'bg-background text-muted-foreground hover:bg-muted'
-            }`}
-          >
-            Work Order
-          </button>
-          <button
-            type="button"
-            onClick={() => handleModeSwitch('direct_purchase')}
-            className={`px-4 py-2 text-sm font-medium transition-colors border-l border-input ${
-              grnMode === 'direct_purchase'
-                ? 'bg-primary text-white'
-                : 'bg-background text-muted-foreground hover:bg-muted'
-            }`}
-          >
-            Direct Purchase
-          </button>
+        <div className="flex items-center gap-2">
+          {grnMode === 'work_order' && selectedWorkOrder && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setShowDocSidebar(true)}
+              className="hidden sm:inline-flex"
+              disabled={loadingFullWO}
+            >
+              {loadingFullWO ? (
+                <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
+              ) : (
+                <FileText className="w-4 h-4 mr-1.5" />
+              )}
+              {loadingFullWO ? 'Loading...' : 'View Document Information'}
+            </Button>
+          )}
+          <div className="flex items-center rounded-lg border border-input overflow-hidden">
+            <button
+              type="button"
+              onClick={() => handleModeSwitch('work_order')}
+              className={`px-4 py-2 text-sm font-medium transition-colors ${
+                grnMode === 'work_order'
+                  ? 'bg-primary text-white'
+                  : 'bg-background text-muted-foreground hover:bg-muted'
+              }`}
+            >
+              Work Order
+            </button>
+            <button
+              type="button"
+              onClick={() => handleModeSwitch('direct_purchase')}
+              className={`px-4 py-2 text-sm font-medium transition-colors border-l border-input ${
+                grnMode === 'direct_purchase'
+                  ? 'bg-primary text-white'
+                  : 'bg-background text-muted-foreground hover:bg-muted'
+              }`}
+            >
+              Direct Purchase
+            </button>
+          </div>
         </div>
       </div>
 
@@ -675,8 +742,13 @@ export function CreateGRN() {
 
       <Card className="mb-6">
         <CardHeader
-          title="GRN Items"
-          description="Capture quantities received and their initial condition"
+          title={
+            <span className="flex items-center gap-2">
+              GRN Items
+              {loadingFullWO && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
+            </span>
+          }
+          description={loadingFullWO ? 'Loading work order items...' : 'Capture quantities received and their initial condition'}
         />
         <CardBody>
           <div className="space-y-4">
@@ -802,6 +874,36 @@ export function CreateGRN() {
           {submitting ? 'Saving...' : 'Create GRN'}
         </Button>
       </div>
+
+      {/* Mobile View Document Information button */}
+      {grnMode === 'work_order' && selectedWorkOrder && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 sm:hidden z-30">
+          <Button
+            type="button"
+            variant="default"
+            size="lg"
+            onClick={() => setShowDocSidebar(true)}
+            className="shadow-lg"
+            disabled={loadingFullWO}
+          >
+            {loadingFullWO ? (
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            ) : (
+              <FileText className="w-4 h-4 mr-2" />
+            )}
+            {loadingFullWO ? 'Loading...' : 'View Document Information'}
+          </Button>
+        </div>
+      )}
+
+      {/* Document Info Sidebar */}
+      {showDocSidebar && grnMode === 'work_order' && selectedWorkOrder && (
+        <DocumentInfoSidebar
+          workOrder={selectedWorkOrder}
+          attachments={fullWorkOrder?.attachments || selectedWorkOrder?.attachments || []}
+          onClose={() => setShowDocSidebar(false)}
+        />
+      )}
     </div>
   );
 }

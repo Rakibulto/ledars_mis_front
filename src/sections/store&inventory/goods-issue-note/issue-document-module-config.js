@@ -41,8 +41,7 @@ export const ISSUE_DOCUMENT_MODULE_CONFIGS = {
       'Manage issue documents with server-side search, filters, pagination, row drilldown, and dedicated create, edit, and delete flows.',
     listInfo:
       'Search, status tabs, department, project, and pagination now run against the server. Click any issue row to open its full issue details.',
-    searchPlaceholder:
-      'Search issue number, issue-from office, project, department...',
+    searchPlaceholder: 'Search issue number, issue-from office, project, department...',
     loadError: 'GIN records could not be loaded from the backend.',
     emptyTitle: 'No issue notes found',
     emptyDescription: 'Adjust the search or filters to widen the result set.',

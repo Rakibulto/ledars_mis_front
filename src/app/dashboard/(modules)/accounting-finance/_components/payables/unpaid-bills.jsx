@@ -385,8 +385,6 @@ export default function UnpaidBills() {
         </TableContainer>
       </Card>
 
-
-
       <Dialog
         open={Boolean(selectedBill)}
         onClose={() => setSelectedBill(null)}

@@ -620,284 +620,338 @@ export default function AllProjects() {
               {filteredProjects.map((project, index) => {
                 const projectProgressPercent = getProjectProgressPercent(project);
 
-                return <Box
-                  key={project.id}
-                  sx={{
-                    display: 'grid',
-                    gridTemplateColumns: PROJECT_LIST_COLUMNS,
-                    gap: 2,
-                    alignItems: 'start',
-                    px: { xs: 1.5, md: 1.8 },
-                    py: { xs: 1.5, md: 1.7 },
-                    borderRadius: 3,
-                    border: `1px solid ${alpha(isFocusedSheetView ? theme.palette.primary.main : theme.palette.grey[500], isFocusedSheetView ? 0.18 : 0.14)}`,
-                    background: isFocusedSheetView
-                      ? `linear-gradient(180deg, ${alpha(theme.palette.primary.main, 0.04)} 0%, ${alpha(theme.palette.background.paper, 0.98)} 100%)`
-                      : alpha(theme.palette.background.paper, 0.98),
-                  }}
-                >
-                  <Box>
-                    <Typography
-                      variant="caption"
-                      color="text.secondary"
-                      sx={{
-                        display: { xs: 'block', lg: 'none' },
-                        textTransform: 'uppercase',
-                        mb: 0.6,
-                      }}
-                    >
-                      Project
-                    </Typography>
-                    <Stack spacing={0.7}>
-                      <Stack direction="row" spacing={0.75} alignItems="center" flexWrap="wrap" useFlexGap>
-                        <Chip size="small" label={`#${index + 1}`} color="primary" variant="outlined" />
-                        <Typography variant="subtitle2" fontWeight={800}>{project.title}</Typography>
-                        {project.code ? <Chip label={project.code} size="small" color="primary" /> : null}
-                        <Chip label={project.derivedStatus || project.status} color={STATUS_COLOR[project.derivedStatus || project.status] || 'default'} size="small" />
-                        <Chip label={`${projectProgressPercent}% done`} size="small" variant="outlined" color="primary" />
-                      </Stack>
-                      <Stack direction="row" spacing={0.6} flexWrap="wrap" useFlexGap>
-                        {project.project_type ? (
-                          <Chip label={project.project_type} size="small" variant="outlined" />
-                        ) : null}
-                        {project.implementation_type ? (
-                          <Chip
-                            label={project.implementation_type}
-                            size="small"
-                            variant="outlined"
-                          />
-                        ) : null}
-                        {project.location ? (
-                          <Chip label={project.location} size="small" variant="outlined" />
-                        ) : null}
-                      </Stack>
-                      <Typography variant="body2" color="text.secondary">
-                        {project.progressSummary}
-                      </Typography>
-                      <Typography variant="caption" color="text.disabled">
-                        {project.progressDetail}
-                      </Typography>
-                    </Stack>
-                  </Box>
-
-                  <Box>
-                    <Typography
-                      variant="caption"
-                      color="text.secondary"
-                      sx={{
-                        display: { xs: 'block', lg: 'none' },
-                        textTransform: 'uppercase',
-                        mb: 0.6,
-                      }}
-                    >
-                      Donor & Team
-                    </Typography>
-                    <Stack spacing={0.7}>
-                      <Typography variant="body2" fontWeight={700}>
-                        {project.donorName}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        Manager: {project.projectManagerName || '-'}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        Budget: {fCurrency(project.budgetAmount)}
-                      </Typography>
-                      <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
-                        {project.assigned_users?.length ? (
-                          project.assigned_users.map((user) => (
-                            <Chip
-                              key={`${project.id}-${user.id}`}
-                              label={user.username}
-                              size="small"
-                            />
-                          ))
-                        ) : (
-                          <Chip label="Unassigned" size="small" variant="outlined" />
-                        )}
-                      </Stack>
-                    </Stack>
-                  </Box>
-
-                  <Box>
-                    <Typography
-                      variant="caption"
-                      color="text.secondary"
-                      sx={{
-                        display: { xs: 'block', lg: 'none' },
-                        textTransform: 'uppercase',
-                        mb: 0.6,
-                      }}
-                    >
-                      Timeline
-                    </Typography>
-                    <Stack spacing={0.7}>
-                      <Typography variant="body2" fontWeight={600}>
-                        {formatDate(project.start_date)} → {formatDate(project.end_date)}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        {project.duration_months
-                          ? `${project.duration_months} months`
-                          : 'Duration pending'}
-                      </Typography>
-                    </Stack>
-                  </Box>
-
-                  <Box>
-                    <Typography
-                      variant="caption"
-                      color="text.secondary"
-                      sx={{
-                        display: { xs: 'block', lg: 'none' },
-                        textTransform: 'uppercase',
-                        mb: 0.6,
-                      }}
-                    >
-                      Progress
-                    </Typography>
-                    <Stack spacing={0.7}>
-                      <Typography variant="body2" fontWeight={600}>{projectProgressPercent}% complete</Typography>
-                      <Box sx={{ position: 'relative', height: 9, borderRadius: 999, bgcolor: alpha(theme.palette.grey[500], 0.14), overflow: 'hidden' }}>
-                        <Box sx={{ position: 'absolute', inset: 0, width: `${projectProgressPercent}%`, borderRadius: 999, bgcolor: projectProgressPercent >= 100 ? theme.palette.success.main : projectProgressPercent >= 50 ? theme.palette.primary.main : theme.palette.warning.main }} />
-                      </Box>
-                      <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
-                        <Chip
-                          size="small"
-                          variant="outlined"
-                          label={`${project.plansCount || 0} steps`}
-                        />
-                        <Chip
-                          size="small"
-                          variant="outlined"
-                          label={`${project.workItemStatusCounts?.total || 0} work items`}
-                        />
-                      </Stack>
-                    </Stack>
-                  </Box>
-
-                  <Box>
-                    <Typography
-                      variant="caption"
-                      color="text.secondary"
-                      sx={{
-                        display: { xs: 'block', lg: 'none' },
-                        textTransform: 'uppercase',
-                        mb: 0.6,
-                      }}
-                    >
-                      Status
-                    </Typography>
-                    <Stack spacing={0.7} alignItems="flex-start">
-                      <TextField
-                        select
-                        size="small"
-                        label="Status"
-                        value={
-                          statusDrafts[project.id] ||
-                          project.status ||
-                          project.derivedStatus ||
-                          'Draft'
-                        }
-                        onChange={(event) => {
-                          const nextStatus = event.target.value;
-                          setStatusDrafts((current) => ({ ...current, [project.id]: nextStatus }));
-                          handleStatusChange(project, nextStatus);
-                        }}
-                        disabled={statusSavingId === project.id}
-                        sx={{ width: '100%' }}
-                      >
-                        {STATUS_OPTIONS.map((status) => (
-                          <MenuItem key={status} value={status}>
-                            {status}
-                          </MenuItem>
-                        ))}
-                      </TextField>
-                      {statusSavingId === project.id ? (
-                        <Typography variant="caption" color="text.secondary">
-                          Saving status...
-                        </Typography>
-                      ) : null}
+                return (
+                  <Box
+                    key={project.id}
+                    sx={{
+                      display: 'grid',
+                      gridTemplateColumns: PROJECT_LIST_COLUMNS,
+                      gap: 2,
+                      alignItems: 'start',
+                      px: { xs: 1.5, md: 1.8 },
+                      py: { xs: 1.5, md: 1.7 },
+                      borderRadius: 3,
+                      border: `1px solid ${alpha(isFocusedSheetView ? theme.palette.primary.main : theme.palette.grey[500], isFocusedSheetView ? 0.18 : 0.14)}`,
+                      background: isFocusedSheetView
+                        ? `linear-gradient(180deg, ${alpha(theme.palette.primary.main, 0.04)} 0%, ${alpha(theme.palette.background.paper, 0.98)} 100%)`
+                        : alpha(theme.palette.background.paper, 0.98),
+                    }}
+                  >
+                    <Box>
                       <Typography
                         variant="caption"
-                        color={
-                          project.derivedStatus === 'On Hold' ? 'warning.main' : 'text.secondary'
-                        }
+                        color="text.secondary"
+                        sx={{
+                          display: { xs: 'block', lg: 'none' },
+                          textTransform: 'uppercase',
+                          mb: 0.6,
+                        }}
                       >
-                        {project.derivedStatus === 'On Hold'
-                          ? 'Project is paused until blockers are resolved.'
-                          : `Current status is ${project.derivedStatus || project.status}.`}
+                        Project
                       </Typography>
-                    </Stack>
-                  </Box>
-
-                  <Box>
-                    <Typography
-                      variant="caption"
-                      color="text.secondary"
-                      sx={{
-                        display: { xs: 'block', lg: 'none' },
-                        textTransform: 'uppercase',
-                        mb: 0.6,
-                      }}
-                    >
-                      Actions
-                    </Typography>
-                    <Stack spacing={1}>
-                      <Stack
-                        direction={{ xs: 'column', sm: 'row', lg: 'column' }}
-                        spacing={0.8}
-                        alignItems={{ xs: 'stretch', sm: 'center', lg: 'stretch' }}
-                        useFlexGap
-                        flexWrap="wrap"
-                      >
-                        <Button
-                          component={RouterLink}
-                          href={paths.dashboard.projectManagements.projects.detail(project.id)}
-                          size="small"
-                          variant="contained"
-                          startIcon={<Iconify icon="solar:eye-bold" width={16} />}
-                          sx={{
-                            ...getProjectActionButtonSx(theme, 'contained'),
-                            background: `linear-gradient(135deg, ${theme.palette.grey[900]} 0%, ${theme.palette.grey[800]} 100%)`,
-                            color: 'common.white',
-                          }}
+                      <Stack spacing={0.7}>
+                        <Stack
+                          direction="row"
+                          spacing={0.75}
+                          alignItems="center"
+                          flexWrap="wrap"
+                          useFlexGap
                         >
-                          Project Details
-                        </Button>
-                        <Button
-                          component={RouterLink}
-                          href={paths.dashboard.projectManagements.projects.edit(project.id)}
-                          size="small"
-                          variant="outlined"
-                          color="inherit"
-                          startIcon={<Iconify icon="solar:pen-bold" width={16} />}
-                          sx={{
-                            ...getProjectActionButtonSx(theme, 'outlined'),
-                            borderColor: alpha(theme.palette.grey[500], 0.28),
-                            bgcolor: alpha(theme.palette.background.paper, 0.9),
-                          }}
-                        >
-                          Edit
-                        </Button>
-                        <Button
-                          size="small"
-                          variant="outlined"
-                          color="error"
-                          onClick={() => setDeleteTarget(project)}
-                          startIcon={<Iconify icon="solar:trash-bin-trash-bold" width={16} />}
-                          sx={{
-                            ...getProjectActionButtonSx(theme, 'outlined'),
-                            borderColor: alpha(theme.palette.error.main, 0.36),
-                          }}
-                        >
-                          Delete
-                        </Button>
+                          <Chip
+                            size="small"
+                            label={`#${index + 1}`}
+                            color="primary"
+                            variant="outlined"
+                          />
+                          <Typography variant="subtitle2" fontWeight={800}>
+                            {project.title}
+                          </Typography>
+                          {project.code ? (
+                            <Chip label={project.code} size="small" color="primary" />
+                          ) : null}
+                          <Chip
+                            label={project.derivedStatus || project.status}
+                            color={
+                              STATUS_COLOR[project.derivedStatus || project.status] || 'default'
+                            }
+                            size="small"
+                          />
+                          <Chip
+                            label={`${projectProgressPercent}% done`}
+                            size="small"
+                            variant="outlined"
+                            color="primary"
+                          />
+                        </Stack>
+                        <Stack direction="row" spacing={0.6} flexWrap="wrap" useFlexGap>
+                          {project.project_type ? (
+                            <Chip label={project.project_type} size="small" variant="outlined" />
+                          ) : null}
+                          {project.implementation_type ? (
+                            <Chip
+                              label={project.implementation_type}
+                              size="small"
+                              variant="outlined"
+                            />
+                          ) : null}
+                          {project.location ? (
+                            <Chip label={project.location} size="small" variant="outlined" />
+                          ) : null}
+                        </Stack>
+                        <Typography variant="body2" color="text.secondary">
+                          {project.progressSummary}
+                        </Typography>
+                        <Typography variant="caption" color="text.disabled">
+                          {project.progressDetail}
+                        </Typography>
                       </Stack>
-                      <Typography variant="caption" color="text.secondary">
-                        Health: {project.progressDetail}
+                    </Box>
+
+                    <Box>
+                      <Typography
+                        variant="caption"
+                        color="text.secondary"
+                        sx={{
+                          display: { xs: 'block', lg: 'none' },
+                          textTransform: 'uppercase',
+                          mb: 0.6,
+                        }}
+                      >
+                        Donor & Team
                       </Typography>
-                    </Stack>
+                      <Stack spacing={0.7}>
+                        <Typography variant="body2" fontWeight={700}>
+                          {project.donorName}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          Manager: {project.projectManagerName || '-'}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          Budget: {fCurrency(project.budgetAmount)}
+                        </Typography>
+                        <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+                          {project.assigned_users?.length ? (
+                            project.assigned_users.map((user) => (
+                              <Chip
+                                key={`${project.id}-${user.id}`}
+                                label={user.username}
+                                size="small"
+                              />
+                            ))
+                          ) : (
+                            <Chip label="Unassigned" size="small" variant="outlined" />
+                          )}
+                        </Stack>
+                      </Stack>
+                    </Box>
+
+                    <Box>
+                      <Typography
+                        variant="caption"
+                        color="text.secondary"
+                        sx={{
+                          display: { xs: 'block', lg: 'none' },
+                          textTransform: 'uppercase',
+                          mb: 0.6,
+                        }}
+                      >
+                        Timeline
+                      </Typography>
+                      <Stack spacing={0.7}>
+                        <Typography variant="body2" fontWeight={600}>
+                          {formatDate(project.start_date)} → {formatDate(project.end_date)}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {project.duration_months
+                            ? `${project.duration_months} months`
+                            : 'Duration pending'}
+                        </Typography>
+                      </Stack>
+                    </Box>
+
+                    <Box>
+                      <Typography
+                        variant="caption"
+                        color="text.secondary"
+                        sx={{
+                          display: { xs: 'block', lg: 'none' },
+                          textTransform: 'uppercase',
+                          mb: 0.6,
+                        }}
+                      >
+                        Progress
+                      </Typography>
+                      <Stack spacing={0.7}>
+                        <Typography variant="body2" fontWeight={600}>
+                          {projectProgressPercent}% complete
+                        </Typography>
+                        <Box
+                          sx={{
+                            position: 'relative',
+                            height: 9,
+                            borderRadius: 999,
+                            bgcolor: alpha(theme.palette.grey[500], 0.14),
+                            overflow: 'hidden',
+                          }}
+                        >
+                          <Box
+                            sx={{
+                              position: 'absolute',
+                              inset: 0,
+                              width: `${projectProgressPercent}%`,
+                              borderRadius: 999,
+                              bgcolor:
+                                projectProgressPercent >= 100
+                                  ? theme.palette.success.main
+                                  : projectProgressPercent >= 50
+                                    ? theme.palette.primary.main
+                                    : theme.palette.warning.main,
+                            }}
+                          />
+                        </Box>
+                        <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+                          <Chip
+                            size="small"
+                            variant="outlined"
+                            label={`${project.plansCount || 0} steps`}
+                          />
+                          <Chip
+                            size="small"
+                            variant="outlined"
+                            label={`${project.workItemStatusCounts?.total || 0} work items`}
+                          />
+                        </Stack>
+                      </Stack>
+                    </Box>
+
+                    <Box>
+                      <Typography
+                        variant="caption"
+                        color="text.secondary"
+                        sx={{
+                          display: { xs: 'block', lg: 'none' },
+                          textTransform: 'uppercase',
+                          mb: 0.6,
+                        }}
+                      >
+                        Status
+                      </Typography>
+                      <Stack spacing={0.7} alignItems="flex-start">
+                        <TextField
+                          select
+                          size="small"
+                          label="Status"
+                          value={
+                            statusDrafts[project.id] ||
+                            project.status ||
+                            project.derivedStatus ||
+                            'Draft'
+                          }
+                          onChange={(event) => {
+                            const nextStatus = event.target.value;
+                            setStatusDrafts((current) => ({
+                              ...current,
+                              [project.id]: nextStatus,
+                            }));
+                            handleStatusChange(project, nextStatus);
+                          }}
+                          disabled={statusSavingId === project.id}
+                          sx={{ width: '100%' }}
+                        >
+                          {STATUS_OPTIONS.map((status) => (
+                            <MenuItem key={status} value={status}>
+                              {status}
+                            </MenuItem>
+                          ))}
+                        </TextField>
+                        {statusSavingId === project.id ? (
+                          <Typography variant="caption" color="text.secondary">
+                            Saving status...
+                          </Typography>
+                        ) : null}
+                        <Typography
+                          variant="caption"
+                          color={
+                            project.derivedStatus === 'On Hold' ? 'warning.main' : 'text.secondary'
+                          }
+                        >
+                          {project.derivedStatus === 'On Hold'
+                            ? 'Project is paused until blockers are resolved.'
+                            : `Current status is ${project.derivedStatus || project.status}.`}
+                        </Typography>
+                      </Stack>
+                    </Box>
+
+                    <Box>
+                      <Typography
+                        variant="caption"
+                        color="text.secondary"
+                        sx={{
+                          display: { xs: 'block', lg: 'none' },
+                          textTransform: 'uppercase',
+                          mb: 0.6,
+                        }}
+                      >
+                        Actions
+                      </Typography>
+                      <Stack spacing={1}>
+                        <Stack
+                          direction={{ xs: 'column', sm: 'row', lg: 'column' }}
+                          spacing={0.8}
+                          alignItems={{ xs: 'stretch', sm: 'center', lg: 'stretch' }}
+                          useFlexGap
+                          flexWrap="wrap"
+                        >
+                          <Button
+                            component={RouterLink}
+                            href={paths.dashboard.projectManagements.projects.detail(project.id)}
+                            size="small"
+                            variant="contained"
+                            startIcon={<Iconify icon="solar:eye-bold" width={16} />}
+                            sx={{
+                              ...getProjectActionButtonSx(theme, 'contained'),
+                              background: `linear-gradient(135deg, ${theme.palette.grey[900]} 0%, ${theme.palette.grey[800]} 100%)`,
+                              color: 'common.white',
+                            }}
+                          >
+                            Project Details
+                          </Button>
+                          <Button
+                            component={RouterLink}
+                            href={paths.dashboard.projectManagements.projects.edit(project.id)}
+                            size="small"
+                            variant="outlined"
+                            color="inherit"
+                            startIcon={<Iconify icon="solar:pen-bold" width={16} />}
+                            sx={{
+                              ...getProjectActionButtonSx(theme, 'outlined'),
+                              borderColor: alpha(theme.palette.grey[500], 0.28),
+                              bgcolor: alpha(theme.palette.background.paper, 0.9),
+                            }}
+                          >
+                            Edit
+                          </Button>
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            color="error"
+                            onClick={() => setDeleteTarget(project)}
+                            startIcon={<Iconify icon="solar:trash-bin-trash-bold" width={16} />}
+                            sx={{
+                              ...getProjectActionButtonSx(theme, 'outlined'),
+                              borderColor: alpha(theme.palette.error.main, 0.36),
+                            }}
+                          >
+                            Delete
+                          </Button>
+                        </Stack>
+                        <Typography variant="caption" color="text.secondary">
+                          Health: {project.progressDetail}
+                        </Typography>
+                      </Stack>
+                    </Box>
                   </Box>
-                </Box>;
+                );
               })}
 
               {!filteredProjects.length ? (

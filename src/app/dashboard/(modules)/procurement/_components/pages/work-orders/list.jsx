@@ -10,6 +10,7 @@ import {
   Eye,
   Zap,
   Plus,
+  Edit,
   Clock,
   Search,
   Package,
@@ -18,6 +19,8 @@ import {
   Clipboard,
   TrendingUp,
   CheckCircle,
+  Ban,
+  Truck,
 } from 'lucide-react';
 
 import TablePagination from '@mui/material/TablePagination';
@@ -71,6 +74,12 @@ export function WorkOrderList({ isPendingMode: isPendingModeProp }) {
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [approvingId, setApprovingId] = useState(null);
   const [confirmWo, setConfirmWo] = useState(null); // { id, workOrderNumber }
+  const [cancelWo, setCancelWo] = useState(null); // { id, workOrderNumber, vendorName, awardId }
+  const [cancellingId, setCancellingId] = useState(null);
+  const [cancelRemarks, setCancelRemarks] = useState('');
+  const [deliveryStatusWo, setDeliveryStatusWo] = useState(null); // { id, workOrderNumber, currentStatus }
+  const [updatingDeliveryId, setUpdatingDeliveryId] = useState(null);
+  const [deliveryFilter, setDeliveryFilter] = useState('');
   const searchParams = useSearchParams();
   const isPendingMode = isPendingModeProp ?? searchParams.get('mode') === 'pending';
 
@@ -92,6 +101,7 @@ export function WorkOrderList({ isPendingMode: isPendingModeProp }) {
     });
     if (search) params.append('search', search);
     if (statusFilter) params.append('status', statusFilter);
+    if (deliveryFilter) params.append('delivery_status', deliveryFilter);
     if (isPendingMode) {
       params.append('mode', 'pending');
     } else {
@@ -141,6 +151,72 @@ export function WorkOrderList({ isPendingMode: isPendingModeProp }) {
     } finally {
       setApprovingId(null);
     }
+  };
+
+  const handleCancelWorkOrder = async () => {
+    if (!cancelWo) return;
+    const woId = cancelWo.id;
+    const awardId = cancelWo.awardId;
+    setCancelWo(null);
+    setCancellingId(woId);
+    try {
+      // Set work order status to Cancelled and vendorStatus to not-sent
+      await axiosInstance.patch(endpoints.procurement_management.work_order_by_id(woId), {
+        status: 'Cancelled',
+        vendorStatus: 'not-sent',
+        special_instructions: cancelRemarks || undefined,
+      });
+      // Reset linked award acceptanceStatus to pending
+      if (awardId) {
+        await axiosInstance.patch(endpoints.procurement_management.award_by_id(awardId), {
+          acceptanceStatus: 'pending',
+        });
+      }
+      setCancelRemarks('');
+      await mutate(apiUrl);
+      toast.success('Work order cancelled successfully.');
+    } catch (err) {
+      const msg =
+        err?.response?.data?.detail || err?.response?.data?.error || 'Failed to cancel work order.';
+      toast.error(msg);
+    } finally {
+      setCancellingId(null);
+    }
+  };
+
+  const handleUpdateDeliveryStatus = async (newStatus) => {
+    if (!deliveryStatusWo) return;
+    const woId = deliveryStatusWo.id;
+    setDeliveryStatusWo(null);
+    setUpdatingDeliveryId(woId);
+    try {
+      await axiosInstance.patch(endpoints.procurement_management.work_order_by_id(woId), {
+        delivery_status: newStatus,
+      });
+      await mutate(apiUrl);
+      toast.success(`Delivery status updated to ${newStatus.replace(/-/g, ' ')}.`);
+    } catch (err) {
+      const msg =
+        err?.response?.data?.detail ||
+        err?.response?.data?.error ||
+        'Failed to update delivery status.';
+      toast.error(msg);
+    } finally {
+      setUpdatingDeliveryId(null);
+    }
+  };
+
+  const getDeliveryStatusColor = (status) => {
+    const s = status?.toLowerCase() || 'not-started';
+    if (s === 'completed') return 'success';
+    if (s === 'in-progress') return 'warning';
+    if (s === 'partial') return 'info';
+    return 'outline';
+  };
+
+  const formatDeliveryStatus = (status) => {
+    if (!status) return 'Not Started';
+    return status.replace(/[-_]+/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase());
   };
 
   if (loading && !data) return <PageLoader message="Fetching Work Orders..." />;
@@ -292,13 +368,14 @@ export function WorkOrderList({ isPendingMode: isPendingModeProp }) {
               <option value="Completed">Completed</option>
               <option value="Cancelled">Cancelled</option>
             </select>
-            {(searchInput || statusFilter) && (
+            {(searchInput || statusFilter || deliveryFilter) && (
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => {
                   setSearchInput('');
                   setStatusFilter('');
+                  setDeliveryFilter('');
                 }}
               >
                 <X className="w-4 h-4 mr-1" /> Clear
@@ -307,6 +384,64 @@ export function WorkOrderList({ isPendingMode: isPendingModeProp }) {
           </div>
         </CardBody>
       </Card>
+
+      {/* Delivery Status Tabs */}
+      <div className="flex flex-wrap gap-2 mb-6">
+        <Button
+          variant={!deliveryFilter ? 'primary' : 'outline'}
+          size="sm"
+          onClick={() => {
+            setDeliveryFilter('');
+            setPage(0);
+          }}
+        >
+          All
+        </Button>
+        <Button
+          variant={deliveryFilter === 'not-started' ? 'primary' : 'outline'}
+          size="sm"
+          onClick={() => {
+            setDeliveryFilter('not-started');
+            setPage(0);
+          }}
+        >
+          <Clock className="w-3.5 h-3.5 mr-1.5" />
+          Not Started
+        </Button>
+        <Button
+          variant={deliveryFilter === 'in-progress' ? 'primary' : 'outline'}
+          size="sm"
+          onClick={() => {
+            setDeliveryFilter('in-progress');
+            setPage(0);
+          }}
+        >
+          <Truck className="w-3.5 h-3.5 mr-1.5" />
+          In Progress
+        </Button>
+        <Button
+          variant={deliveryFilter === 'partial' ? 'primary' : 'outline'}
+          size="sm"
+          onClick={() => {
+            setDeliveryFilter('partial');
+            setPage(0);
+          }}
+        >
+          <Package className="w-3.5 h-3.5 mr-1.5" />
+          Partial
+        </Button>
+        <Button
+          variant={deliveryFilter === 'completed' ? 'primary' : 'outline'}
+          size="sm"
+          onClick={() => {
+            setDeliveryFilter('completed');
+            setPage(0);
+          }}
+        >
+          <CheckCircle className="w-3.5 h-3.5 mr-1.5" />
+          Completed
+        </Button>
+      </div>
 
       {/* WO List */}
       <Card>
@@ -388,6 +523,14 @@ export function WorkOrderList({ isPendingMode: isPendingModeProp }) {
                       </div>
 
                       <div className="flex gap-2 shrink-0">
+                        {wo.status?.toLowerCase() === 'draft' && (
+                          <Link href={paths.dashboard.procurement.workOrders.edit(wo.id)}>
+                            <Button variant="warning" size="sm">
+                              <Edit className="w-3.5 h-3.5 mr-1.5" />
+                              Edit
+                            </Button>
+                          </Link>
+                        )}
                         {isPendingMode &&
                           wo.approvalStatus?.toLowerCase().replace(/[\s_]+/g, '-') ===
                             'pending-approval' && (
@@ -427,6 +570,48 @@ export function WorkOrderList({ isPendingMode: isPendingModeProp }) {
                             <Printer className="w-3.5 h-3.5" />
                           </Button>
                         </Link>
+                        <Button
+                          variant={getDeliveryStatusColor(wo.deliveryStatus)}
+                          size="sm"
+                          disabled={updatingDeliveryId === wo.id}
+                          onClick={() =>
+                            setDeliveryStatusWo({
+                              id: wo.id,
+                              workOrderNumber: wo.workOrderNumber || wo.poNumber || `#${wo.id}`,
+                              currentStatus: wo.deliveryStatus || 'not-started',
+                            })
+                          }
+                        >
+                          <Truck className="w-3.5 h-3.5 mr-1.5" />
+                          {updatingDeliveryId === wo.id
+                            ? 'Updating...'
+                            : formatDeliveryStatus(wo.deliveryStatus)}
+                        </Button>
+                        {wo.deliveryStatus?.toLowerCase() === 'not-started' &&
+                          !wo.vendor?.is_direct_evaluation &&
+                          wo.vendorStatus?.toLowerCase() !== 'rejected' &&
+                          wo.awardId && (
+                            <Button
+                              variant="error"
+                              size="sm"
+                              disabled={
+                                cancellingId === wo.id ||
+                                wo.vendor.is_direct_evaluation ||
+                                wo.status?.toLowerCase() === 'cancelled'
+                              }
+                              onClick={() =>
+                                setCancelWo({
+                                  id: wo.id,
+                                  workOrderNumber: wo.workOrderNumber || wo.poNumber || `#${wo.id}`,
+                                  vendorName: wo.vendor?.name || 'Unknown Vendor',
+                                  awardId: wo.awardId,
+                                })
+                              }
+                            >
+                              <Ban className="w-3.5 h-3.5 mr-1.5" />
+                              {cancellingId === wo.id ? 'Cancelling...' : 'Cancel'}
+                            </Button>
+                          )}
                       </div>
                     </div>
 
@@ -496,6 +681,112 @@ export function WorkOrderList({ isPendingMode: isPendingModeProp }) {
             <li>Create a notification log for the vendor</li>
           </ul>
           <p className="text-warning font-medium pt-1">This action cannot be undone.</p>
+        </div>
+      </Modal>
+
+      {/* Cancel/Withdraw Confirmation Dialog */}
+      <Modal
+        isOpen={!!cancelWo}
+        onClose={() => {
+          setCancelWo(null);
+          setCancelRemarks('');
+        }}
+        size="sm"
+        title="Cancel Work Order"
+        description={`Are you sure you want to cancel work order ${cancelWo?.workOrderNumber} from vendor ${cancelWo?.vendorName}?`}
+        footer={
+          <div className="flex justify-end gap-3">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setCancelWo(null);
+                setCancelRemarks('');
+              }}
+            >
+              No, Keep It
+            </Button>
+            <Button variant="error" size="sm" onClick={handleCancelWorkOrder}>
+              <Ban className="w-3.5 h-3.5 mr-1.5" />
+              Yes, Cancel
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-3 text-sm text-muted-foreground">
+          <p>Cancelling this work order will:</p>
+          <ul className="list-disc list-inside space-y-1">
+            <li>
+              Set status to <strong className="text-foreground">Cancelled</strong>
+            </li>
+            <li>
+              Reset vendor status to <strong className="text-foreground">Not Sent</strong>
+            </li>
+            <li>
+              Reset award acceptance status to <strong className="text-foreground">Pending</strong>
+            </li>
+          </ul>
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-1">
+              Cancellation Remarks
+            </label>
+            <textarea
+              value={cancelRemarks}
+              onChange={(e) => setCancelRemarks(e.target.value)}
+              placeholder="Reason for cancellation..."
+              rows={3}
+              className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary resize-none text-sm"
+            />
+          </div>
+          <p className="text-error font-medium pt-1">This action cannot be undone.</p>
+        </div>
+      </Modal>
+
+      {/* Delivery Status Dialog */}
+      <Modal
+        isOpen={!!deliveryStatusWo}
+        onClose={() => setDeliveryStatusWo(null)}
+        size="sm"
+        title="Update Delivery Status"
+        description={`Change delivery status for work order ${deliveryStatusWo?.workOrderNumber}`}
+        footer={
+          <div className="flex justify-end gap-3">
+            <Button variant="outline" size="sm" onClick={() => setDeliveryStatusWo(null)}>
+              Cancel
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            Current status:{' '}
+            <strong className="text-foreground">
+              {formatDeliveryStatus(deliveryStatusWo?.currentStatus)}
+            </strong>
+          </p>
+          <div className="grid grid-cols-2 gap-3">
+            {[
+              { value: 'not-started', label: 'Not Started', variant: 'outline' },
+              { value: 'in-progress', label: 'In Progress', variant: 'warning' },
+              { value: 'partial', label: 'Partial', variant: 'info' },
+              { value: 'completed', label: 'Completed', variant: 'success' },
+            ].map((option) => (
+              <Button
+                key={option.value}
+                variant={
+                  deliveryStatusWo?.currentStatus === option.value ? option.variant : 'outline'
+                }
+                size="sm"
+                disabled={deliveryStatusWo?.currentStatus === option.value}
+                onClick={() => handleUpdateDeliveryStatus(option.value)}
+                className={
+                  deliveryStatusWo?.currentStatus === option.value ? 'ring-2 ring-primary' : ''
+                }
+              >
+                {option.label}
+              </Button>
+            ))}
+          </div>
         </div>
       </Modal>
     </div>

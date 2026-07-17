@@ -439,7 +439,6 @@ export default function SupplierStatements() {
         </TableContainer>
       </Card>
 
-
       <Dialog
         open={Boolean(selectedStatement)}
         onClose={() => setSelectedStatement(null)}

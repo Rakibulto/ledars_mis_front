@@ -1,7 +1,9 @@
 'use client';
 
+import { useMemo } from 'react';
 import { toast } from 'sonner';
 import { useState, useCallback } from 'react';
+import useSWR from 'swr';
 
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
@@ -23,6 +25,8 @@ import IconButton from '@mui/material/IconButton';
 import Typography from '@mui/material/Typography';
 import CardContent from '@mui/material/CardContent';
 import TableContainer from '@mui/material/TableContainer';
+
+import axiosInstance, { fetcher, endpoints } from 'src/utils/axios';
 
 import { Iconify } from 'src/components/iconify';
 
@@ -74,6 +78,12 @@ const EMPTY_EXPENSE_FORM = {
 export default function ExpenseEntryNewForm() {
   const { activeCurrency } = useCurrency();
   const { createEntry } = useWorkspaceExpenseApi();
+
+  const { data: rawAccounts } = useSWR(endpoints.accounting.accounts, fetcher);
+  const accounts = useMemo(() => {
+    const list = Array.isArray(rawAccounts) ? rawAccounts : rawAccounts?.results ?? [];
+    return list.filter((a) => a.is_active !== false);
+  }, [rawAccounts]);
 
   const [draftEntry, setDraftEntry] = useState(EMPTY_EXPENSE_FORM);
   const [submitting, setSubmitting] = useState(false);
@@ -194,9 +204,9 @@ export default function ExpenseEntryNewForm() {
                   value={draftEntry.category}
                   onChange={(event) => updateDraftEntry('category', event.target.value)}
                 >
-                  {EXPENSE_CATEGORIES.map((option) => (
-                    <MenuItem key={option} value={option}>
-                      {option}
+                  {accounts.map((acc) => (
+                    <MenuItem key={acc.id} value={acc.id}>
+                      {acc.code} - {acc.name}
                     </MenuItem>
                   ))}
                 </TextField>

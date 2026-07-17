@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { toast } from 'sonner';
 import React, { useMemo, useState, useEffect } from 'react';
@@ -30,7 +30,6 @@ import {
 import {
   normalizeCollection,
   QUALITY_TYPE_OPTIONS,
-  QUALITY_STATUS_OPTIONS,
   QUALITY_RESULT_OPTIONS,
   QUALITY_PRIORITY_OPTIONS,
 } from './quality-check-shared';

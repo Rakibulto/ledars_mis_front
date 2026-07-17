@@ -10,15 +10,15 @@ import {
   Stack,
   Button,
   Dialog,
-  MenuItem,
   Tooltip,
+  MenuItem,
   TextField,
   Typography,
   DialogTitle,
   DialogActions,
   DialogContent,
-  CircularProgress,
   InputAdornment,
+  CircularProgress,
 } from '@mui/material';
 
 import { endpoints } from 'src/utils/axios';
@@ -34,8 +34,8 @@ import { Iconify } from 'src/components/iconify';
 
 import {
   normalizeCollection,
-  QCP_FREQUENCY_OPTIONS,
   QCP_PRIORITY_OPTIONS,
+  QCP_FREQUENCY_OPTIONS,
 } from './quality-control-point-shared';
 
 const EP = endpoints.storeInventory;

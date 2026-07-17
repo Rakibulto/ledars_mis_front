@@ -20,9 +20,11 @@ export function useNavItem({
 
   const subDeepItem = Number(depth) > 2;
 
-  const linkProps = externalLink
-    ? { href: path, target: '_blank', rel: 'noopener' }
-    : { component: RouterLink, href: path };
+  const linkProps = path
+    ? externalLink
+      ? { href: path, target: '_blank', rel: 'noopener' }
+      : { component: RouterLink, href: path }
+    : { component: 'div' };
 
   const baseProps = hasChild && !enabledRootRedirect ? { component: 'div' } : linkProps;
 

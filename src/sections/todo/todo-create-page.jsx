@@ -1,40 +1,49 @@
 'use client';
 
+import { toast } from 'sonner';
 import React, { useState, useEffect } from 'react';
-import { useRouter } from 'src/routes/hooks';
-import { paths } from 'src/routes/paths';
 
 import {
   Box,
   Card,
+  Link,
+  Chip,
+  Stack,
   Button,
   TextField,
+  MenuItem,
   Typography,
   Breadcrumbs,
-  Link,
-  Stack,
-  Chip,
   Autocomplete,
   CircularProgress,
 } from '@mui/material';
 
-import { Iconify } from 'src/components/iconify';
-import { toast } from 'sonner';
+import { paths } from 'src/routes/paths';
+import { useRouter } from 'src/routes/hooks';
 
 import { createTodo, fetchTodoUsers } from 'src/actions/todo';
+
+import { Iconify } from 'src/components/iconify';
+import TiptapEditor from 'src/components/tiptap-editor';
 
 export default function TodoCreatePage() {
   const router = useRouter();
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [status, setStatus] = useState('draft');
+  const [status, setStatus] = useState('pending');
+  const [expectedDate, setExpectedDate] = useState('');
   const [selectedUsers, setSelectedUsers] = useState([]);
   const [userOptions, setUserOptions] = useState([]);
   const [userSearchInput, setUserSearchInput] = useState('');
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState({});
+  // Recurrence fields
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [recurrenceType, setRecurrenceType] = useState('daily');
+  const [recurrenceWeekdays, setRecurrenceWeekdays] = useState([]);
+  const [recurrenceDayOfMonth, setRecurrenceDayOfMonth] = useState(1);
 
   // Load users for assign dropdown
   useEffect(() => {
@@ -56,9 +65,14 @@ export default function TodoCreatePage() {
     try {
       await createTodo({
         todo_title: title.trim(),
-        description: description.trim(),
+        description: description || '',
+        expected_date: expectedDate || null,
         status,
         assign_user_ids: selectedUsers.map((u) => u.id),
+        is_recurring: isRecurring,
+        recurrence_type: isRecurring ? recurrenceType : 'none',
+        recurrence_weekdays: isRecurring && recurrenceType === 'weekly' ? recurrenceWeekdays : null,
+        recurrence_day_of_month: isRecurring && recurrenceType === 'monthly' ? recurrenceDayOfMonth : null,
       });
       toast.success('Todo created successfully!');
       router.push(paths.dashboard.todo.list);
@@ -103,17 +117,30 @@ export default function TodoCreatePage() {
             fullWidth
           />
 
-          {/* Description */}
+          {/* Description - Tiptap */}
+          <Box>
+            <Typography variant="subtitle2" sx={{ mb: 1 }}>
+              Description
+            </Typography>
+            <TiptapEditor
+              value={description}
+              onChange={(html) => setDescription(html)}
+              placeholder="Write a description..."
+              minHeight={120}
+            />
+          </Box>
+
+          {/* Expected Date */}
           <TextField
-            label="Description"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            multiline
-            rows={3}
+            label="Expected Date"
+            type="date"
             fullWidth
+            value={expectedDate}
+            onChange={(e) => setExpectedDate(e.target.value)}
+            InputLabelProps={{ shrink: true }}
           />
 
-          {/* Status Toggle - only draft and hold at creation */}
+          {/* Status Toggle - only draft and pending at creation */}
           <Box>
             <Typography variant="subtitle2" sx={{ mb: 1 }}>
               Status
@@ -121,7 +148,7 @@ export default function TodoCreatePage() {
             <Stack direction="row" spacing={1}>
               {[
                 { key: 'draft', label: 'Draft' },
-                { key: 'hold', label: 'Hold' },
+                { key: 'pending', label: 'Pending' },
               ].map((opt) => (
                 <Chip
                   key={opt.key}
@@ -133,6 +160,139 @@ export default function TodoCreatePage() {
                 />
               ))}
             </Stack>
+          </Box>
+
+          {/* ── Recurrence Section ── */}
+          <Box
+            sx={{
+              p: 2,
+              borderRadius: 2,
+              border: '1px solid',
+              borderColor: isRecurring ? 'primary.main' : 'divider',
+              bgcolor: isRecurring ? 'primary.lighter' : 'transparent',
+              transition: 'all 0.2s ease',
+            }}
+          >
+            <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: isRecurring ? 1.5 : 0 }}>
+              <Stack direction="row" spacing={1} alignItems="center">
+                <Iconify icon="solar:recurso-bold" width={18} sx={{ color: isRecurring ? 'primary.dark' : 'text.secondary' }} />
+                <Typography variant="subtitle2" sx={{ color: isRecurring ? 'primary.dark' : 'text.secondary' }}>
+                  Recurring Todo
+                </Typography>
+              </Stack>
+              <Box
+                onClick={() => setIsRecurring(!isRecurring)}
+                sx={{
+                  width: 40, height: 22, borderRadius: 11, cursor: 'pointer',
+                  bgcolor: isRecurring ? 'primary.main' : 'action.disabledBackground',
+                  position: 'relative', transition: 'all 0.2s ease',
+                }}
+              >
+                <Box
+                  sx={{
+                    width: 18, height: 18, borderRadius: '50%', bgcolor: 'white',
+                    position: 'absolute', top: 2,
+                    left: isRecurring ? 20 : 2,
+                    transition: 'all 0.2s ease',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+                  }}
+                />
+              </Box>
+            </Stack>
+
+            {isRecurring && (
+              <Stack spacing={1.5}>
+                <Box>
+                  <Typography variant="caption" color="text.secondary" sx={{ mb: 0.75, display: 'block', fontWeight: 600 }}>
+                    Frequency
+                  </Typography>
+                  <Stack direction="row" spacing={0.75}>
+                    {[
+                      { key: 'daily', label: 'Daily' },
+                      { key: 'weekly', label: 'Weekly' },
+                      { key: 'monthly', label: 'Monthly' },
+                    ].map((opt) => (
+                      <Box
+                        key={opt.key}
+                        onClick={() => setRecurrenceType(opt.key)}
+                        sx={{
+                          display: 'inline-flex', alignItems: 'center', gap: 0.5,
+                          px: 1.5, py: 0.75, borderRadius: 1.5, cursor: 'pointer',
+                          border: '1.5px solid',
+                          borderColor: recurrenceType === opt.key ? 'primary.main' : 'divider',
+                          bgcolor: recurrenceType === opt.key ? 'primary.lighter' : 'transparent',
+                          color: recurrenceType === opt.key ? 'primary.dark' : 'text.secondary',
+                          fontSize: 12, fontWeight: recurrenceType === opt.key ? 700 : 500,
+                          transition: 'all 0.15s ease',
+                          '&:hover': { borderColor: 'primary.main' },
+                        }}
+                      >
+                        {recurrenceType === opt.key && <Iconify icon="solar:check-circle-bold" width={13} />}
+                        {opt.label}
+                      </Box>
+                    ))}
+                  </Stack>
+                </Box>
+
+                {recurrenceType === 'weekly' && (
+                  <Box>
+                    <Typography variant="caption" color="text.secondary" sx={{ mb: 0.75, display: 'block', fontWeight: 600 }}>
+                      Select Days
+                    </Typography>
+                    <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+                      {[
+                        { key: 0, label: 'Mon' }, { key: 1, label: 'Tue' }, { key: 2, label: 'Wed' },
+                        { key: 3, label: 'Thu' }, { key: 4, label: 'Fri' }, { key: 5, label: 'Sat' },
+                        { key: 6, label: 'Sun' },
+                      ].map((day) => {
+                        const isSelected = recurrenceWeekdays.includes(day.key);
+                        return (
+                          <Box
+                            key={day.key}
+                            onClick={() => {
+                              setRecurrenceWeekdays((prev) =>
+                                isSelected ? prev.filter((d) => d !== day.key) : [...prev, day.key]
+                              );
+                            }}
+                            sx={{
+                              px: 1.5, py: 0.65, borderRadius: 1.5, cursor: 'pointer',
+                              border: '1.5px solid',
+                              borderColor: isSelected ? 'primary.main' : 'divider',
+                              bgcolor: isSelected ? 'primary.main' : 'transparent',
+                              color: isSelected ? 'white' : 'text.secondary',
+                              fontSize: 11.5, fontWeight: isSelected ? 700 : 500,
+                              transition: 'all 0.15s ease',
+                              '&:hover': { borderColor: 'primary.main' },
+                            }}
+                          >
+                            {day.label}
+                          </Box>
+                        );
+                      })}
+                    </Stack>
+                  </Box>
+                )}
+
+                {recurrenceType === 'monthly' && (
+                  <Box>
+                    <Typography variant="caption" color="text.secondary" sx={{ mb: 0.75, display: 'block', fontWeight: 600 }}>
+                      Day of Month
+                    </Typography>
+                    <TextField
+                      select
+                      size="small"
+                      value={recurrenceDayOfMonth}
+                      onChange={(e) => setRecurrenceDayOfMonth(Number(e.target.value))}
+                      sx={{ width: 120 }}
+                    >
+                      {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
+                        <MenuItem key={day} value={day}>{day}</MenuItem>
+                      ))}
+                    </TextField>
+                  </Box>
+                )}
+              </Stack>
+            )}
           </Box>
 
           {/* Assign Users (multi-select, searchable) */}

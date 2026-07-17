@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { toast } from 'sonner';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import {
   Zap,
@@ -17,11 +17,12 @@ import {
   Download,
   FileText,
   ArrowLeft,
-  Building2,
   TrendingUp,
   CheckCircle2,
   AlertTriangle,
   MessageSquare,
+  RefreshCw,
+  Ban,
 } from 'lucide-react';
 
 import { paths } from 'src/routes/paths';
@@ -34,8 +35,15 @@ import { Tabs } from '../../components/ui/tabs';
 import { PageLoader } from '../../components/ui';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
-import { Progress } from '../../components/ui/progress';
 import { Card, CardBody, CardHeader } from '../../components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '../../components/ui/dialog';
 // Helper
 function formatBDT(amount) {
   if (amount >= 10000000) return `৳${(amount / 10000000).toFixed(2)} Cr`;
@@ -543,7 +551,6 @@ function TechnicalScorecardTab({ cs, isRec }) {
           </div>
         </CardBody>
       </Card>
-
     </div>
   );
 }
@@ -552,10 +559,75 @@ export function ComparativeStatementDetail() {
   const { id } = useParams();
   const [noteText, setNoteText] = useState('');
   const [selectedVendorId, setSelectedVendorId] = useState(null);
+  const [pendingVendorId, setPendingVendorId] = useState(null);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [vendorToConfirm, setVendorToConfirm] = useState(null);
 
   const { data: cs, loading } = useGetRequest(
     id ? endpoints.procurement_management.comparative_statement_by_id(id) : null
   );
+
+  // Fetch award linked to this CS to check acceptance status
+  const awardUrl = cs?.cs_number
+    ? `${endpoints.procurement_management.awards}simple_award/?csNumber=${cs.cs_number}`
+    : null;
+  const { data: awardData } = useGetRequest(awardUrl);
+  const awardList = Array.isArray(awardData) ? awardData : (awardData?.results ?? []);
+  const linkedAward = awardList.length > 0 ? awardList[0] : null;
+
+  // Fetch work orders linked to this CS to check vendor rejection status
+  const workOrdersUrl = cs?.cs_number
+    ? `${endpoints.procurement_management.work_orders}?csNumber=${cs.cs_number}`
+    : null;
+  const { data: workOrdersData } = useGetRequest(workOrdersUrl);
+  const workOrdersList = useMemo(() => {
+    if (!workOrdersData) return [];
+    return Array.isArray(workOrdersData) ? workOrdersData : (workOrdersData.results ?? []);
+  }, [workOrdersData]);
+
+  // Map of vendor_id -> { vendorStatus, woNumber } for rejected vendors (from work orders)
+  const rejectedVendorMap = useMemo(() => {
+    const map = {};
+    workOrdersList.forEach((wo) => {
+      const vendorId = wo.vendor?.id;
+      if (vendorId && wo.vendorStatus === 'rejected') {
+        map[vendorId] = { vendorStatus: wo.vendorStatus, woNumber: wo.workOrderNumber };
+      }
+    });
+    return map;
+  }, [workOrdersList]);
+
+  // Fetch vendor acceptances to get rejected vendor emails
+  const vendorAcceptancesUrl = cs?.cs_number
+    ? `${endpoints.procurement_management.vendor_acceptances}?csNumber=${cs.cs_number}&status=Rejected`
+    : null;
+  const { data: vendorAcceptancesData } = useGetRequest(vendorAcceptancesUrl);
+  const vendorAcceptancesList = useMemo(() => {
+    if (!vendorAcceptancesData) return [];
+    return Array.isArray(vendorAcceptancesData)
+      ? vendorAcceptancesData
+      : (vendorAcceptancesData.results ?? []);
+  }, [vendorAcceptancesData]);
+
+  // Set of rejected vendor emails (from vendor acceptances)
+  const rejectedVendorEmails = useMemo(() => {
+    const emails = new Set();
+    vendorAcceptancesList.forEach((va) => {
+      const email = va.rejected_vendor?.email;
+      if (email) emails.add(String(email).toLowerCase());
+    });
+    return emails;
+  }, [vendorAcceptancesList]);
+
+  const isVendorRejected = (v) => {
+    const key = v?.vendor_id ?? v?.id;
+    if (key != null && rejectedVendorMap[key] != null) return true;
+    const email = v?.email || v?.vendor?.email;
+    if (email && rejectedVendorEmails.has(String(email).toLowerCase())) return true;
+    return false;
+  };
+
+  const isAwardAccepted = linkedAward?.acceptanceStatus === 'accepted';
 
   const canApprove = !!cs?.can_approve;
 
@@ -564,13 +636,18 @@ export function ComparativeStatementDetail() {
     // Auto-recommend: use saved recommendation if present, else pick highest overall_score
     if (cs?.recommended_vendor?.vendor_id != null) {
       setSelectedVendorId(cs.recommended_vendor.vendor_id);
+      setPendingVendorId(cs.recommended_vendor.vendor_id);
     } else {
       const best = [...cs.vendors].sort(
         (a, b) => (b.overall_score ?? 0) - (a.overall_score ?? 0)
       )[0];
-      if (best) setSelectedVendorId(getVendorKey(best));
+      if (best) {
+        const key = getVendorKey(best);
+        setSelectedVendorId(key);
+        setPendingVendorId(key);
+      }
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cs?.vendors, cs?.recommended_vendor?.vendor_id]);
 
   if (loading) return <PageLoader message="Loading comparative statement..." />;
@@ -586,23 +663,78 @@ export function ComparativeStatementDetail() {
   );
 
   // The currently selected/recommended vendor object
-  const recommended = cs?.vendors?.find(
-    (v) => String(getVendorKey(v)) === String(selectedVendorId)
-  ) ?? cs?.vendors?.find((v) => v.is_recommended);
+  const recommended =
+    cs?.vendors?.find((v) => String(getVendorKey(v)) === String(selectedVendorId)) ??
+    cs?.vendors?.find((v) => v.is_recommended);
 
-  const isRec = (v) => String(getVendorKey(v)) === String(selectedVendorId);
+  const isRec = (v) => String(getVendorKey(v)) === String(pendingVendorId ?? selectedVendorId);
 
-  const handleSelectRecommended = async (v) => {
+  const handleSelectRecommended = (v) => {
+    if (isAwardAccepted) {
+      toast.info(
+        `Award already accepted by ${linkedAward?.vendor?.name ?? 'vendor'}. Cannot change recommended vendor.`
+      );
+      return;
+    }
+    if (isVendorRejected(v)) {
+      const woInfo = rejectedVendorMap[getVendorKey(v)]?.woNumber;
+      toast.error(
+        `Vendor "${v.name}" has been rejected${woInfo ? ` (Work Order ${woInfo})` : ''}. Rejected vendors cannot be selected.`
+      );
+      return;
+    }
     const key = getVendorKey(v);
+    setPendingVendorId(key);
+  };
+
+  const handleConfirmVendorChange = async () => {
+    if (!vendorToConfirm) return;
+    const key = getVendorKey(vendorToConfirm);
     setSelectedVendorId(key);
+    setShowConfirmDialog(false);
+    setVendorToConfirm(null);
     try {
-      await axiosInstance.patch(
-        endpoints.procurement_management.comparative_statement_by_id(id),
-        { action: 'set_recommended_vendor', vendor_id: key }
+      await axiosInstance.patch(endpoints.procurement_management.comparative_statement_by_id(id), {
+        recommended_vendor: key,
+      });
+      // Reset award acceptance status to pending when vendor changes
+      if (linkedAward?.id) {
+        await axiosInstance.patch(
+          `${endpoints.procurement_management.award_by_id(linkedAward.id)}`,
+          {
+            acceptanceStatus: 'pending',
+          }
+        );
+      }
+      // Create a NEW Work Order for the new vendor (never update existing)
+      if (linkedAward?.id) {
+        const woPayload = {
+          award: linkedAward.id,
+          title: cs?.rfq_title || linkedAward.title || '',
+          category: cs?.category || '',
+          order_date: new Date().toISOString().split('T')[0],
+          delivery_date: linkedAward.deliveryDeadline || null,
+          delivery_address: 'Ledars NGO\nHouse 8, Road 136, Gulshan-1\nDhaka-1212, Bangladesh',
+          payment_terms: '30 days after GRN',
+          warranty_period: '12 months',
+          status: 'Draft',
+          approval_status: 'draft',
+          vendor_status: 'not-sent',
+        };
+        await axiosInstance.post(endpoints.procurement_management.work_orders, woPayload);
+      }
+      toast.success(
+        `Recommended vendor changed to ${vendorToConfirm.name}. New Work Order created.`
       );
     } catch {
-      // non-blocking — selection already reflected in UI
+      toast.error('Failed to update recommended vendor');
     }
+  };
+
+  const handleCancelVendorChange = () => {
+    setPendingVendorId(selectedVendorId);
+    setShowConfirmDialog(false);
+    setVendorToConfirm(null);
   };
 
   const handleAddNote = async () => {
@@ -620,7 +752,15 @@ export function ComparativeStatementDetail() {
   };
 
   const handleExportCsv = () => {
-    const headers = ['Vendor', 'Location', 'TIN', 'Doc Score', 'Financial Score', 'Overall Score', 'Grand Total'];
+    const headers = [
+      'Vendor',
+      'Location',
+      'TIN',
+      'Doc Score',
+      'Financial Score',
+      'Overall Score',
+      'Grand Total',
+    ];
     const rows = sortedVendors.map((v) => [
       v.name ?? '',
       v.location ?? '',
@@ -697,6 +837,35 @@ export function ComparativeStatementDetail() {
                 <Button size="sm">Review &amp; Approve</Button>
               </Link>
             )}
+            {pendingVendorId !== null &&
+              String(pendingVendorId) !== String(selectedVendorId) &&
+              !isAwardAccepted &&
+              (() => {
+                const pendingVendor = sortedVendors.find(
+                  (vv) => String(getVendorKey(vv)) === String(pendingVendorId)
+                );
+                const isPendingRejected = pendingVendor && isVendorRejected(pendingVendor);
+                if (isPendingRejected) return null;
+                return (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100"
+                    onClick={() => {
+                      const v = sortedVendors.find(
+                        (vv) => String(getVendorKey(vv)) === String(pendingVendorId)
+                      );
+                      if (v && !isVendorRejected(v)) {
+                        setVendorToConfirm(v);
+                        setShowConfirmDialog(true);
+                      }
+                    }}
+                  >
+                    <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
+                    Update Recommended Vendor
+                  </Button>
+                );
+              })()}
             <Link href={paths.dashboard.procurement.comparative.print(id)} target="_blank">
               <Button variant="outline" size="sm">
                 <Printer className="w-3.5 h-3.5 mr-1.5" />
@@ -877,38 +1046,58 @@ export function ComparativeStatementDetail() {
                             <th className="text-center py-3 px-2 font-medium text-muted-foreground w-12 sticky left-64 z-20 bg-card border-r border-border/40">
                               Qty
                             </th>
-                            {sortedVendors.map((v, idx) => (
-                              <th
-                                key={getVendorKey(v)}
-                                onClick={() => handleSelectRecommended(v)}
-                                className={`text-center py-3 px-3 font-semibold cursor-pointer select-none transition-all ${
-                                  isRec(v)
-                                    ? 'bg-success/10 text-success ring-2 ring-inset ring-success/40'
-                                    : 'text-foreground hover:bg-muted/40'
-                                }`}
-                              >
-                                <div className="flex flex-col items-center gap-1">
-                                  <span className="text-[10px] font-bold text-muted-foreground bg-muted px-1.5 py-0.5 rounded">Rank #{idx + 1}</span>
-                                  <span>{v.name}</span>
-                                  {isRec(v) ? (
-                                    <Badge variant="success" size="sm">
-                                      <Star className="w-3 h-3 mr-1" />✓ Recommended
-                                    </Badge>
-                                  ) : (
-                                    <Badge
-                                      variant="outline"
-                                      size="sm"
-                                      className="text-muted-foreground"
+                            {sortedVendors.map((v, idx) => {
+                              const rejected = isVendorRejected(v);
+                              return (
+                                <th
+                                  key={getVendorKey(v)}
+                                  onClick={() => handleSelectRecommended(v)}
+                                  className={`text-center py-3 px-3 font-semibold select-none transition-all ${
+                                    rejected
+                                      ? 'bg-red-50 text-red-600 ring-2 ring-inset ring-red-300 cursor-not-allowed line-through decoration-red-400'
+                                      : isRec(v)
+                                        ? 'bg-success/10 text-success ring-2 ring-inset ring-success/40 cursor-pointer'
+                                        : 'text-foreground hover:bg-muted/40 cursor-pointer'
+                                  }`}
+                                >
+                                  <div className="flex flex-col items-center gap-1">
+                                    <span
+                                      className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${rejected ? 'bg-red-100 text-red-500' : 'text-muted-foreground bg-muted'}`}
                                     >
-                                      Click to Select
-                                    </Badge>
-                                  )}
-                                  <span className="text-[10px] text-muted-foreground font-normal">
-                                    {v.location}
-                                  </span>
-                                </div>
-                              </th>
-                            ))}
+                                      Rank #{idx + 1}
+                                    </span>
+                                    <span>{v.name}</span>
+                                    {rejected ? (
+                                      <div className="flex flex-col items-center gap-0.5">
+                                        <Badge variant="destructive" size="sm">
+                                          <Ban className="w-3 h-3 mr-1" /> Rejected
+                                        </Badge>
+                                        <span className="text-[9px] text-red-500 font-medium">
+                                          Rejected vendors cannot be selected.
+                                        </span>
+                                      </div>
+                                    ) : isRec(v) ? (
+                                      <Badge variant="success" size="sm">
+                                        <Star className="w-3 h-3 mr-1" />✓ Recommended
+                                      </Badge>
+                                    ) : (
+                                      <Badge
+                                        variant="outline"
+                                        size="sm"
+                                        className="text-muted-foreground"
+                                      >
+                                        Click to Select
+                                      </Badge>
+                                    )}
+                                    <span
+                                      className={`text-[10px] font-normal ${rejected ? 'text-red-400' : 'text-muted-foreground'}`}
+                                    >
+                                      {v.location}
+                                    </span>
+                                  </div>
+                                </th>
+                              );
+                            })}
                           </tr>
                         </thead>
                         <tbody>
@@ -958,7 +1147,10 @@ export function ComparativeStatementDetail() {
                             </tr>
                           ))}
                           <tr className="border-t-2 border-border font-semibold">
-                            <td className="py-2 px-3 sticky left-0 z-10 bg-card border-r border-border/40" colSpan={2}>
+                            <td
+                              className="py-2 px-3 sticky left-0 z-10 bg-card border-r border-border/40"
+                              colSpan={2}
+                            >
                               Subtotal
                             </td>
                             {sortedVendors.map((v) => (
@@ -972,7 +1164,10 @@ export function ComparativeStatementDetail() {
                             ))}
                           </tr>
                           <tr className="text-muted-foreground">
-                            <td className="py-1.5 px-3 sticky left-0 z-10 bg-card border-r border-border/40" colSpan={2}>
+                            <td
+                              className="py-1.5 px-3 sticky left-0 z-10 bg-card border-r border-border/40"
+                              colSpan={2}
+                            >
                               VAT (15%)
                             </td>
                             {sortedVendors.map((v) => (
@@ -986,7 +1181,10 @@ export function ComparativeStatementDetail() {
                             ))}
                           </tr>
                           <tr className="text-muted-foreground">
-                            <td className="py-1.5 px-3 sticky left-0 z-10 bg-card border-r border-border/40" colSpan={2}>
+                            <td
+                              className="py-1.5 px-3 sticky left-0 z-10 bg-card border-r border-border/40"
+                              colSpan={2}
+                            >
                               AIT (3.5%)
                             </td>
                             {sortedVendors.map((v) => (
@@ -1000,7 +1198,10 @@ export function ComparativeStatementDetail() {
                             ))}
                           </tr>
                           <tr className="text-muted-foreground">
-                            <td className="py-1.5 px-3 sticky left-0 z-10 bg-card border-r border-border/40" colSpan={2}>
+                            <td
+                              className="py-1.5 px-3 sticky left-0 z-10 bg-card border-r border-border/40"
+                              colSpan={2}
+                            >
                               Delivery Charge
                             </td>
                             {sortedVendors.map((v) => (
@@ -1014,7 +1215,10 @@ export function ComparativeStatementDetail() {
                             ))}
                           </tr>
                           <tr className="border-t-2 border-border font-bold text-base">
-                            <td className="py-3 px-3 sticky left-0 z-10 bg-card border-r border-border/40" colSpan={2}>
+                            <td
+                              className="py-3 px-3 sticky left-0 z-10 bg-card border-r border-border/40"
+                              colSpan={2}
+                            >
                               Grand Total
                             </td>
                             {sortedVendors.map((v) => {
@@ -1042,7 +1246,10 @@ export function ComparativeStatementDetail() {
                           </tr>
                           {/* Doc score row */}
                           <tr className="bg-muted/20 text-muted-foreground text-xs">
-                            <td className="py-1.5 px-3 sticky left-0 z-10 bg-card border-r border-border/40" colSpan={2}>
+                            <td
+                              className="py-1.5 px-3 sticky left-0 z-10 bg-card border-r border-border/40"
+                              colSpan={2}
+                            >
                               ↳ Doc Score (50%)
                             </td>
                             {sortedVendors.map((v) => (
@@ -1057,7 +1264,10 @@ export function ComparativeStatementDetail() {
                           </tr>
                           {/* Financial score row */}
                           <tr className="bg-muted/20 text-muted-foreground text-xs">
-                            <td className="py-1.5 px-3 sticky left-0 z-10 bg-card border-r border-border/40" colSpan={2}>
+                            <td
+                              className="py-1.5 px-3 sticky left-0 z-10 bg-card border-r border-border/40"
+                              colSpan={2}
+                            >
                               ↳ Financial Score (50%)
                             </td>
                             {sortedVendors.map((v) => (
@@ -1072,7 +1282,10 @@ export function ComparativeStatementDetail() {
                           </tr>
                           {/* Overall score row */}
                           <tr className="bg-primary/5 border-t-2 border-primary/20">
-                            <td className="py-2.5 px-3 font-bold text-foreground sticky left-0 z-10 bg-card border-r border-border/40" colSpan={2}>
+                            <td
+                              className="py-2.5 px-3 font-bold text-foreground sticky left-0 z-10 bg-card border-r border-border/40"
+                              colSpan={2}
+                            >
                               <div>Overall Score</div>
                               <div className="text-[10px] font-normal text-muted-foreground">
                                 Documents (50%) + Financial (50%)
@@ -1097,7 +1310,9 @@ export function ComparativeStatementDetail() {
                                 >
                                   {v.overall_score ?? '—'}
                                 </span>
-                                <span className="text-xs font-normal text-muted-foreground">/100</span>
+                                <span className="text-xs font-normal text-muted-foreground">
+                                  /100
+                                </span>
                                 {isRec(v) && (
                                   <div className="mt-1">
                                     <Badge variant="success" size="sm">
@@ -1140,7 +1355,9 @@ export function ComparativeStatementDetail() {
                         >
                           <div className="flex items-center justify-between mb-3">
                             <div className="flex items-center gap-2">
-                              <span className="text-xs font-bold text-muted-foreground bg-muted px-1.5 py-0.5 rounded shrink-0">Rank #{idx + 1}</span>
+                              <span className="text-xs font-bold text-muted-foreground bg-muted px-1.5 py-0.5 rounded shrink-0">
+                                Rank #{idx + 1}
+                              </span>
                               <h4 className="text-sm font-semibold">{v.name}</h4>
                               {isRec(v) && (
                                 <Badge variant="success" size="sm">
@@ -1359,6 +1576,41 @@ export function ComparativeStatementDetail() {
           defaultTab="comparison"
         />
       </div>
+
+      {/* ── Confirmation Dialog ──────────────────────────────────────────────── */}
+      <Dialog
+        open={showConfirmDialog}
+        onOpenChange={(open) => {
+          if (!open) handleCancelVendorChange();
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-amber-500" />
+              Change Recommended Vendor
+            </DialogTitle>
+            <DialogDescription>
+              Are you sure you want to change the recommended vendor to{' '}
+              <strong className="text-foreground">{vendorToConfirm?.name}</strong>?
+              {vendorToConfirm?.overall_score != null && (
+                <span className="block mt-1 text-xs">
+                  Overall Score: {vendorToConfirm.overall_score}/100
+                </span>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={handleCancelVendorChange}>
+              Cancel
+            </Button>
+            <Button size="sm" onClick={handleConfirmVendorChange}>
+              <CheckCircle2 className="w-3.5 h-3.5 mr-1.5" />
+              Confirm Change
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

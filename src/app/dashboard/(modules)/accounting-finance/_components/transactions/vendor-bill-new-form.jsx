@@ -1,9 +1,9 @@
 'use client';
 
+import useSWR from 'swr';
 import Link from 'next/link';
 import { toast } from 'sonner';
-import { useState, useCallback, useMemo } from 'react';
-import useSWR from 'swr';
+import { useMemo, useState, useCallback } from 'react';
 
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
@@ -28,9 +28,9 @@ import TableContainer from '@mui/material/TableContainer';
 
 import { paths } from 'src/routes/paths';
 
-import { Iconify } from 'src/components/iconify';
-
 import { fetcher, endpoints } from 'src/utils/axios';
+
+import { Iconify } from 'src/components/iconify';
 
 import { formatCurrency } from '../utils';
 import { useCurrency } from '../currency-context';
@@ -80,37 +80,66 @@ export default function VendorBillNewForm() {
   const { data: rawAnalyticAccounts } = useSWR(endpoints.accounting.analytic_accounts, fetcher);
 
   const journals = useMemo(() => {
-    const list = Array.isArray(rawJournals) ? rawJournals : Array.isArray(rawJournals?.results) ? rawJournals.results : [];
-    return list;
+    const list = Array.isArray(rawJournals)
+      ? rawJournals
+      : Array.isArray(rawJournals?.results)
+        ? rawJournals.results
+        : [];
+    // Only show purchase journals for vendor bills
+    return list.filter((j) => j.journal_type === 'purchase');
   }, [rawJournals]);
 
   const projects = useMemo(() => {
-    const list = Array.isArray(rawProjects) ? rawProjects : Array.isArray(rawProjects?.results) ? rawProjects.results : [];
+    const list = Array.isArray(rawProjects)
+      ? rawProjects
+      : Array.isArray(rawProjects?.results)
+        ? rawProjects.results
+        : [];
     return list;
   }, [rawProjects]);
 
   const costCenters = useMemo(() => {
-    const list = Array.isArray(rawCostCenters) ? rawCostCenters : Array.isArray(rawCostCenters?.results) ? rawCostCenters.results : [];
+    const list = Array.isArray(rawCostCenters)
+      ? rawCostCenters
+      : Array.isArray(rawCostCenters?.results)
+        ? rawCostCenters.results
+        : [];
     return list;
   }, [rawCostCenters]);
 
   const currencies = useMemo(() => {
-    const list = Array.isArray(rawCurrencies) ? rawCurrencies : Array.isArray(rawCurrencies?.results) ? rawCurrencies.results : [];
+    const list = Array.isArray(rawCurrencies)
+      ? rawCurrencies
+      : Array.isArray(rawCurrencies?.results)
+        ? rawCurrencies.results
+        : [];
     return list;
   }, [rawCurrencies]);
 
   const fiscalPeriods = useMemo(() => {
-    const list = Array.isArray(rawFiscalPeriods) ? rawFiscalPeriods : Array.isArray(rawFiscalPeriods?.results) ? rawFiscalPeriods.results : [];
+    const list = Array.isArray(rawFiscalPeriods)
+      ? rawFiscalPeriods
+      : Array.isArray(rawFiscalPeriods?.results)
+        ? rawFiscalPeriods.results
+        : [];
     return list;
   }, [rawFiscalPeriods]);
 
   const accounts = useMemo(() => {
-    const list = Array.isArray(rawAccounts) ? rawAccounts : Array.isArray(rawAccounts?.results) ? rawAccounts.results : [];
-    return list;
+    const list = Array.isArray(rawAccounts)
+      ? rawAccounts
+      : Array.isArray(rawAccounts?.results)
+        ? rawAccounts.results
+        : [];
+    return list.filter((a) => a.is_active !== false);
   }, [rawAccounts]);
 
   const analyticAccounts = useMemo(() => {
-    const list = Array.isArray(rawAnalyticAccounts) ? rawAnalyticAccounts : Array.isArray(rawAnalyticAccounts?.results) ? rawAnalyticAccounts.results : [];
+    const list = Array.isArray(rawAnalyticAccounts)
+      ? rawAnalyticAccounts
+      : Array.isArray(rawAnalyticAccounts?.results)
+        ? rawAnalyticAccounts.results
+        : [];
     return list;
   }, [rawAnalyticAccounts]);
 
@@ -315,6 +344,8 @@ export default function VendorBillNewForm() {
                   ))}
                 </TextField>
               </Grid>
+              {/* Currency field hidden - not needed for vendor bills */}
+              {false && (
               <Grid size={{ xs: 12, md: 6 }}>
                 <TextField
                   select
@@ -332,6 +363,7 @@ export default function VendorBillNewForm() {
                   ))}
                 </TextField>
               </Grid>
+              )}
               <Grid size={{ xs: 12, md: 6 }}>
                 <TextField
                   select
@@ -447,7 +479,9 @@ export default function VendorBillNewForm() {
                                 select
                                 size="small"
                                 value={line.analytic_account}
-                                onChange={(e) => updateLine(index, 'analytic_account', e.target.value)}
+                                onChange={(e) =>
+                                  updateLine(index, 'analytic_account', e.target.value)
+                                }
                                 variant="standard"
                                 sx={{ width: 120 }}
                               >

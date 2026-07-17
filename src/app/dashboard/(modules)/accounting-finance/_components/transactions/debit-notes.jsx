@@ -12,10 +12,8 @@ import Stack from '@mui/material/Stack';
 import Table from '@mui/material/Table';
 import Button from '@mui/material/Button';
 import Dialog from '@mui/material/Dialog';
-import Divider from '@mui/material/Divider';
 import Tooltip from '@mui/material/Tooltip';
 import MenuItem from '@mui/material/MenuItem';
-import Checkbox from '@mui/material/Checkbox';
 import TableRow from '@mui/material/TableRow';
 import TableBody from '@mui/material/TableBody';
 import TableCell from '@mui/material/TableCell';
@@ -60,7 +58,7 @@ const EMPTY_NOTE = {
 export default function DebitNotes() {
   const { activeCurrency } = useCurrency();
   const api = useDebitNotesApi();
-  const { notes, vendors, adjustmentBills, getVendorById, getRfqsByVendor } = api;
+  const { notes, vendors, adjustmentBills, getVendorById } = api;
 
   const [status, setStatus] = useState('all');
   const [selectedNoteId, setSelectedNoteId] = useState(null);
@@ -297,7 +295,7 @@ export default function DebitNotes() {
       </Card>
 
       <Grid container spacing={3}>
-        <Grid size={{ xs: 12}}>
+        <Grid size={{ xs: 12 }}>
           <Card sx={{ borderRadius: 3, overflowX: 'auto' }}>
             <TableContainer>
               <Table>
@@ -699,18 +697,24 @@ export default function DebitNotes() {
                   disabled={!draftNote.supplier_id}
                   helperText={
                     draftNote.supplier_id
-                      ? getRfqsByVendor(draftNote.supplier_id).length === 0
-                        ? 'No RFQs found for the selected supplier.'
-                        : 'Select the RFQ number as the bill reference.'
-                      : 'Select a supplier first to load available RFQ bill references.'
+                      ? candidateBills.length === 0
+                        ? 'No vendor bills found for the selected supplier.'
+                        : 'Select the vendor bill to apply this debit note against.'
+                      : 'Select a supplier first to load available bills.'
                   }
                 >
-                  {getRfqsByVendor(draftNote.supplier_id).map((rfq) => (
-                    <MenuItem key={rfq.id} value={rfq.rfq_number}>
-                      {rfq.rfq_number}
-                      {rfq.rfq_title || rfq.title ? ` — ${rfq.rfq_title || rfq.title}` : ''}
+                  {candidateBills.length > 0 ? (
+                    candidateBills.map((bill) => (
+                      <MenuItem key={bill.id} value={bill.number}>
+                        {bill.number} — {getVendorById(bill.supplier_id)?.name || ''}
+                        {bill.disputeFlag ? ' (disputed)' : ''}
+                      </MenuItem>
+                    ))
+                  ) : (
+                    <MenuItem disabled value="">
+                      No bills available for this supplier
                     </MenuItem>
-                  ))}
+                  )}
                 </TextField>
               </Grid>
               <Grid size={{ xs: 12, md: 6 }}>

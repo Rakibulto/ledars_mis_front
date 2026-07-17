@@ -1,5 +1,5 @@
-import GeneralLedgerReport from '../../_components/reports/general-ledger';
+import GeneralLedgerPosting from '../../_components/transactions/general-ledger-posting';
 
 export default function Page() {
-  return <GeneralLedgerReport />;
+  return <GeneralLedgerPosting />;
 }

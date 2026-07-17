@@ -16,6 +16,8 @@ export function enrichContraEntry(item) {
     amount: Number(item.amount || 0),
     fromAccount: item.from_account ?? item.fromAccount ?? '',
     toAccount: item.to_account ?? item.toAccount ?? '',
+    fromAccountName: item.from_account_name ?? item.fromAccountName ?? '',
+    toAccountName: item.to_account_name ?? item.toAccountName ?? '',
     transferChannel: item.transfer_channel ?? item.transferChannel ?? '',
     treasuryOwner: item.treasury_owner ?? item.treasuryOwner ?? '',
     reference: item.reference ?? '',

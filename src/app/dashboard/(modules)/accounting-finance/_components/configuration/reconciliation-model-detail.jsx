@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useMemo } from 'react';
 import { toast } from 'sonner';
+import { useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 
 import Box from '@mui/material/Box';
@@ -26,8 +26,16 @@ import { Iconify } from 'src/components/iconify';
 import { useReconciliationModelsApi } from './use-reconciliation-models-api';
 
 const EMPTY_FORM = {
-  name: '', type: 'suggestion', match_label: '', match_journal: '',
-  account: '', tax: '', amount_rule: '', text_rule: '', change_version: '', auto_validate: false,
+  name: '',
+  type: 'suggestion',
+  match_label: '',
+  match_journal: '',
+  account: '',
+  tax: '',
+  amount_rule: '',
+  text_rule: '',
+  change_version: '',
+  auto_validate: false,
 };
 
 function DetailRow({ label, value }) {
@@ -318,7 +326,10 @@ export default function ReconciliationModelDetail() {
       {/* Edit Dialog */}
       <Dialog
         open={open}
-        onClose={() => { setOpen(false); setForm(EMPTY_FORM); }}
+        onClose={() => {
+          setOpen(false);
+          setForm(EMPTY_FORM);
+        }}
         maxWidth="md"
         fullWidth
       >
@@ -413,7 +424,14 @@ export default function ReconciliationModelDetail() {
           </Grid>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => { setOpen(false); setForm(EMPTY_FORM); }}>Cancel</Button>
+          <Button
+            onClick={() => {
+              setOpen(false);
+              setForm(EMPTY_FORM);
+            }}
+          >
+            Cancel
+          </Button>
           <Button variant="contained" onClick={saveModel} disabled={submitting}>
             Update
           </Button>

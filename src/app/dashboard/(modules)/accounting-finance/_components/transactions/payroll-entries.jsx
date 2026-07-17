@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import useSWR from 'swr';
 
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
@@ -31,6 +32,7 @@ import CircularProgress from '@mui/material/CircularProgress';
 
 import { paths } from 'src/routes/paths';
 import { RouterLink } from 'src/routes/components';
+import axiosInstance, { fetcher, endpoints } from 'src/utils/axios';
 
 import { Iconify } from 'src/components/iconify';
 
@@ -61,6 +63,9 @@ const EMPTY_PAYROLL_FORM = {
   employeeCount: '',
   grossAmount: '',
   netAmount: '',
+  expense_account: '',
+  bank_account: '',
+  liability_account: '',
   approvalRoute: 'Finance Controller',
   fundingSource: 'General Fund',
   description: '',
@@ -76,6 +81,12 @@ export default function PayrollEntries() {
     deleteEntry,
     postEntry,
   } = useWorkspacePayrollApi();
+
+  const { data: rawAccounts } = useSWR(endpoints.accounting.accounts, fetcher);
+  const accounts = useMemo(() => {
+    const list = Array.isArray(rawAccounts) ? rawAccounts : rawAccounts?.results ?? [];
+    return list.filter((a) => a.is_active !== false);
+  }, [rawAccounts]);
 
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('all');
@@ -134,6 +145,9 @@ export default function PayrollEntries() {
       employee_count: draftEntry.employeeCount,
       gross_amount: draftEntry.grossAmount,
       net_amount: draftEntry.netAmount,
+      expense_account: draftEntry.expense_account ? Number(draftEntry.expense_account) : undefined,
+      bank_account: draftEntry.bank_account ? Number(draftEntry.bank_account) : undefined,
+      liability_account: draftEntry.liability_account ? Number(draftEntry.liability_account) : undefined,
       approval_route: draftEntry.approvalRoute,
       funding_source: draftEntry.fundingSource,
       description: draftEntry.description,
@@ -466,6 +480,57 @@ export default function PayrollEntries() {
                     ),
                   }}
                 />
+              </Grid>
+              <Grid size={{ xs: 12, md: 4 }}>
+                <TextField
+                  select
+                  fullWidth
+                  size="small"
+                  label="Expense account"
+                  value={draftEntry.expense_account}
+                  onChange={(event) => updateDraftEntry('expense_account', event.target.value)}
+                >
+                  <MenuItem value="">Select expense account</MenuItem>
+                  {accounts.map((a) => (
+                    <MenuItem key={a.id} value={a.id}>
+                      {a.code} — {a.name}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              </Grid>
+              <Grid size={{ xs: 12, md: 4 }}>
+                <TextField
+                  select
+                  fullWidth
+                  size="small"
+                  label="Bank/Cash account"
+                  value={draftEntry.bank_account}
+                  onChange={(event) => updateDraftEntry('bank_account', event.target.value)}
+                >
+                  <MenuItem value="">Select bank account</MenuItem>
+                  {accounts.map((a) => (
+                    <MenuItem key={a.id} value={a.id}>
+                      {a.code} — {a.name}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              </Grid>
+              <Grid size={{ xs: 12, md: 4 }}>
+                <TextField
+                  select
+                  fullWidth
+                  size="small"
+                  label="Liability account"
+                  value={draftEntry.liability_account}
+                  onChange={(event) => updateDraftEntry('liability_account', event.target.value)}
+                >
+                  <MenuItem value="">Select liability account</MenuItem>
+                  {accounts.map((a) => (
+                    <MenuItem key={a.id} value={a.id}>
+                      {a.code} — {a.name}
+                    </MenuItem>
+                  ))}
+                </TextField>
               </Grid>
               <Grid size={{ xs: 12, md: 6 }}>
                 <TextField

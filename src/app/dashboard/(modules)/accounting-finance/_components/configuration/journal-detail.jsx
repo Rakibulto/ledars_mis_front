@@ -1,5 +1,6 @@
 'use client';
 
+import { toast } from 'sonner';
 import { useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 
@@ -8,22 +9,27 @@ import Card from '@mui/material/Card';
 import Chip from '@mui/material/Chip';
 import Grid from '@mui/material/Grid';
 import Stack from '@mui/material/Stack';
+import Table from '@mui/material/Table';
 import Avatar from '@mui/material/Avatar';
 import Button from '@mui/material/Button';
 import Dialog from '@mui/material/Dialog';
-import TextField from '@mui/material/TextField';
-import MenuItem from '@mui/material/MenuItem';
 import Divider from '@mui/material/Divider';
+import MenuItem from '@mui/material/MenuItem';
 import Skeleton from '@mui/material/Skeleton';
+import TableRow from '@mui/material/TableRow';
+import TextField from '@mui/material/TextField';
+import TableBody from '@mui/material/TableBody';
+import TableCell from '@mui/material/TableCell';
+import TableHead from '@mui/material/TableHead';
 import Typography from '@mui/material/Typography';
 import CardHeader from '@mui/material/CardHeader';
 import CardContent from '@mui/material/CardContent';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
+import TableContainer from '@mui/material/TableContainer';
 
 import { Iconify } from 'src/components/iconify';
-import { toast } from 'sonner';
 
 import { useJournalsApi } from './use-journals-api';
 
@@ -70,6 +76,225 @@ function DetailRow({ label, value }) {
         )}
       </Box>
     </Stack>
+  );
+}
+
+function EntriesTable({ journalId }) {
+  const [entries, setEntries] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedEntry, setSelectedEntry] = useState(null);
+  const [entryItems, setEntryItems] = useState([]);
+  const [itemsLoading, setItemsLoading] = useState(false);
+
+  // Fetch entries for this journal
+  useState(() => {
+    if (!journalId) return;
+    setLoading(true);
+    import('src/utils/axios').then(({ default: axiosInstance, endpoints }) => {
+      axiosInstance
+        .get(`${endpoints.accounting.journal_entries}?journal=${journalId}&page_size=50`)
+        .then((res) => {
+          const data = Array.isArray(res.data) ? res.data : res.data?.results || [];
+          setEntries(data);
+        })
+        .catch(() => {})
+        .finally(() => setLoading(false));
+    });
+  });
+
+  const handleViewItems = (entry) => {
+    setSelectedEntry(entry);
+    setItemsLoading(true);
+    import('src/utils/axios').then(({ default: axiosInstance, endpoints }) => {
+      axiosInstance
+        .get(`${endpoints.accounting.journal_items}?journal_entry=${entry.id}`)
+        .then((res) => {
+          const data = Array.isArray(res.data) ? res.data : res.data?.results || [];
+          setEntryItems(data);
+        })
+        .catch(() => {})
+        .finally(() => setItemsLoading(false));
+    });
+  };
+
+  if (loading) {
+    return (
+      <Box sx={{ p: 2 }}>
+        <Skeleton height={40} />
+        <Skeleton height={40} sx={{ mt: 1 }} />
+        <Skeleton height={40} sx={{ mt: 1 }} />
+      </Box>
+    );
+  }
+
+  return (
+    <>
+      <Card>
+        <CardHeader
+          title={`Journal Entries (${entries.length})`}
+          titleTypographyProps={{ variant: 'subtitle1', fontWeight: 700 }}
+        />
+        <Divider />
+        <TableContainer>
+          <Table size="small">
+            <TableHead>
+              <TableRow sx={{ bgcolor: '#f9fafb' }}>
+                <TableCell sx={{ fontWeight: 700 }}>Reference</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>Date</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>Narration</TableCell>
+                <TableCell align="right" sx={{ fontWeight: 700 }}>
+                  Debit
+                </TableCell>
+                <TableCell align="right" sx={{ fontWeight: 700 }}>
+                  Credit
+                </TableCell>
+                <TableCell align="center" sx={{ fontWeight: 700 }}>
+                  Status
+                </TableCell>
+                <TableCell align="right" sx={{ fontWeight: 700 }}>
+                  Actions
+                </TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {entries.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
+                    <Typography variant="body2" color="text.secondary">
+                      No entries posted to this journal yet
+                    </Typography>
+                  </TableCell>
+                </TableRow>
+              ) : (
+                entries.map((entry) => (
+                  <TableRow key={entry.id} hover>
+                    <TableCell>
+                      <Typography variant="body2" fontWeight={600} sx={{ fontFamily: 'monospace' }}>
+                        {entry.reference}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>{entry.date}</TableCell>
+                    <TableCell>
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          maxWidth: 200,
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {entry.narration || entry.source_document || '—'}
+                      </Typography>
+                    </TableCell>
+                    <TableCell align="right">
+                      {parseFloat(entry.total_debit || 0).toLocaleString('en-IN', {
+                        minimumFractionDigits: 2,
+                      })}
+                    </TableCell>
+                    <TableCell align="right">
+                      {parseFloat(entry.total_credit || 0).toLocaleString('en-IN', {
+                        minimumFractionDigits: 2,
+                      })}
+                    </TableCell>
+                    <TableCell align="center">
+                      <Chip
+                        label={entry.status}
+                        size="small"
+                        color={
+                          entry.status === 'posted'
+                            ? 'success'
+                            : entry.status === 'draft'
+                              ? 'warning'
+                              : 'default'
+                        }
+                      />
+                    </TableCell>
+                    <TableCell align="right">
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        onClick={() => handleViewItems(entry)}
+                      >
+                        View Items
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </Card>
+
+      {/* Journal Items Dialog */}
+      <Dialog open={!!selectedEntry} onClose={() => setSelectedEntry(null)} maxWidth="md" fullWidth>
+        <DialogTitle>Journal Items — {selectedEntry?.reference}</DialogTitle>
+        <DialogContent dividers>
+          {itemsLoading ? (
+            <Skeleton height={200} />
+          ) : entryItems.length === 0 ? (
+            <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 3 }}>
+              No items found
+            </Typography>
+          ) : (
+            <TableContainer>
+              <Table size="small">
+                <TableHead>
+                  <TableRow sx={{ bgcolor: '#f9fafb' }}>
+                    <TableCell sx={{ fontWeight: 700 }}>Account</TableCell>
+                    <TableCell sx={{ fontWeight: 700 }}>Label</TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 700 }}>
+                      Debit
+                    </TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 700 }}>
+                      Credit
+                    </TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 700 }}>
+                      Balance
+                    </TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {entryItems.map((item) => (
+                    <TableRow key={item.id}>
+                      <TableCell>
+                        <Typography variant="body2" fontWeight={600}>
+                          {item.account_code || item.account_name || `Account #${item.account}`}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>{item.label || '—'}</TableCell>
+                      <TableCell align="right">
+                        {parseFloat(item.debit || 0) > 0
+                          ? parseFloat(item.debit).toLocaleString('en-IN', {
+                              minimumFractionDigits: 2,
+                            })
+                          : '—'}
+                      </TableCell>
+                      <TableCell align="right">
+                        {parseFloat(item.credit || 0) > 0
+                          ? parseFloat(item.credit).toLocaleString('en-IN', {
+                              minimumFractionDigits: 2,
+                            })
+                          : '—'}
+                      </TableCell>
+                      <TableCell align="right">
+                        {parseFloat(item.balance || 0).toLocaleString('en-IN', {
+                          minimumFractionDigits: 2,
+                        })}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setSelectedEntry(null)}>Close</Button>
+        </DialogActions>
+      </Dialog>
+    </>
   );
 }
 
@@ -315,13 +540,13 @@ export default function JournalDetail() {
           <Card sx={{ borderRadius: 3 }}>
             <CardContent>
               <Typography variant="caption" color="text.secondary">
-                Posting Queue
+                Total Entries
               </Typography>
               <Typography variant="h5" fontWeight={800}>
-                {journal.postingQueue}
+                {journal.totalEntries || 0}
               </Typography>
               <Typography variant="caption" color="text.secondary">
-                pending entries
+                {journal.postedEntries || 0} posted, {journal.postingQueue || 0} draft
               </Typography>
             </CardContent>
           </Card>
@@ -352,7 +577,7 @@ export default function JournalDetail() {
         </Grid>
       </Grid>
 
-      <Grid container spacing={3}>
+      <Grid container spacing={3} sx={{ mb: 3 }}>
         <Grid size={{ xs: 12, md: 6 }}>
           <Card sx={{ borderRadius: 3 }}>
             <CardHeader
@@ -408,6 +633,9 @@ export default function JournalDetail() {
           </Card>
         </Grid>
       </Grid>
+
+      {/* Journal Entries Table */}
+      <EntriesTable journalId={journal.id} />
     </Box>
   );
 }

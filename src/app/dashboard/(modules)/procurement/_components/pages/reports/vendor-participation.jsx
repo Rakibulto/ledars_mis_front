@@ -1,7 +1,7 @@
 'use client';
 
-import { useMemo, useState } from 'react';
 import { Star } from 'lucide-react';
+import { useMemo, useState } from 'react';
 import {
   Bar,
   XAxis,
@@ -18,11 +18,13 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 
+import { endpoints } from 'src/utils/axios';
+
+import { useGetRequest } from 'src/actions/ledars-hook';
+
 import { Badge } from '../../components/ui/badge';
 import { ReportLayout } from '../../components/report-layout';
 import { Card, CardBody, CardHeader } from '../../components/ui/card';
-import { useGetRequest } from 'src/actions/ledars-hook';
-import { endpoints } from 'src/utils/axios';
 
 function formatBDT(amount) {
   if (amount >= 10000000) return `৳${(amount / 10000000).toFixed(2)} Cr`;
@@ -45,9 +47,7 @@ export function VendorParticipationReport() {
   const [category, setCategory] = useState('all');
 
   // ── API calls ─────────────────────────────────────────────────────────────
-  const { data: vendorsPaged } = useGetRequest(
-    endpoints.procurement_management.vendors_management
-  );
+  const { data: vendorsPaged } = useGetRequest(endpoints.procurement_management.vendors_management);
   const { data: activeVendorsPaged } = useGetRequest(
     `${endpoints.procurement_management.vendors_management}?status=Approved`
   );
@@ -66,18 +66,12 @@ export function VendorParticipationReport() {
   );
 
   // ── Normalise flat arrays ─────────────────────────────────────────────────
-  const vendors = useMemo(
-    () => (Array.isArray(allVendors) ? allVendors : []),
-    [allVendors]
-  );
+  const vendors = useMemo(() => (Array.isArray(allVendors) ? allVendors : []), [allVendors]);
   const quotations = useMemo(
     () => (Array.isArray(allQuotations) ? allQuotations : []),
     [allQuotations]
   );
-  const awards = useMemo(
-    () => (Array.isArray(allAwards) ? allAwards : []),
-    [allAwards]
-  );
+  const awards = useMemo(() => (Array.isArray(allAwards) ? allAwards : []), [allAwards]);
 
   const totalRFQs = rfqsPaged?.count || 0;
 
@@ -102,41 +96,40 @@ export function VendorParticipationReport() {
   );
 
   // ── Per-vendor aggregation ────────────────────────────────────────────────
-  const vendorData = useMemo(() => {
-    return vendors
-      .map((vendor) => {
-        const vQuotes = filteredQuotations.filter((q) => q.vendor === vendor.id);
-        const vAwards = filteredAwards.filter((a) => a.vendor_profile === vendor.id);
-        const quotationsSubmitted = vQuotes.length;
-        const awardsWon = vAwards.length;
-        const totalAwarded = vAwards.reduce(
-          (sum, a) => sum + parseFloat(a.total_amount || 0),
-          0
-        );
-        const participationRate =
-          totalRFQs > 0 ? Math.min(100, Math.round((quotationsSubmitted / totalRFQs) * 100)) : 0;
-        const ratingVal = parseFloat(vendor.rating || 0);
-        // Derive delivery & quality from rating (scale 0–5 → 0–100)
-        const deliveryScore = ratingVal > 0 ? Math.round(ratingVal * 18 + 10) : null;
-        const qualityScore = ratingVal > 0 ? Math.round(ratingVal * 16 + 14) : null;
+  const vendorData = useMemo(
+    () =>
+      vendors
+        .map((vendor) => {
+          const vQuotes = filteredQuotations.filter((q) => q.vendor === vendor.id);
+          const vAwards = filteredAwards.filter((a) => a.vendor_profile === vendor.id);
+          const quotationsSubmitted = vQuotes.length;
+          const awardsWon = vAwards.length;
+          const totalAwarded = vAwards.reduce((sum, a) => sum + parseFloat(a.total_amount || 0), 0);
+          const participationRate =
+            totalRFQs > 0 ? Math.min(100, Math.round((quotationsSubmitted / totalRFQs) * 100)) : 0;
+          const ratingVal = parseFloat(vendor.rating || 0);
+          // Derive delivery & quality from rating (scale 0–5 → 0–100)
+          const deliveryScore = ratingVal > 0 ? Math.round(ratingVal * 18 + 10) : null;
+          const qualityScore = ratingVal > 0 ? Math.round(ratingVal * 16 + 14) : null;
 
-        return {
-          vendor: vendor.name,
-          code: vendor.code,
-          rfqsInvited: totalRFQs,
-          quotationsSubmitted,
-          participationRate,
-          awardsWon,
-          totalAwarded,
-          deliveryScore,
-          qualityScore,
-          rating: getRatingLetter(vendor.rating),
-        };
-      })
-      .filter((v) => v.quotationsSubmitted > 0 || v.awardsWon > 0)
-      .sort((a, b) => b.quotationsSubmitted - a.quotationsSubmitted)
-      .slice(0, 20);
-  }, [vendors, filteredQuotations, filteredAwards, totalRFQs]);
+          return {
+            vendor: vendor.name,
+            code: vendor.code,
+            rfqsInvited: totalRFQs,
+            quotationsSubmitted,
+            participationRate,
+            awardsWon,
+            totalAwarded,
+            deliveryScore,
+            qualityScore,
+            rating: getRatingLetter(vendor.rating),
+          };
+        })
+        .filter((v) => v.quotationsSubmitted > 0 || v.awardsWon > 0)
+        .sort((a, b) => b.quotationsSubmitted - a.quotationsSubmitted)
+        .slice(0, 20),
+    [vendors, filteredQuotations, filteredAwards, totalRFQs]
+  );
 
   // ── KPI stats ─────────────────────────────────────────────────────────────
   const totalVendors = vendorsPaged?.count ?? vendors.length;
@@ -155,15 +148,14 @@ export function VendorParticipationReport() {
               vendorData.filter((v) => v.deliveryScore).length
           )
         : 0;
-  const avgQualityScore =
-    perfSummary?.avg_compliance
-      ? Math.round(perfSummary.avg_compliance)
-      : vendorData.filter((v) => v.qualityScore).length > 0
-        ? Math.round(
-            vendorData.filter((v) => v.qualityScore).reduce((s, v) => s + v.qualityScore, 0) /
-              vendorData.filter((v) => v.qualityScore).length
-          )
-        : 0;
+  const avgQualityScore = perfSummary?.avg_compliance
+    ? Math.round(perfSummary.avg_compliance)
+    : vendorData.filter((v) => v.qualityScore).length > 0
+      ? Math.round(
+          vendorData.filter((v) => v.qualityScore).reduce((s, v) => s + v.qualityScore, 0) /
+            vendorData.filter((v) => v.qualityScore).length
+        )
+      : 0;
 
   // ── Chart data ────────────────────────────────────────────────────────────
   const chartData = useMemo(
@@ -202,10 +194,7 @@ export function VendorParticipationReport() {
       {
         metric: 'Quotations',
         ...Object.fromEntries(
-          top3.map((v) => [
-            v.vendor.split(' ')[0],
-            Math.min(100, v.quotationsSubmitted * 10),
-          ])
+          top3.map((v) => [v.vendor.split(' ')[0], Math.min(100, v.quotationsSubmitted * 10)])
         ),
       },
     ];
@@ -374,87 +363,87 @@ export function VendorParticipationReport() {
             No vendor participation data found for the selected period.
           </div>
         ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="border-b-2 border-border">
-              <tr className="text-left">
-                <th className="pb-3 text-sm font-semibold text-foreground">Vendor</th>
-                <th className="pb-3 text-sm font-semibold text-foreground">Code</th>
-                <th className="pb-3 text-sm font-semibold text-foreground">Total RFQs</th>
-                <th className="pb-3 text-sm font-semibold text-foreground">Quotes</th>
-                <th className="pb-3 text-sm font-semibold text-foreground">Participation</th>
-                <th className="pb-3 text-sm font-semibold text-foreground">Awards</th>
-                <th className="pb-3 text-sm font-semibold text-foreground">Total Awarded</th>
-                <th className="pb-3 text-sm font-semibold text-foreground">Delivery</th>
-                <th className="pb-3 text-sm font-semibold text-foreground">Quality</th>
-                <th className="pb-3 text-sm font-semibold text-foreground">Rating</th>
-              </tr>
-            </thead>
-            <tbody>
-              {vendorData.map((v, i) => (
-                <tr key={i} className="border-b border-border">
-                  <td className="py-3 text-sm text-foreground">{v.vendor}</td>
-                  <td className="py-3 text-sm font-mono text-muted-foreground">{v.code}</td>
-                  <td className="py-3 text-sm text-center text-foreground">{v.rfqsInvited}</td>
-                  <td className="py-3 text-sm text-center text-foreground">
-                    {v.quotationsSubmitted}
-                  </td>
-                  <td className="py-3 text-sm text-center font-semibold text-primary">
-                    {v.participationRate}%
-                  </td>
-                  <td className="py-3 text-sm text-center font-semibold text-success">
-                    {v.awardsWon}
-                  </td>
-                  <td className="py-3 text-sm font-semibold text-foreground">
-                    {formatBDT(v.totalAwarded)}
-                  </td>
-                  <td className="py-3 text-sm text-center">
-                    {v.deliveryScore !== null ? (
-                      <Badge
-                        variant={
-                          v.deliveryScore >= 85
-                            ? 'success'
-                            : v.deliveryScore >= 75
-                              ? 'warning'
-                              : 'danger'
-                        }
-                      >
-                        {v.deliveryScore}%
-                      </Badge>
-                    ) : (
-                      <span className="text-xs text-muted-foreground">—</span>
-                    )}
-                  </td>
-                  <td className="py-3 text-sm text-center">
-                    {v.qualityScore !== null ? (
-                      <Badge
-                        variant={
-                          v.qualityScore >= 85
-                            ? 'success'
-                            : v.qualityScore >= 75
-                              ? 'warning'
-                              : 'danger'
-                        }
-                      >
-                        {v.qualityScore}%
-                      </Badge>
-                    ) : (
-                      <span className="text-xs text-muted-foreground">—</span>
-                    )}
-                  </td>
-                  <td className="py-3">
-                    <span
-                      className={`text-sm font-bold ${v.rating === 'A+' ? 'text-success' : v.rating === 'A' ? 'text-primary' : 'text-warning'}`}
-                    >
-                      <Star className="w-3 h-3 inline mr-1" />
-                      {v.rating}
-                    </span>
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="border-b-2 border-border">
+                <tr className="text-left">
+                  <th className="pb-3 text-sm font-semibold text-foreground">Vendor</th>
+                  <th className="pb-3 text-sm font-semibold text-foreground">Code</th>
+                  <th className="pb-3 text-sm font-semibold text-foreground">Total RFQs</th>
+                  <th className="pb-3 text-sm font-semibold text-foreground">Quotes</th>
+                  <th className="pb-3 text-sm font-semibold text-foreground">Participation</th>
+                  <th className="pb-3 text-sm font-semibold text-foreground">Awards</th>
+                  <th className="pb-3 text-sm font-semibold text-foreground">Total Awarded</th>
+                  <th className="pb-3 text-sm font-semibold text-foreground">Delivery</th>
+                  <th className="pb-3 text-sm font-semibold text-foreground">Quality</th>
+                  <th className="pb-3 text-sm font-semibold text-foreground">Rating</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {vendorData.map((v, i) => (
+                  <tr key={i} className="border-b border-border">
+                    <td className="py-3 text-sm text-foreground">{v.vendor}</td>
+                    <td className="py-3 text-sm font-mono text-muted-foreground">{v.code}</td>
+                    <td className="py-3 text-sm text-center text-foreground">{v.rfqsInvited}</td>
+                    <td className="py-3 text-sm text-center text-foreground">
+                      {v.quotationsSubmitted}
+                    </td>
+                    <td className="py-3 text-sm text-center font-semibold text-primary">
+                      {v.participationRate}%
+                    </td>
+                    <td className="py-3 text-sm text-center font-semibold text-success">
+                      {v.awardsWon}
+                    </td>
+                    <td className="py-3 text-sm font-semibold text-foreground">
+                      {formatBDT(v.totalAwarded)}
+                    </td>
+                    <td className="py-3 text-sm text-center">
+                      {v.deliveryScore !== null ? (
+                        <Badge
+                          variant={
+                            v.deliveryScore >= 85
+                              ? 'success'
+                              : v.deliveryScore >= 75
+                                ? 'warning'
+                                : 'danger'
+                          }
+                        >
+                          {v.deliveryScore}%
+                        </Badge>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      )}
+                    </td>
+                    <td className="py-3 text-sm text-center">
+                      {v.qualityScore !== null ? (
+                        <Badge
+                          variant={
+                            v.qualityScore >= 85
+                              ? 'success'
+                              : v.qualityScore >= 75
+                                ? 'warning'
+                                : 'danger'
+                          }
+                        >
+                          {v.qualityScore}%
+                        </Badge>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      )}
+                    </td>
+                    <td className="py-3">
+                      <span
+                        className={`text-sm font-bold ${v.rating === 'A+' ? 'text-success' : v.rating === 'A' ? 'text-primary' : 'text-warning'}`}
+                      >
+                        <Star className="w-3 h-3 inline mr-1" />
+                        {v.rating}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </CardBody>
     </Card>

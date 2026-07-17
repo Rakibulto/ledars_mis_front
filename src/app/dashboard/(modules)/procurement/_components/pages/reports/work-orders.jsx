@@ -30,12 +30,31 @@ function formatBDT(amount) {
   return `৳${n.toLocaleString('en-IN')}`;
 }
 
-const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const MONTH_NAMES = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
+];
 
 const getStatusVariant = (s) => {
   const v = (s || '').toLowerCase();
   if (v === 'completed') return 'success';
-  if (v === 'in progress' || v === 'in-progress' || v === 'sent to vendor' || v === 'accepted by vendor') return 'warning';
+  if (
+    v === 'in progress' ||
+    v === 'in-progress' ||
+    v === 'sent to vendor' ||
+    v === 'accepted by vendor'
+  )
+    return 'warning';
   if (v === 'pending approval' || v === 'draft') return 'default';
   if (v === 'cancelled' || v === 'rejected') return 'error';
   if (v === 'approved') return 'info';
@@ -58,7 +77,10 @@ export function WorkOrderReport() {
   const { data: rawData, loading } = useGetRequest(apiUrl);
 
   // rawData is a flat array (pagination=false by default)
-  const allWOs = useMemo(() => (Array.isArray(rawData) ? rawData : (rawData?.results ?? [])), [rawData]);
+  const allWOs = useMemo(
+    () => (Array.isArray(rawData) ? rawData : (rawData?.results ?? [])),
+    [rawData]
+  );
 
   // Client-side date filtering on orderDate
   const woList = useMemo(() => {
@@ -277,9 +299,13 @@ export function WorkOrderReport() {
       />
       <CardBody>
         {loading && woList.length === 0 ? (
-          <div className="py-10 text-center text-muted-foreground text-sm">Loading work orders…</div>
+          <div className="py-10 text-center text-muted-foreground text-sm">
+            Loading work orders…
+          </div>
         ) : woList.length === 0 ? (
-          <div className="py-10 text-center text-muted-foreground text-sm">No work orders found for the selected filters.</div>
+          <div className="py-10 text-center text-muted-foreground text-sm">
+            No work orders found for the selected filters.
+          </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -298,13 +324,24 @@ export function WorkOrderReport() {
               <tbody>
                 {woList.map((wo) => (
                   <tr key={wo.id} className="border-b border-border">
-                    <td className="py-3 text-sm font-mono text-foreground">{wo.workOrderNumber || '—'}</td>
-                    <td className="py-3 text-sm text-foreground max-w-[200px] truncate" title={wo.title}>{wo.title || '—'}</td>
+                    <td className="py-3 text-sm font-mono text-foreground">
+                      {wo.workOrderNumber || '—'}
+                    </td>
+                    <td
+                      className="py-3 text-sm text-foreground max-w-[200px] truncate"
+                      title={wo.title}
+                    >
+                      {wo.title || '—'}
+                    </td>
                     <td className="py-3 text-sm text-foreground">{wo.vendor?.name || '—'}</td>
                     <td className="py-3 text-sm text-muted-foreground">{wo.category || '—'}</td>
                     <td className="py-3 text-sm text-muted-foreground">{wo.orderDate || '—'}</td>
-                    <td className="py-3 text-sm font-semibold text-foreground">{formatBDT(wo.totalAmount)}</td>
-                    <td className="py-3 text-sm text-muted-foreground">{wo.deliveryDeadline || '—'}</td>
+                    <td className="py-3 text-sm font-semibold text-foreground">
+                      {formatBDT(wo.totalAmount)}
+                    </td>
+                    <td className="py-3 text-sm text-muted-foreground">
+                      {wo.deliveryDeadline || '—'}
+                    </td>
                     <td className="py-3">
                       <Badge variant={getStatusVariant(wo.status)}>{wo.status || 'Unknown'}</Badge>
                     </td>

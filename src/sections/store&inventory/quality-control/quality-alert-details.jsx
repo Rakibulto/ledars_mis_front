@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import Link from 'next/link';
 import { mutate } from 'swr';
@@ -35,11 +35,11 @@ import { ConfirmDialog } from 'src/components/custom-dialog';
 
 import QualityAlertFormDialog from './quality-alert-form-dialog';
 import {
+  normalizeText,
   formatDateTime,
   getAlertAction,
   getAlertStatusChipProps,
   getAlertSeverityChipProps,
-  normalizeText,
 } from './quality-alert-shared';
 
 const EP = endpoints.storeInventory;
@@ -216,7 +216,11 @@ export default function QualityAlertDetails() {
           spacing={2}
           alignItems={{ md: 'flex-start' }}
         >
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} alignItems={{ sm: 'center' }}>
+          <Stack
+            direction={{ xs: 'column', sm: 'row' }}
+            spacing={1.5}
+            alignItems={{ sm: 'center' }}
+          >
             <Button
               component={Link}
               href={paths.dashboard.storeInventory.qualityAlerts}
@@ -391,7 +395,9 @@ export default function QualityAlertDetails() {
                   icon="solar:bell-bold-duotone"
                   label="Status"
                   value={statusChip.label}
-                  sub={isResolved ? 'Closed — no further action needed.' : 'Under active monitoring.'}
+                  sub={
+                    isResolved ? 'Closed — no further action needed.' : 'Under active monitoring.'
+                  }
                   color="#1d4ed8"
                   bgColor="#eff6ff"
                 />
@@ -452,10 +458,7 @@ export default function QualityAlertDetails() {
                       />
                     </Grid>
                     <Grid size={{ xs: 12, sm: 6 }}>
-                      <DetailField
-                        label="Product Code"
-                        value={qualityAlert.product_code || '—'}
-                      />
+                      <DetailField label="Product Code" value={qualityAlert.product_code || '—'} />
                     </Grid>
                     <Grid size={{ xs: 12, sm: 6 }}>
                       <DetailField
@@ -470,10 +473,16 @@ export default function QualityAlertDetails() {
                       />
                     </Grid>
                     <Grid size={{ xs: 12, sm: 6 }}>
-                      <DetailField label="Logged At" value={formatDateTime(qualityAlert.created_at)} />
+                      <DetailField
+                        label="Logged At"
+                        value={formatDateTime(qualityAlert.created_at)}
+                      />
                     </Grid>
                     <Grid size={{ xs: 12, sm: 6 }}>
-                      <DetailField label="Last Updated" value={formatDateTime(qualityAlert.updated_at)} />
+                      <DetailField
+                        label="Last Updated"
+                        value={formatDateTime(qualityAlert.updated_at)}
+                      />
                     </Grid>
                   </Grid>
 
@@ -482,7 +491,11 @@ export default function QualityAlertDetails() {
                   <Typography variant="subtitle2" fontWeight={700} color="#0f172a" sx={{ mb: 1 }}>
                     Description
                   </Typography>
-                  <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: 'pre-wrap' }}>
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ whiteSpace: 'pre-wrap' }}
+                  >
                     {qualityAlert.description || 'No incident description recorded.'}
                   </Typography>
 
@@ -491,8 +504,13 @@ export default function QualityAlertDetails() {
                   <Typography variant="subtitle2" fontWeight={700} color="#0f172a" sx={{ mb: 1 }}>
                     Corrective Action
                   </Typography>
-                  <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: 'pre-wrap' }}>
-                    {qualityAlert.corrective_action || 'No corrective action has been recorded yet.'}
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ whiteSpace: 'pre-wrap' }}
+                  >
+                    {qualityAlert.corrective_action ||
+                      'No corrective action has been recorded yet.'}
                   </Typography>
                 </Card>
               </Grid>
@@ -504,7 +522,10 @@ export default function QualityAlertDetails() {
                     <Typography variant="h6" fontWeight={700} color="#0f172a" sx={{ mb: 2 }}>
                       Recommended Next Step
                     </Typography>
-                    <Alert severity={getActionSeverity(qualityAlert.status)} sx={{ borderRadius: 2 }}>
+                    <Alert
+                      severity={getActionSeverity(qualityAlert.status)}
+                      sx={{ borderRadius: 2 }}
+                    >
                       {getAlertAction({
                         severity: qualityAlert.severity,
                         status: qualityAlert.status,

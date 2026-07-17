@@ -1,5 +1,6 @@
-import { GRN } from '../_components/pages/grn';
+import { GRNList } from '../_components/pages/grn/list';
 
 export default function Page() {
-  return <GRN />;
+  // return <GRN />;
+  return <GRNList />;
 }

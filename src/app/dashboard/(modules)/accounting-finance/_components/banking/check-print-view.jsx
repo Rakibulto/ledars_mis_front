@@ -1,15 +1,17 @@
 'use client';
 
+import { toast } from 'sonner';
 import { useMemo, useState, useEffect, useCallback } from 'react';
+
 import Box from '@mui/material/Box';
-import Button from '@mui/material/Button';
 import Stack from '@mui/material/Stack';
+import Button from '@mui/material/Button';
 import Divider from '@mui/material/Divider';
 import MenuItem from '@mui/material/MenuItem';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import IconButton from '@mui/material/IconButton';
-import { toast } from 'sonner';
+
 import { Iconify } from 'src/components/iconify';
 
 const STORAGE_KEY = 'bank_cheque_print_offsets';
@@ -29,10 +31,39 @@ function formatIndianAmount(num) {
 
 function numberToWords(amount) {
   const ones = [
-    '', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten',
-    'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen',
+    '',
+    'One',
+    'Two',
+    'Three',
+    'Four',
+    'Five',
+    'Six',
+    'Seven',
+    'Eight',
+    'Nine',
+    'Ten',
+    'Eleven',
+    'Twelve',
+    'Thirteen',
+    'Fourteen',
+    'Fifteen',
+    'Sixteen',
+    'Seventeen',
+    'Eighteen',
+    'Nineteen',
   ];
-  const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+  const tens = [
+    '',
+    '',
+    'Twenty',
+    'Thirty',
+    'Forty',
+    'Fifty',
+    'Sixty',
+    'Seventy',
+    'Eighty',
+    'Ninety',
+  ];
 
   const convertChunk = (n) => {
     if (n === 0) return '';
@@ -193,11 +224,16 @@ function ChequeTemplateGuide({ check, account }) {
         <Box sx={{ pl: 8 }}>
           <Typography sx={{ fontSize: 22, fontWeight: 900, color: '#e57373', lineHeight: 1 }}>
             {bankFirst}
-            <Typography component="span" sx={{ fontSize: 22, fontWeight: 900, color: '#81c784', ml: 0.5 }}>
+            <Typography
+              component="span"
+              sx={{ fontSize: 22, fontWeight: 900, color: '#81c784', ml: 0.5 }}
+            >
               {bankRest}
             </Typography>
           </Typography>
-          <Typography sx={{ fontSize: 10, color: '#ccc' }}>Payable at any branch in Bangladesh</Typography>
+          <Typography sx={{ fontSize: 10, color: '#ccc' }}>
+            Payable at any branch in Bangladesh
+          </Typography>
         </Box>
         <Typography sx={{ fontSize: 11, fontWeight: 700, color: '#ccc', alignSelf: 'flex-start' }}>
           DATE
@@ -207,7 +243,9 @@ function ChequeTemplateGuide({ check, account }) {
       <Box sx={{ px: 2.5 }}>
         <Typography sx={{ fontSize: 13, fontWeight: 600, color: '#ccc', mb: 4 }}>Pay To</Typography>
         <Box sx={{ borderBottom: '1px dashed #ccc', mb: 3 }} />
-        <Typography sx={{ fontSize: 13, fontWeight: 600, color: '#ccc', mb: 1 }}>The Sum of Taka</Typography>
+        <Typography sx={{ fontSize: 13, fontWeight: 600, color: '#ccc', mb: 1 }}>
+          The Sum of Taka
+        </Typography>
         <Box sx={{ borderBottom: '1px dashed #ccc', mb: 1 }} />
         <Box sx={{ borderBottom: '1px dashed #ccc', mb: 2, width: '65%' }} />
         <Box
@@ -494,14 +532,34 @@ export default function CheckPrintView({ check, account, onBack, onMarkPrinted }
               </TextField>
 
               <Stack direction="row" spacing={2}>
-                <Box sx={{ flex: 1, bgcolor: 'background.neutral', p: 1, borderRadius: 1, textAlign: 'center' }}>
-                  <Typography variant="caption" color="text.secondary">Top (Y)</Typography>
+                <Box
+                  sx={{
+                    flex: 1,
+                    bgcolor: 'background.neutral',
+                    p: 1,
+                    borderRadius: 1,
+                    textAlign: 'center',
+                  }}
+                >
+                  <Typography variant="caption" color="text.secondary">
+                    Top (Y)
+                  </Typography>
                   <Typography variant="subtitle2" fontWeight={700}>
                     {offsets[selectedField]?.top}px
                   </Typography>
                 </Box>
-                <Box sx={{ flex: 1, bgcolor: 'background.neutral', p: 1, borderRadius: 1, textAlign: 'center' }}>
-                  <Typography variant="caption" color="text.secondary">Left (X)</Typography>
+                <Box
+                  sx={{
+                    flex: 1,
+                    bgcolor: 'background.neutral',
+                    p: 1,
+                    borderRadius: 1,
+                    textAlign: 'center',
+                  }}
+                >
+                  <Typography variant="caption" color="text.secondary">
+                    Left (X)
+                  </Typography>
                   <Typography variant="subtitle2" fontWeight={700}>
                     {offsets[selectedField]?.left}px
                   </Typography>
@@ -509,35 +567,67 @@ export default function CheckPrintView({ check, account, onBack, onMarkPrinted }
               </Stack>
 
               <Stack spacing={1.5} alignItems="center">
-                <IconButton onClick={() => handleAdjust('top', -1)} sx={{ border: '1px solid', borderColor: 'divider' }}>
+                <IconButton
+                  onClick={() => handleAdjust('top', -1)}
+                  sx={{ border: '1px solid', borderColor: 'divider' }}
+                >
                   <Iconify icon="solar:arrow-up-bold" />
                 </IconButton>
                 <Stack direction="row" spacing={4}>
-                  <IconButton onClick={() => handleAdjust('left', -1)} sx={{ border: '1px solid', borderColor: 'divider' }}>
+                  <IconButton
+                    onClick={() => handleAdjust('left', -1)}
+                    sx={{ border: '1px solid', borderColor: 'divider' }}
+                  >
                     <Iconify icon="solar:arrow-left-bold" />
                   </IconButton>
-                  <IconButton onClick={() => handleAdjust('left', 1)} sx={{ border: '1px solid', borderColor: 'divider' }}>
+                  <IconButton
+                    onClick={() => handleAdjust('left', 1)}
+                    sx={{ border: '1px solid', borderColor: 'divider' }}
+                  >
                     <Iconify icon="solar:arrow-right-bold" />
                   </IconButton>
                 </Stack>
-                <IconButton onClick={() => handleAdjust('top', 1)} sx={{ border: '1px solid', borderColor: 'divider' }}>
+                <IconButton
+                  onClick={() => handleAdjust('top', 1)}
+                  sx={{ border: '1px solid', borderColor: 'divider' }}
+                >
                   <Iconify icon="solar:arrow-down-bold" />
                 </IconButton>
               </Stack>
 
               <Stack direction="row" spacing={1}>
-                <Button size="small" variant="outlined" fullWidth onClick={() => handleAdjust('top', -5)}>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  fullWidth
+                  onClick={() => handleAdjust('top', -5)}
+                >
                   Up 5
                 </Button>
-                <Button size="small" variant="outlined" fullWidth onClick={() => handleAdjust('top', 5)}>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  fullWidth
+                  onClick={() => handleAdjust('top', 5)}
+                >
                   Down 5
                 </Button>
               </Stack>
               <Stack direction="row" spacing={1}>
-                <Button size="small" variant="outlined" fullWidth onClick={() => handleAdjust('left', -5)}>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  fullWidth
+                  onClick={() => handleAdjust('left', -5)}
+                >
                   Left 5
                 </Button>
-                <Button size="small" variant="outlined" fullWidth onClick={() => handleAdjust('left', 5)}>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  fullWidth
+                  onClick={() => handleAdjust('left', 5)}
+                >
                   Right 5
                 </Button>
               </Stack>
@@ -545,10 +635,21 @@ export default function CheckPrintView({ check, account, onBack, onMarkPrinted }
 
             <Divider sx={{ my: 2 }} />
             <Stack spacing={1}>
-              <Button variant="contained" fullWidth onClick={handleSaveOffsets} startIcon={<Iconify icon="solar:check-circle-bold" />}>
+              <Button
+                variant="contained"
+                fullWidth
+                onClick={handleSaveOffsets}
+                startIcon={<Iconify icon="solar:check-circle-bold" />}
+              >
                 Save Positions
               </Button>
-              <Button variant="outlined" color="error" fullWidth onClick={handleResetOffsets} startIcon={<Iconify icon="solar:restart-bold" />}>
+              <Button
+                variant="outlined"
+                color="error"
+                fullWidth
+                onClick={handleResetOffsets}
+                startIcon={<Iconify icon="solar:restart-bold" />}
+              >
                 Reset to Default
               </Button>
             </Stack>

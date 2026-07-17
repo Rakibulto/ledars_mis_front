@@ -28,7 +28,6 @@ import axiosInstance, { endpoints } from 'src/utils/axios';
 
 import {
   useGetRequest,
-  usePutRequest,
   usePatchRequest,
   useCreateRequest,
   useDeleteRequest,

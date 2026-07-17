@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { toast } from 'sonner';
 import React, { useMemo, useState, useEffect } from 'react';
@@ -10,15 +10,15 @@ import {
   Stack,
   Button,
   Dialog,
-  MenuItem,
   Tooltip,
+  MenuItem,
   TextField,
   Typography,
   DialogTitle,
   DialogActions,
   DialogContent,
-  CircularProgress,
   InputAdornment,
+  CircularProgress,
 } from '@mui/material';
 
 import { endpoints } from 'src/utils/axios';
@@ -30,14 +30,11 @@ import {
   useCreateRequest as createRequest,
 } from 'src/actions/ledars-hook';
 
-import { useAuthContext } from 'src/auth/hooks';
-
 import { Iconify } from 'src/components/iconify';
 
-import {
-  normalizeCollection,
-  QUALITY_ALERT_SEVERITY_OPTIONS,
-} from './quality-alert-shared';
+import { useAuthContext } from 'src/auth/hooks';
+
+import { normalizeCollection, QUALITY_ALERT_SEVERITY_OPTIONS } from './quality-alert-shared';
 
 const EP = endpoints.storeInventory;
 const PM = endpoints.procurement_management;
@@ -101,7 +98,9 @@ function extractStaffUsers(rawStaff) {
     }
   }
   return users.sort((a, b) =>
-    String(a.username || '').localeCompare(String(b.username || ''), undefined, { sensitivity: 'base' })
+    String(a.username || '').localeCompare(String(b.username || ''), undefined, {
+      sensitivity: 'base',
+    })
   );
 }
 
@@ -110,7 +109,11 @@ export default function QualityAlertFormDialog({ open, mode, alertId, onClose, o
   const isEdit = mode === 'edit';
   const detailUrl = open && isEdit && alertId ? EP.quality_alert_by_id(alertId) : null;
 
-  const { data: qualityAlert, loading: detailLoading, error: detailError } = useGetRequest(detailUrl);
+  const {
+    data: qualityAlert,
+    loading: detailLoading,
+    error: detailError,
+  } = useGetRequest(detailUrl);
 
   const { data: rawOffices, loading: officesLoading } = useGetRequest(
     open ? `${PM.office_management}?pagination=false` : null
@@ -122,15 +125,16 @@ export default function QualityAlertFormDialog({ open, mode, alertId, onClose, o
   // Warehouse-driven: only fetch when an office is selected
   const selectedOfficeId = formValues.office_location;
 
-  const warehouseProductsUrl = open && selectedOfficeId
-    ? `${EP.inventory_office_stock_detail}?office_id=${selectedOfficeId}`
-    : null;
+  const warehouseProductsUrl =
+    open && selectedOfficeId
+      ? `${EP.inventory_office_stock_detail}?office_id=${selectedOfficeId}`
+      : null;
 
-  const warehouseStaffUrl = open && selectedOfficeId
-    ? `${PM.office_staff}?office=${selectedOfficeId}`
-    : null;
+  const warehouseStaffUrl =
+    open && selectedOfficeId ? `${PM.office_staff}?office=${selectedOfficeId}` : null;
 
-  const { data: rawWarehouseProducts, loading: productsLoading } = useGetRequest(warehouseProductsUrl);
+  const { data: rawWarehouseProducts, loading: productsLoading } =
+    useGetRequest(warehouseProductsUrl);
   const { data: rawWarehouseStaff, loading: staffLoading } = useGetRequest(warehouseStaffUrl);
 
   const officeOptions = useMemo(
@@ -140,7 +144,9 @@ export default function QualityAlertFormDialog({ open, mode, alertId, onClose, o
 
   // Products come as [{ product_id, product_name, sku, ... }] from office-stock-detail
   const productOptions = useMemo(() => {
-    const items = Array.isArray(rawWarehouseProducts) ? rawWarehouseProducts : normalizeCollection(rawWarehouseProducts);
+    const items = Array.isArray(rawWarehouseProducts)
+      ? rawWarehouseProducts
+      : normalizeCollection(rawWarehouseProducts);
     return sortByLabel(items, getProductLabel);
   }, [rawWarehouseProducts]);
 
@@ -303,7 +309,9 @@ export default function QualityAlertFormDialog({ open, mode, alertId, onClose, o
             {/* Row 3: Product (warehouse-gated) + Reported By */}
             <Grid size={{ xs: 12, md: 6 }}>
               <Tooltip
-                title={!warehouseSelected ? 'Select an Office / Warehouse first to load products.' : ''}
+                title={
+                  !warehouseSelected ? 'Select an Office / Warehouse first to load products.' : ''
+                }
                 placement="top"
                 disableHoverListener={warehouseSelected}
               >
@@ -368,7 +376,11 @@ export default function QualityAlertFormDialog({ open, mode, alertId, onClose, o
             {/* Row 4: Assigned To (warehouse-gated) — full row or half */}
             <Grid size={{ xs: 12, md: 6 }}>
               <Tooltip
-                title={!warehouseSelected ? 'Select an Office / Warehouse first to load staff members.' : ''}
+                title={
+                  !warehouseSelected
+                    ? 'Select an Office / Warehouse first to load staff members.'
+                    : ''
+                }
                 placement="top"
                 disableHoverListener={warehouseSelected}
               >
@@ -426,10 +438,15 @@ export default function QualityAlertFormDialog({ open, mode, alertId, onClose, o
                     height: '100%',
                   }}
                 >
-                  <Iconify icon="solar:buildings-3-bold-duotone" width={20} sx={{ color: '#16a34a' }} />
+                  <Iconify
+                    icon="solar:buildings-3-bold-duotone"
+                    width={20}
+                    sx={{ color: '#16a34a' }}
+                  />
                   <Box>
                     <Typography variant="caption" color="#166534" fontWeight={600}>
-                      {officeOptions.find((o) => String(o.id) === selectedOfficeId)?.name || 'Selected warehouse'}
+                      {officeOptions.find((o) => String(o.id) === selectedOfficeId)?.name ||
+                        'Selected warehouse'}
                     </Typography>
                     <Typography variant="caption" color="#4ade80" sx={{ display: 'block' }}>
                       Products and staff are filtered to this location.

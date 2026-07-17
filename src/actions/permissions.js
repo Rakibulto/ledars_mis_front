@@ -1,5 +1,5 @@
-import useSWR from 'swr';
 import { useMemo } from 'react';
+import useSWR, { mutate } from 'swr';
 
 import axios, { fetcher, endpoints } from 'src/utils/axios';
 
@@ -44,9 +44,25 @@ export async function updateUserPermissions(userId, permissionIds) {
   try {
     const url = endpoints.permission.setById(userId);
     const res = await axios.post(url, { permission_ids: permissionIds });
+    await mutate(endpoints.permission.byId(userId));
     return res.data;
   } catch (error) {
     console.error('Error updating user permissions:', error);
     throw error;
   }
+}
+
+export function useGetUserPermissions(userId) {
+  const url = userId ? endpoints.permission.byId(userId) : null;
+
+  const { data, isLoading, error } = useSWR(url, fetcher, swrOptions);
+
+  return useMemo(
+    () => ({
+      userPermissions: Array.isArray(data) ? data : [],
+      userPermissionsLoading: isLoading,
+      userPermissionsError: error,
+    }),
+    [data, isLoading, error]
+  );
 }

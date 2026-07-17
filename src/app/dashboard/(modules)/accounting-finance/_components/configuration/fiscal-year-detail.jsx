@@ -1,5 +1,6 @@
 'use client';
 
+import { toast } from 'sonner';
 import { useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 
@@ -10,10 +11,10 @@ import Grid from '@mui/material/Grid';
 import Stack from '@mui/material/Stack';
 import Button from '@mui/material/Button';
 import Dialog from '@mui/material/Dialog';
-import TextField from '@mui/material/TextField';
-import MenuItem from '@mui/material/MenuItem';
 import Divider from '@mui/material/Divider';
+import MenuItem from '@mui/material/MenuItem';
 import Skeleton from '@mui/material/Skeleton';
+import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import CardHeader from '@mui/material/CardHeader';
 import CardContent from '@mui/material/CardContent';
@@ -22,7 +23,6 @@ import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
 
 import { Iconify } from 'src/components/iconify';
-import { toast } from 'sonner';
 
 import { useFiscalYearApi } from './use-fiscal-year-api';
 
@@ -184,7 +184,7 @@ export default function FiscalYearDetail() {
               Generate Periods
             </Button>
           )}
-          {year.status === 'draft' ?(
+          {year.status === 'draft' ? (
             <Button
               variant="contained"
               color="success"
@@ -333,7 +333,9 @@ export default function FiscalYearDetail() {
               label="Start date"
               type="date"
               value={form.start_date}
-              onChange={(event) => setForm((current) => ({ ...current, start_date: event.target.value }))}
+              onChange={(event) =>
+                setForm((current) => ({ ...current, start_date: event.target.value }))
+              }
               InputLabelProps={{ shrink: true }}
               fullWidth
             />
@@ -341,7 +343,9 @@ export default function FiscalYearDetail() {
               label="End date"
               type="date"
               value={form.end_date}
-              onChange={(event) => setForm((current) => ({ ...current, end_date: event.target.value }))}
+              onChange={(event) =>
+                setForm((current) => ({ ...current, end_date: event.target.value }))
+              }
               InputLabelProps={{ shrink: true }}
               fullWidth
             />
@@ -349,7 +353,9 @@ export default function FiscalYearDetail() {
               select
               label="Status"
               value={form.status}
-              onChange={(event) => setForm((current) => ({ ...current, status: event.target.value }))}
+              onChange={(event) =>
+                setForm((current) => ({ ...current, status: event.target.value }))
+              }
               fullWidth
             >
               <MenuItem value="draft">Draft</MenuItem>

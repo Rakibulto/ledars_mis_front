@@ -43,3 +43,31 @@ export const fetchTodoUsers = async (search = '') => {
   });
   return data;
 };
+
+// ── Attachment API ───────────────────────────────────────────────────
+
+export const fetchTodoAttachments = async (todoId, params = {}) => {
+  const { data } = await axiosInstance.get(endpoints.todo.attachments(todoId), { params });
+  return data;
+};
+
+export const createTodoAttachment = async (todoId, formData) => {
+  const { data } = await axiosInstance.post(endpoints.todo.attachments(todoId), formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return data;
+};
+
+export const updateTodoAttachment = async (todoId, attachmentId, formData) => {
+  const { data } = await axiosInstance.put(
+    endpoints.todo.attachmentById(todoId, attachmentId),
+    formData,
+    { headers: { 'Content-Type': 'multipart/form-data' } }
+  );
+  return data;
+};
+
+export const deleteTodoAttachment = async (todoId, attachmentId) => {
+  const { data } = await axiosInstance.delete(endpoints.todo.attachmentById(todoId, attachmentId));
+  return data;
+};

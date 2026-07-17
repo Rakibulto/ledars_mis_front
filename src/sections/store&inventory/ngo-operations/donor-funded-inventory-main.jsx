@@ -13,6 +13,7 @@ import {
   Button,
   Dialog,
   TableRow,
+  MenuItem,
   TableBody,
   TableCell,
   TableHead,
@@ -25,7 +26,6 @@ import {
   DialogContent,
   InputAdornment,
   TableContainer,
-  MenuItem,
 } from '@mui/material';
 
 import { useBoolean } from 'src/hooks/use-boolean';

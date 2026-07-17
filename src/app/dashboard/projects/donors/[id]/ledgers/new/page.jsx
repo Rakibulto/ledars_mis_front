@@ -1,17 +1,20 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import dayjs from 'dayjs';
 import { mutate } from 'swr';
 import { toast } from 'sonner';
-import { Box, Button, Card, CardContent, MenuItem, Stack, Typography } from '@mui/material';
-import dayjs from 'dayjs';
+import { useForm } from 'react-hook-form';
+import { useState, useEffect } from 'react';
+import { useParams } from 'next/navigation';
+import { zodResolver } from '@hookform/resolvers/zod';
+
+import { Box, Card, Stack, Button, MenuItem, Typography, CardContent } from '@mui/material';
 
 import { endpoints } from 'src/utils/axios';
-import { useCreateRequest, useGetRequest } from 'src/actions/ledars-hook';
+
+import { useGetRequest, useCreateRequest } from 'src/actions/ledars-hook';
+
 import { Form, Field } from 'src/components/hook-form';
 
 const ledgerSchema = z.object({
@@ -74,9 +77,7 @@ export default function LedgerCreatePage() {
       };
       await useCreateRequest(EP.donorLedgers, payload);
       toast.success('Ledger entry created successfully');
-      mutate(
-        (key) => typeof key === 'string' && key.startsWith(EP.donorLedgers)
-      );
+      mutate((key) => typeof key === 'string' && key.startsWith(EP.donorLedgers));
 
       if (window.opener && !window.opener.closed) {
         window.opener.postMessage({ type: 'switchDonorTab', tabIndex: 1 }, '*');
@@ -149,12 +150,7 @@ export default function LedgerCreatePage() {
                 <Field.Text name="reference" label="Reference (optional)" />
               </Box>
 
-              <Field.Text
-                name="description"
-                label="Description (optional)"
-                multiline
-                rows={3}
-              />
+              <Field.Text name="description" label="Description (optional)" multiline rows={3} />
 
               <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
                 <Button

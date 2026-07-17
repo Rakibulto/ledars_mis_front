@@ -543,26 +543,30 @@ export function QuotationOpening() {
           </Card>
 
           {/* Overall Score — prominent summary card */}
-          <Card className={`border-2 ${
-            (vendor?.overallScore ?? 0) >= 75
-              ? 'border-success/40 bg-success/5'
-              : (vendor?.overallScore ?? 0) >= 50
-                ? 'border-warning/40 bg-warning/5'
-                : 'border-destructive/40 bg-destructive/5'
-          }`}>
+          <Card
+            className={`border-2 ${
+              (vendor?.overallScore ?? 0) >= 75
+                ? 'border-success/40 bg-success/5'
+                : (vendor?.overallScore ?? 0) >= 50
+                  ? 'border-warning/40 bg-warning/5'
+                  : 'border-destructive/40 bg-destructive/5'
+            }`}
+          >
             <CardBody>
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
                     Overall Score
                   </p>
-                  <p className={`text-4xl font-extrabold ${
-                    (vendor?.overallScore ?? 0) >= 75
-                      ? 'text-success'
-                      : (vendor?.overallScore ?? 0) >= 50
-                        ? 'text-warning'
-                        : 'text-destructive'
-                  }`}>
+                  <p
+                    className={`text-4xl font-extrabold ${
+                      (vendor?.overallScore ?? 0) >= 75
+                        ? 'text-success'
+                        : (vendor?.overallScore ?? 0) >= 50
+                          ? 'text-warning'
+                          : 'text-destructive'
+                    }`}
+                  >
                     {vendor?.overallScore ?? '—'}
                     <span className="text-lg font-medium text-muted-foreground">/100</span>
                   </p>
@@ -611,7 +615,9 @@ export function QuotationOpening() {
                   <div className="flex items-center gap-3 mb-4 p-3 bg-muted/30 rounded-lg">
                     <div className="flex-1">
                       <div className="flex items-center justify-between mb-1">
-                        <span className="text-xs text-muted-foreground">Overall Document Score</span>
+                        <span className="text-xs text-muted-foreground">
+                          Overall Document Score
+                        </span>
                         <span className="text-sm font-semibold text-foreground">
                           {vendor?.technicalScore ?? '—'}/100
                         </span>
@@ -639,13 +645,17 @@ export function QuotationOpening() {
                       <div
                         key={key}
                         className={`flex items-center justify-between p-3 rounded-lg border ${
-                          uploaded ? 'border-success/30 bg-success/5' : 'border-destructive/30 bg-destructive/5'
+                          uploaded
+                            ? 'border-success/30 bg-success/5'
+                            : 'border-destructive/30 bg-destructive/5'
                         }`}
                       >
                         <div className="flex items-center gap-3">
                           <div
                             className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 ${
-                              uploaded ? 'bg-success/20 text-success' : 'bg-destructive/20 text-destructive'
+                              uploaded
+                                ? 'bg-success/20 text-success'
+                                : 'bg-destructive/20 text-destructive'
                             }`}
                           >
                             {uploaded ? (

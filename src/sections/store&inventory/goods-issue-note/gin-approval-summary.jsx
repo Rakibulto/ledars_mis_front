@@ -1,6 +1,6 @@
 'use client';
 
-import { Box, Chip, Divider, Grid, Stack, Typography } from '@mui/material';
+import { Box, Chip, Grid, Stack, Divider, Typography } from '@mui/material';
 
 function SummaryField({ label, value }) {
   return (
@@ -89,10 +89,7 @@ export default function GinApprovalSummary({ wfInfo }) {
           />
         </Grid>
         <Grid size={{ xs: 12, sm: 6, md: 4 }}>
-          <SummaryField
-            label="Approval Progress"
-            value={wfInfo.approvalProgress || '0 / 0'}
-          />
+          <SummaryField label="Approval Progress" value={wfInfo.approvalProgress || '0 / 0'} />
         </Grid>
         <Grid size={{ xs: 12, md: 6 }}>
           <SummaryField

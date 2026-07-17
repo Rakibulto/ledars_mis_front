@@ -132,7 +132,6 @@ export default function InternalTransferFormDialog({ open, mode, transferId, onC
     }
   }, [open, isEdit, rawTransfer, transferLoading]);
 
-
   // ── helpers ────────────────────────────────────────────────────────────────
   const setField = (key, val) => setFields((prev) => ({ ...prev, [key]: val }));
 

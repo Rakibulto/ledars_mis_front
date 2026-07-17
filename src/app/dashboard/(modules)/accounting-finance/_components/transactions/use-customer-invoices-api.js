@@ -107,10 +107,6 @@ export function useCustomerInvoicesApi() {
   // ── Actions ───────────────────────────────────────────────────────────────
 
   async function createInvoice(payload) {
-    // payload: { customer_id, date, due_date, paymentTerms, servicePeriod,
-    //   billingOwner, billingReference, promiseToPay, recurring, recurringLabel,
-    //   taxRate, journal, project, cost_center, currency, fiscal_period,
-    //   lines: [{ description, quantity, unit_price, analytic, account, analytic_account, cost_center }] }
     const body = {
       customer: payload.customer_id,
       date: payload.date,
@@ -140,7 +136,20 @@ export function useCustomerInvoicesApi() {
         cost_center: l.cost_center ? Number(l.cost_center) : undefined,
       })),
     };
-    const { data } = await axiosInstance.post(endpoints.accounting.customer_invoices, body);
+    let data;
+    try {
+      const response = await axiosInstance.post(endpoints.accounting.customer_invoices, body);
+      data = response.data;
+    } catch (err) {
+      const detail =
+        err?.response?.data?.detail ||
+        (err?.response?.data
+          ? typeof err.response.data === 'string'
+            ? err.response.data
+            : JSON.stringify(err.response.data)
+          : err?.message);
+      throw new Error(detail || 'Invoice creation failed');
+    }
     await mutate(invoicesUrl);
     return data;
   }

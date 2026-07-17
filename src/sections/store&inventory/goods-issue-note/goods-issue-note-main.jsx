@@ -6,8 +6,8 @@ import { toast } from 'sonner';
 import { pdf } from '@react-pdf/renderer';
 import { useRouter } from 'next/navigation';
 import React, { useMemo, useState } from 'react';
-import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import {
   Box,
   Tab,
@@ -53,12 +53,12 @@ import TableRowSkeleton from 'src/components/table/tableRowSkeleton';
 
 import { useAuthContext } from 'src/auth/hooks';
 
+import GinApprovalInfo from './gin-approval-info';
+import GinApprovalSummary from './gin-approval-summary';
 import SummaryCard from '../../_components/summary-card';
 import IssueDocumentChallanPDF from './issue-document-challan-pdf';
 import { getIssueDocumentModuleConfig } from './issue-document-module-config';
 import { revalidateInventoryLogInsights } from '../inventory-log/inventory-log-utils';
-import GinApprovalInfo from './gin-approval-info';
-import GinApprovalSummary from './gin-approval-summary';
 import {
   computeGinWorkflowInfo,
   GIN_APPROVAL_WORKFLOW_URL,
@@ -421,7 +421,13 @@ function GoodsIssueRow({
           {workflowEnabled && !isIssued ? <GinApprovalInfo wfInfo={wfInfo} /> : null}
 
           {isIssued ? (
-            <Stack direction="row" spacing={0.75} justifyContent="center" flexWrap="wrap" useFlexGap>
+            <Stack
+              direction="row"
+              spacing={0.75}
+              justifyContent="center"
+              flexWrap="wrap"
+              useFlexGap
+            >
               <Chip size="small" color="secondary" label="Issued" variant="soft" />
               <Button
                 size="small"
@@ -437,7 +443,13 @@ function GoodsIssueRow({
               </Button>
             </Stack>
           ) : (
-            <Stack direction="row" spacing={0.75} justifyContent="center" flexWrap="wrap" useFlexGap>
+            <Stack
+              direction="row"
+              spacing={0.75}
+              justifyContent="center"
+              flexWrap="wrap"
+              useFlexGap
+            >
               {showNoWorkflowWarning ? (
                 <Button
                   size="small"
@@ -608,9 +620,7 @@ export default function GoodsIssueNoteMain({ moduleKey = 'goodsIssueNote' }) {
   const { data: rawProjects, loading: projectsLoading } = useGetRequest(
     endpoints.projectManagements.projects
   );
-  const { data: rawWorkflow } = useGetRequest(
-    workflowEnabled ? GIN_APPROVAL_WORKFLOW_URL : null
-  );
+  const { data: rawWorkflow } = useGetRequest(workflowEnabled ? GIN_APPROVAL_WORKFLOW_URL : null);
 
   const rows = useMemo(() => normalizeCollection(rawGinList), [rawGinList]);
   const statusSummaryRows = useMemo(

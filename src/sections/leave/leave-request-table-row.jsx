@@ -37,6 +37,7 @@ export function LeaveRequestTableRow({
   user,
   flag = false,
   isAdmin,
+  onPrint,
 }) {
   const quickEdit = useBoolean();
   const confirmDelete = useBoolean();
@@ -47,6 +48,12 @@ export function LeaveRequestTableRow({
   const handleDelete = () => {
     onDeleteRow(row.id);
     confirmDelete.onFalse();
+  };
+
+  const handlePrint = () => {
+    if (onPrint) {
+      onPrint(row);
+    }
   };
 
   return (
@@ -216,6 +223,20 @@ export function LeaveRequestTableRow({
         </TableCell>
         <TableCell>
           <Stack direction="row" spacing={1} justifyContent="flex-end">
+            <Tooltip title="Details" placement="top" arrow>
+              <IconButton
+                component={RouterLink}
+                href={paths.dashboard.leave.requestDetail(row.id)}
+                color="default"
+              >
+                <Iconify icon="solar:eye-bold" />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Print" placement="top" arrow>
+              <IconButton onClick={handlePrint} color="default">
+                <Iconify icon="solar:printer-bold" />
+              </IconButton>
+            </Tooltip>
             {showQuickEdit && (
               <Tooltip title="Quick Edit" placement="top" arrow>
                 <IconButton

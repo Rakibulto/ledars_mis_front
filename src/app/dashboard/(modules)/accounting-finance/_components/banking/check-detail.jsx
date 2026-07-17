@@ -1,8 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { pdf, Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
-import { toast } from 'sonner';
+import { Page, Text, View, Document, StyleSheet } from '@react-pdf/renderer';
 
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
@@ -27,9 +26,9 @@ import { RouterLink } from 'src/routes/components';
 import { Iconify } from 'src/components/iconify';
 
 import { formatCurrency } from '../utils';
+import CheckPrintView from './check-print-view';
 import { useCurrency } from '../currency-context';
 import { useBankingWorkspace } from './use-banking-workspace';
-import CheckPrintView from './check-print-view';
 
 const STATUS_COLORS = {
   prepared: 'warning',
@@ -50,10 +49,16 @@ const chequeStyles = StyleSheet.create({
   value: { flex: 1, fontWeight: 'bold' },
   divider: { borderBottom: '1 solid #eee', marginVertical: 12 },
   footer: {
-    position: 'absolute', bottom: 30, left: 40, right: 40,
-    borderTop: '1 solid #eee', paddingTop: 8,
-    flexDirection: 'row', justifyContent: 'space-between',
-    fontSize: 8, color: '#999',
+    position: 'absolute',
+    bottom: 30,
+    left: 40,
+    right: 40,
+    borderTop: '1 solid #eee',
+    paddingTop: 8,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    fontSize: 8,
+    color: '#999',
   },
 });
 
@@ -448,17 +453,25 @@ export default function CheckDetail({ id }) {
                 </Stack>
                 <Stack spacing={1}>
                   <Stack direction="row" justifyContent="space-between">
-                    <Typography variant="body2" color="text.secondary">Account</Typography>
-                    <Typography variant="body2" fontWeight={600}>{account.name}</Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Account
+                    </Typography>
+                    <Typography variant="body2" fontWeight={600}>
+                      {account.name}
+                    </Typography>
                   </Stack>
                   <Stack direction="row" justifyContent="space-between">
-                    <Typography variant="body2" color="text.secondary">Balance</Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Balance
+                    </Typography>
                     <Typography variant="body2" fontWeight={600}>
                       {formatCurrency(account.balance, account.currency)}
                     </Typography>
                   </Stack>
                   <Stack direction="row" justifyContent="space-between">
-                    <Typography variant="body2" color="text.secondary">Available</Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Available
+                    </Typography>
                     <Typography variant="body2" fontWeight={600}>
                       {formatCurrency(account.availableBalance, account.currency)}
                     </Typography>

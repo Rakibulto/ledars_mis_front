@@ -46,6 +46,7 @@ export const EmployeeSchema = zod
     employment_type: zod.number(),
     salary: zod.number().nullable().or(zod.string().nullable()),
     rfid_or_machine_code: zod.string(),
+    grade_id: zod.number().nullable(),
     status: zod.string(),
     leave_group: zod.number().nullable(),
 
@@ -75,6 +76,9 @@ export const EmployeeSchema = zod
 
     // Profile picture
     profile_picture: schemaHelper.file().nullable(),
+
+    // Signature
+    signature: schemaHelper.file().nullable(),
 
     // Attendance settings
     allow_web_login: zod.boolean(),

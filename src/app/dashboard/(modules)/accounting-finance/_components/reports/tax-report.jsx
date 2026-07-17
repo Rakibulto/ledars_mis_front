@@ -2,6 +2,7 @@
 
 import { toast } from 'sonner';
 import { useMemo, useState } from 'react';
+import useSWR from 'swr';
 
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
@@ -10,6 +11,7 @@ import Grid from '@mui/material/Grid';
 import Alert from '@mui/material/Alert';
 import Stack from '@mui/material/Stack';
 import Button from '@mui/material/Button';
+import Divider from '@mui/material/Divider';
 import MenuItem from '@mui/material/MenuItem';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
@@ -18,15 +20,11 @@ import CardContent from '@mui/material/CardContent';
 import PdfPrintLayout from 'src/app/dashboard/(modules)/accounting-finance/_components/shared/pdf-print-layout';
 
 import { Iconify } from 'src/components/iconify';
+import { fetcher, endpoints } from 'src/utils/axios';
 
 import { formatCurrency } from '../utils';
 import { ReportExportActions } from './report-export-actions';
 import { exportReportCsv, exportReportJson, exportReportExcel } from './reports-export';
-import {
-  ACCOUNTING_MOCK_BILLS,
-  ACCOUNTING_MOCK_TAXES,
-  ACCOUNTING_MOCK_INVOICES,
-} from '../demo-data';
 
 const PERIODS = [
   { id: 'mar_2026', label: 'Mar 2026', from: '2026-03-01', to: '2026-03-31' },
@@ -64,100 +62,86 @@ export default function TaxReport() {
 
   const period = PERIODS.find((item) => item.id === periodId) || PERIODS[1];
 
-  const invoiceRows = useMemo(
-    () =>
-      ACCOUNTING_MOCK_INVOICES.filter((invoice) =>
-        withinRange(invoice.invoice_date, period.from, period.to)
-      ),
-    [period.from, period.to]
+  // Fetch real data from APIs
+  const { data: rawBills } = useSWR(endpoints.accounting.bills, fetcher);
+  const { data: rawInvoices } = useSWR(endpoints.accounting.customer_invoices, fetcher);
+
+  const allBills = useMemo(() => {
+    const list = Array.isArray(rawBills) ? rawBills : Array.isArray(rawBills?.results) ? rawBills.results : [];
+    return list;
+  }, [rawBills]);
+
+  const allInvoices = useMemo(() => {
+    const list = Array.isArray(rawInvoices) ? rawInvoices : Array.isArray(rawInvoices?.results) ? rawInvoices.results : [];
+    return list;
+  }, [rawInvoices]);
+
+  const billRows = useMemo(() => {
+    let list = allBills.filter((bill) => withinRange(bill.bill_date, period.from, period.to));
+    if (taxTypeFilter === 'sales') return [];
+    return list;
+  }, [allBills, period.from, period.to, taxTypeFilter]);
+  const invoiceRows = useMemo(() => {
+    let list = allInvoices.filter((inv) => withinRange(inv.invoice_date || inv.bill_date, period.from, period.to));
+    if (taxTypeFilter === 'purchase') return [];
+    return list;
+  }, [allInvoices, period.from, period.to, taxTypeFilter]);
+
+  // Calculate tax from actual bill/invoice tax_amount fields (not from tax definitions)
+  const inputTax = useMemo(
+    () => billRows.reduce((sum, bill) => sum + Number(bill.tax_amount || 0), 0),
+    [billRows]
   );
-  const billRows = useMemo(
-    () =>
-      ACCOUNTING_MOCK_BILLS.filter((bill) => withinRange(bill.issue_date, period.from, period.to)),
-    [period.from, period.to]
+  const outputTax = useMemo(
+    () => invoiceRows.reduce((sum, inv) => sum + Number(inv.tax_amount || 0), 0),
+    [invoiceRows]
   );
+  const netTax = outputTax - inputTax;
 
-  const taxRows = useMemo(
-    () =>
-      ACCOUNTING_MOCK_TAXES.filter((tax) =>
-        taxTypeFilter === 'all' ? true : tax.type === taxTypeFilter
-      ).map((tax) => {
-        const saleBase =
-          tax.type === 'sale'
-            ? invoiceRows.reduce((sum, invoice) => sum + Number(invoice.total_amount || 0), 0)
-            : 0;
-        const purchaseBase =
-          tax.type === 'purchase'
-            ? billRows.reduce((sum, bill) => sum + Number(bill.total_amount || 0), 0)
-            : 0;
-        const withholdingBase =
-          tax.type === 'withholding'
-            ? billRows
-                .filter((bill) => bill.status !== 'paid')
-                .reduce((sum, bill) => sum + Number(bill.total_amount || 0), 0)
-            : 0;
-        const taxableBase = saleBase || purchaseBase || withholdingBase;
-        const taxAmount = taxableBase * (Number(tax.rate || 0) / 100);
-
-        return {
-          ...tax,
-          taxableBase,
-          taxAmount,
-          filingBox:
-            tax.type === 'sale'
-              ? 'Output VAT'
-              : tax.type === 'purchase'
-                ? 'Input VAT'
-                : 'Withholding Tax',
-        };
-      }),
-    [billRows, invoiceRows, taxTypeFilter]
-  );
-
-  const outputTax = taxRows
-    .filter((tax) => tax.type === 'sale')
-    .reduce((sum, tax) => sum + tax.taxAmount, 0);
-  const inputTax = taxRows
-    .filter((tax) => tax.type === 'purchase')
-    .reduce((sum, tax) => sum + tax.taxAmount, 0);
-  const withholdingTax = taxRows
-    .filter((tax) => tax.type === 'withholding')
-    .reduce((sum, tax) => sum + tax.taxAmount, 0);
-  const netTax = outputTax - inputTax - withholdingTax;
-
+  // Build document rows with actual tax amounts from bills and invoices
   const documentRows = useMemo(() => {
-    const invoiceDocs = invoiceRows.map((invoice) => ({
-      id: `inv-${invoice.id}`,
-      type: 'Invoice',
-      number: invoice.number,
-      partner: invoice.customer_name,
-      date: invoice.invoice_date,
-      base: Number(invoice.total_amount || 0),
-      tax: Number(invoice.total_amount || 0) * 0.05,
-      status: invoice.status,
-    }));
     const billDocs = billRows.map((bill) => ({
       id: `bill-${bill.id}`,
       type: 'Vendor Bill',
-      number: bill.number,
-      partner: bill.vendor_name,
-      date: bill.issue_date,
-      base: Number(bill.total_amount || 0),
-      tax: Number(bill.total_amount || 0) * 0.075,
+      number: bill.bill_number || bill.number || `BILL-${bill.id}`,
+      partner: bill.vendor_name || bill.vendor_detail?.name || '',
+      date: bill.bill_date || '',
+      base: Number(bill.subtotal || bill.total_amount || 0),
+      tax: Number(bill.tax_amount || 0),
       status: bill.status,
+      taxType: 'purchase',
     }));
-
-    return [...invoiceDocs, ...billDocs].sort((left, right) => right.date.localeCompare(left.date));
+    const invoiceDocs = invoiceRows.map((inv) => ({
+      id: `inv-${inv.id}`,
+      type: 'Customer Invoice',
+      number: inv.invoice_number || inv.number || `INV-${inv.id}`,
+      partner: inv.customer_name || inv.customer_detail?.name || '',
+      date: inv.invoice_date || inv.bill_date || '',
+      base: Number(inv.subtotal || inv.total_amount || 0),
+      tax: Number(inv.tax_amount || 0),
+      status: inv.status,
+      taxType: 'sales',
+    }));
+    return [...billDocs, ...invoiceDocs].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
   }, [billRows, invoiceRows]);
+
+  // Summary metrics
+  const totalTaxableBase = useMemo(
+    () => documentRows.reduce((sum, row) => sum + row.base, 0),
+    [documentRows]
+  );
+  const totalTax = useMemo(
+    () => documentRows.reduce((sum, row) => sum + row.tax, 0),
+    [documentRows]
+  );
 
   const exportConfig = useMemo(
     () => ({
       title: 'Tax Report',
       subtitle: `${period.label} tax filing preview`,
       summary: [
-        { label: 'Output tax', value: formatCurrency(outputTax) },
-        { label: 'Input tax', value: formatCurrency(inputTax) },
-        { label: 'Withholding', value: formatCurrency(withholdingTax) },
+        { label: 'Output tax (from invoices)', value: formatCurrency(outputTax) },
+        { label: 'Input tax (from bills)', value: formatCurrency(inputTax) },
         {
           label: netTax >= 0 ? 'Tax payable' : 'Tax refundable',
           value: formatCurrency(Math.abs(netTax)),
@@ -165,55 +149,32 @@ export default function TaxReport() {
       ],
       tables: [
         {
-          title: 'Tax Grid',
-          columns: [
-            { key: 'name', label: 'Tax' },
-            { key: 'rate', label: 'Rate' },
-            { key: 'type', label: 'Type' },
-            { key: 'base', label: 'Taxable Base' },
-            { key: 'amount', label: 'Tax Amount' },
-            { key: 'box', label: 'Filing Box' },
-          ],
-          rows: taxRows.map((tax) => ({
-            name: tax.name,
-            rate: `${tax.rate}%`,
-            type: tax.type,
-            base: formatCurrency(tax.taxableBase),
-            amount: formatCurrency(tax.taxAmount),
-            box: tax.filingBox,
-          })),
-        },
-        {
-          title: 'Tax Source Documents',
+          title: 'Documents',
           columns: [
             { key: 'type', label: 'Type' },
-            { key: 'number', label: 'Document' },
+            { key: 'number', label: 'Number' },
             { key: 'partner', label: 'Partner' },
             { key: 'date', label: 'Date' },
-            { key: 'base', label: 'Base' },
-            { key: 'tax', label: 'Tax' },
+            { key: 'base', label: 'Taxable Base' },
+            { key: 'tax', label: 'Tax Amount' },
+            { key: 'status', label: 'Status' },
           ],
           rows: documentRows.map((row) => ({
-            type: row.type,
-            number: row.number,
-            partner: row.partner,
-            date: row.date,
+            ...row,
             base: formatCurrency(row.base),
             tax: formatCurrency(row.tax),
           })),
         },
       ],
-      controlChecks: [
-        {
-          label: 'Open source documents',
-          value: documentRows.filter((row) => row.status !== 'paid').length,
-          description: 'Documents still open when preparing the filing pack.',
-        },
-      ],
-      payload: { period, taxRows, documentRows, outputTax, inputTax, withholdingTax, netTax },
     }),
-    [documentRows, inputTax, netTax, outputTax, period, taxRows, withholdingTax]
+    [period.label, outputTax, inputTax, netTax, documentRows]
   );
+
+  const handleExport = (type) => {
+    if (type === 'csv') exportReportCsv(exportConfig);
+    else if (type === 'json') exportReportJson(exportConfig);
+    else if (type === 'excel') exportReportExcel(exportConfig);
+  };
 
   const printContent = (
     <div>
@@ -340,8 +301,8 @@ export default function TaxReport() {
 
       <Alert severity={netTax >= 0 ? 'warning' : 'success'} sx={{ mb: 3, borderRadius: 2 }}>
         {netTax >= 0
-          ? `Current filing preview shows ${formatCurrency(netTax)} payable after input and withholding offsets.`
-          : `Current filing preview shows ${formatCurrency(Math.abs(netTax))} refundable after offsets.`}
+          ? `Based on actual bill and invoice tax amounts: ${formatCurrency(netTax)} payable (output tax exceeds input tax).`
+          : `Based on actual bill and invoice tax amounts: ${formatCurrency(Math.abs(netTax))} refundable (input tax exceeds output tax).`}
       </Alert>
 
       <Card sx={{ borderRadius: 3, mb: 3 }}>
@@ -366,14 +327,13 @@ export default function TaxReport() {
               <TextField
                 select
                 fullWidth
-                label="Tax type"
+                label="Document type"
                 value={taxTypeFilter}
                 onChange={(event) => setTaxTypeFilter(event.target.value)}
               >
-                <MenuItem value="all">All tax types</MenuItem>
-                <MenuItem value="sale">Sale</MenuItem>
-                <MenuItem value="purchase">Purchase</MenuItem>
-                <MenuItem value="withholding">Withholding</MenuItem>
+                <MenuItem value="all">All documents</MenuItem>
+                <MenuItem value="purchase">Vendor Bills (Input Tax)</MenuItem>
+                <MenuItem value="sales">Customer Invoices (Output Tax)</MenuItem>
               </TextField>
             </Grid>
           </Grid>
@@ -383,23 +343,23 @@ export default function TaxReport() {
       <Grid container spacing={2} sx={{ mb: 3 }}>
         <Grid size={{ xs: 12, sm: 6, xl: 3 }}>
           <MetricCard
-            label="Output tax"
+            label="Output tax (from invoices)"
             value={formatCurrency(outputTax)}
             helper="Tax collected on customer-side transactions"
           />
         </Grid>
         <Grid size={{ xs: 12, sm: 6, xl: 3 }}>
           <MetricCard
-            label="Input tax"
+            label="Input tax (from bills)"
             value={formatCurrency(inputTax)}
             helper="Recoverable purchase-side tax for the selected period"
           />
         </Grid>
         <Grid size={{ xs: 12, sm: 6, xl: 3 }}>
           <MetricCard
-            label="Withholding"
-            value={formatCurrency(withholdingTax)}
-            helper="Retention offset on unpaid vendor-side documents"
+            label="Total taxable base"
+            value={formatCurrency(totalTaxableBase)}
+            helper="Sum of all document amounts before tax"
           />
         </Grid>
         <Grid size={{ xs: 12, sm: 6, xl: 3 }}>
@@ -411,59 +371,11 @@ export default function TaxReport() {
         </Grid>
       </Grid>
 
-      <Grid container spacing={3}>
-        <Grid size={{ xs: 12, xl: 7 }}>
-          <Card sx={{ borderRadius: 3, mb: 3 }}>
-            <CardContent>
-              <Typography variant="h6" fontWeight={700} sx={{ mb: 2 }}>
-                Tax Grid Mapping
-              </Typography>
-              <Box sx={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                  <thead>
-                    <tr>
-                      <th align="left">Tax</th>
-                      <th align="left">Type</th>
-                      <th align="right">Rate</th>
-                      <th align="right">Taxable base</th>
-                      <th align="right">Tax amount</th>
-                      <th align="left">Filing box</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {taxRows.map((tax) => (
-                      <tr key={tax.id}>
-                        <td style={{ padding: '12px 8px' }}>
-                          <Typography variant="body2" fontWeight={700}>
-                            {tax.name}
-                          </Typography>
-                        </td>
-                        <td style={{ padding: '12px 8px' }}>
-                          <Chip label={tax.type} size="small" variant="outlined" />
-                        </td>
-                        <td align="right" style={{ padding: '12px 8px' }}>
-                          {tax.rate}%
-                        </td>
-                        <td align="right" style={{ padding: '12px 8px' }}>
-                          {formatCurrency(tax.taxableBase)}
-                        </td>
-                        <td align="right" style={{ padding: '12px 8px', fontWeight: 700 }}>
-                          {formatCurrency(tax.taxAmount)}
-                        </td>
-                        <td style={{ padding: '12px 8px' }}>{tax.filingBox}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </Box>
-            </CardContent>
-          </Card>
-
-          <Card sx={{ borderRadius: 3 }}>
-            <CardContent>
-              <Typography variant="h6" fontWeight={700} sx={{ mb: 2 }}>
-                Source Documents
-              </Typography>
+      <Card sx={{ borderRadius: 3, mb: 3 }}>
+        <CardContent>
+          <Typography variant="h6" fontWeight={700} sx={{ mb: 2 }}>
+            Source Documents
+          </Typography>
               <Box sx={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
@@ -508,9 +420,7 @@ export default function TaxReport() {
               </Box>
             </CardContent>
           </Card>
-        </Grid>
 
-        <Grid size={{ xs: 12, xl: 5 }}>
           <Card sx={{ borderRadius: 3 }}>
             <CardContent>
               <Typography variant="h6" fontWeight={700} sx={{ mb: 2 }}>
@@ -525,19 +435,14 @@ export default function TaxReport() {
                   <Typography color="text.secondary">Less input VAT</Typography>
                   <Typography fontWeight={700}>{formatCurrency(inputTax)}</Typography>
                 </Stack>
+                <Divider sx={{ my: 1 }} />
                 <Stack direction="row" justifyContent="space-between">
-                  <Typography color="text.secondary">Less withholding</Typography>
-                  <Typography fontWeight={700}>{formatCurrency(withholdingTax)}</Typography>
-                </Stack>
-                <Stack direction="row" justifyContent="space-between">
-                  <Typography color="text.secondary">Net filing</Typography>
+                  <Typography fontWeight={700}>Net filing</Typography>
                   <Typography fontWeight={700}>{formatCurrency(netTax)}</Typography>
                 </Stack>
               </Stack>
             </CardContent>
           </Card>
-        </Grid>
-      </Grid>
 
       {printOpen && (
         <PdfPrintLayout title="Tax Report" onClose={() => setPrintOpen(false)}>

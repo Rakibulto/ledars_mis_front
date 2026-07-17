@@ -1,11 +1,11 @@
-﻿'use client';
+'use client';
 
 import Link from 'next/link';
 import { mutate } from 'swr';
 import { toast } from 'sonner';
 import { useMemo, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
 import { pdf } from '@react-pdf/renderer';
+import { useParams, useRouter } from 'next/navigation';
 
 import { alpha, useTheme } from '@mui/material/styles';
 import {
@@ -17,25 +17,24 @@ import {
   Stack,
   Table,
   Button,
-  Divider,
   Avatar,
+  Divider,
+  Tooltip,
   Skeleton,
   TableRow,
-  Tooltip,
   TableBody,
   TableCell,
   TableHead,
   Typography,
-  TableContainer,
   IconButton,
+  TableContainer,
 } from '@mui/material';
 
 import { paths } from 'src/routes/paths';
 
 import { endpoints } from 'src/utils/axios';
 
-import { useAuthContext } from 'src/auth/hooks';
-
+import { CONFIG } from 'src/config-global';
 import {
   useGetRequest,
   extractErrorMessage,
@@ -45,10 +44,12 @@ import {
 import { Iconify } from 'src/components/iconify';
 import { ConfirmDialog } from 'src/components/custom-dialog';
 
+import { useAuthContext } from 'src/auth/hooks';
+
+import InternalTransferPDF from './internal-transfer-pdf';
 import InternalTransferFormDialog from './internal-transfer-form-dialog';
 import InternalTransferReviewDialog from './internal-transfer-review-dialog';
 import InternalTransferBackReceiveDialog from './internal-transfer-back-receive-dialog';
-import InternalTransferPDF from './internal-transfer-pdf';
 
 // ─── constants ────────────────────────────────────────────────────────────────
 
@@ -832,6 +833,362 @@ export default function InternalTransferDetails() {
     }
   };
 
+  const handlePrintStockTransfer = () => {
+    const baseUrl = CONFIG.appDomainUrl.replace(/\/+$/, '');
+    /* ── helpers ─────────────────────────────────────────────────── */
+    const escape = (v) =>
+      String(v ?? '')
+        .replace(/&/g, '&')
+        .replace(/</g, '<')
+        .replace(/>/g, '>')
+        .replace(/"/g, '"');
+
+    const fmtDate2 = (d) => {
+      if (!d) return '';
+      try {
+        return new Date(d).toLocaleDateString('en-GB');
+      } catch {
+        return String(d);
+      }
+    };
+
+    /* ── derived values from API data ───────────────────────────── */
+    const transferDate = fmtDate2(transfer?.transfer_date);
+    const transferNumber = escape(transfer?.transfer_number);
+    const createdByName = escape(transfer?.created_by_name);
+    const fromOffice = escape(transfer?.from_office_name);
+    const toOffice = escape(transfer?.to_office_name);
+    const notes = escape(transfer?.notes);
+
+    /* ── line items — pad to minimum 15 rows ─────────────────────── */
+    const MIN_ROWS = 15;
+    const srcItems = transfer?.lines ?? [];
+    const padded = [...srcItems, ...Array(Math.max(0, MIN_ROWS - srcItems.length)).fill(null)];
+
+    const itemRows = padded
+      .map(
+        (item, i) => `
+      <tr>
+        <td class="tc">${item ? i + 1 : ''}</td>
+        <td>${item ? escape(item.item_name || item.product_name) : ''}</td>
+        <td class="tc">${item ? Number(item.quantity || 0).toLocaleString('en-BD') : ''}</td>
+        <td class="tc">${item ? Number(item.quantity || 0).toLocaleString('en-BD') : ''}</td>
+        <td>${item ? escape(item.notes) : ''}</td>
+      </tr>`
+      )
+      .join('');
+
+    /* ── full HTML ───────────────────────────────────────────────── */
+    const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>${transferNumber} — Stock Requisition Form</title>
+  <link
+    rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@400;700&display=swap"
+  >
+  <style>
+    /* ── Reset ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: Arial, 'Noto Sans Bengali', sans-serif;
+      font-size: 11px;
+      color: #000;
+      background: #fff;
+      padding: 22px 28px;
+    }
+
+    /* ════════════════════════════════════════════
+       ORG HEADER  (shared template)
+    ════════════════════════════════════════════ */
+    .org-wrap {
+      display: flex;
+      align-items: center;
+      margin-bottom: 3px;
+    }
+    .org-logo {
+      width: 66px;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+    }
+    .org-logo img {
+      width: 60px;
+      height: 60px;
+      object-fit: contain;
+    }
+    .org-center {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+    }
+    .org-spacer { width: 66px; flex-shrink: 0; }
+    .org-name-img {
+      max-height: 56px;
+      width: auto;
+      object-fit: contain;
+      display: block;
+    }
+    .org-web {
+      font-size: 10px;
+      text-decoration: underline;
+      color: #0000cc;
+      margin-top: 2px;
+    }
+    .rule { border-top: 3px solid #000; margin: 5px 0 8px; }
+
+    /* ════════════════════════════════════════════
+       FORM TITLE
+    ════════════════════════════════════════════ */
+    .title-wrap { text-align: center; margin-bottom: 12px; }
+    .title-box {
+      display: inline-block;
+      background: #1c1c1c;
+      color: #fff;
+      font-size: 13px;
+      font-weight: 700;
+      padding: 5px 24px;
+      border-radius: 5px;
+      letter-spacing: 0.5px;
+    }
+
+    /* ════════════════════════════════════════════
+       INFO FIELDS  (dotted fill line style)
+    ════════════════════════════════════════════ */
+    .info-row {
+      display: flex;
+      align-items: baseline;
+      gap: 20px;
+      margin-bottom: 6px;
+    }
+    .info-row.full { display: block; }
+
+    .info-field {
+      display: flex;
+      align-items: baseline;
+      flex: 1;
+      gap: 0;
+    }
+    .info-field.full-width { width: 100%; }
+
+    .i-lbl {
+      font-size: 11px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    /* dotted fill — the value sits on top of a dotted baseline */
+    .i-dots {
+      flex: 1;
+      border-bottom: 1.5px dotted #000;
+      padding-left: 3px;
+      padding-bottom: 1px;
+      font-size: 11px;
+      min-width: 60px;
+    }
+
+    /* ════════════════════════════════════════════
+       ITEMS TABLE
+    ════════════════════════════════════════════ */
+    .details-lbl {
+      font-size: 11px;
+      font-weight: 700;
+      margin-bottom: 5px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 0;
+    }
+    table th, table td {
+      border: 1px solid #555;
+      padding: 3px 5px;
+      font-size: 11px;
+    }
+    table th {
+      background: #d4d4d4;
+      font-weight: 700;
+      text-align: center;
+    }
+    /* data rows — fixed height so blank rows show as visible lines */
+    table tbody td { height: 22px; }
+
+    .tc { text-align: center; }
+    .tr { text-align: right;  }
+
+    /* column widths */
+    .col-sl   { width: 40px;  }
+    .col-name { }               /* flex — takes remaining */
+    .col-dem  { width: 72px;  }
+    .col-iss  { width: 72px;  }
+    .col-rem  { width: 120px; }
+
+    /* ════════════════════════════════════════════
+       SIGNATURE FOOTER
+    ════════════════════════════════════════════ */
+    .sig-section {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 28px;
+      gap: 10px;
+    }
+    .sig-block {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+    }
+    .sig-line {
+      width: 100%;
+      border-top: 1.5px dotted #000;
+      margin-bottom: 5px;
+      padding-top: 2px;
+    }
+    .sig-name  { font-size: 11px; font-weight: 700; }
+    .sig-value { font-size: 10px; color: #333; margin-top: 2px; }
+
+    /* ════════════════════════════════════════════
+       PRINT
+    ════════════════════════════════════════════ */
+    @media print {
+      body { padding: 0; }
+      @page { size: A4; margin: 1.1cm 1.2cm; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ═══════════════════ ORG HEADER ═══════════════════ -->
+  <div class="org-wrap">
+    <!-- Logo — left -->
+    <div class="org-logo">
+      <img
+        src="${baseUrl}/icons/logo.png"
+        alt="LEDARS Logo"
+        onerror="this.style.display='none'"
+      >
+    </div>
+
+    <!-- Name image (LEDARS + Shyamnagar, Satkhira.) — centre -->
+    <div class="org-center">
+      <img
+        class="org-name-img"
+        src="${baseUrl}/icons/name_img.png"
+        alt="LEDARS — Shyamnagar, Satkhira."
+        onerror="this.style.display='none'"
+      >
+      <div class="org-web">www.ledars.org</div>
+    </div>
+
+    <!-- Right spacer (keeps centre truly centred) -->
+    <div class="org-spacer"></div>
+  </div>
+  <div class="rule"></div>
+
+  <!-- ═══════════════════ FORM TITLE ═══════════════════ -->
+  <div class="title-wrap">
+    <span class="title-box">Stock Requisition Form</span>
+  </div>
+
+  <!-- ═══════════════════ INFO FIELDS ═══════════════════ -->
+
+  <!-- Row 1 : Date | Req. No -->
+  <div class="info-row">
+    <div class="info-field">
+      <span class="i-lbl">Date</span>
+      <span class="i-dots">${transferDate}</span>
+    </div>
+    <div class="info-field">
+      <span class="i-lbl">Req. No :</span>
+      <span class="i-dots">${transferNumber}</span>
+    </div>
+  </div>
+
+  <!-- Row 2 : Name | Department -->
+  <div class="info-row">
+    <div class="info-field">
+      <span class="i-lbl">Name</span>
+      <span class="i-dots">${createdByName}</span>
+    </div>
+    <div class="info-field">
+      <span class="i-lbl">Department :</span>
+      <span class="i-dots">${fromOffice}</span>
+    </div>
+  </div>
+
+  <!-- Row 3 : Project Name (full width) -->
+  <div class="info-row">
+    <div class="info-field">
+      <span class="i-lbl">Project Name :</span>
+      <span class="i-dots">${toOffice}</span>
+    </div>
+  </div>
+
+  <!-- Row 4 : Details (full width) -->
+  <div class="info-row" style="margin-bottom:8px;">
+    <div class="info-field">
+      <span class="i-lbl">Details :</span>
+      <span class="i-dots">${notes}</span>
+    </div>
+  </div>
+
+  <!-- ═══════════════════ ITEMS TABLE ═══════════════════ -->
+  <table>
+    <thead>
+      <tr>
+        <th class="col-sl">Sl.<br>No</th>
+        <th class="col-name">Name of the Item</th>
+        <th class="col-dem">Demand</th>
+        <th class="col-iss">Issues</th>
+        <th class="col-rem">Remarks</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${itemRows}
+    </tbody>
+  </table>
+
+  <!-- ═══════════════════ SIGNATURE FOOTER ═══════════════════ -->
+  <div class="sig-section">
+
+    <div class="sig-block">
+      <div class="sig-line"></div>
+      <div class="sig-name">Receipant Signature</div>
+      <div class="sig-value">${createdByName}</div>
+    </div>
+
+    <div class="sig-block">
+      <div class="sig-line"></div>
+      <div class="sig-name">Supervisor Signature</div>
+      <div class="sig-value"></div>
+    </div>
+
+    <div class="sig-block">
+      <div class="sig-line"></div>
+      <div class="sig-name">Store keeper/Admin office Signature</div>
+      <div class="sig-value"></div>
+    </div>
+
+  </div>
+
+</body>
+</html>`;
+
+    /* ── open print window ─────────────────────────────────────── */
+    const win = window.open('', '_blank');
+    win.document.write(html);
+    win.document.close();
+    win.focus();
+    /* wait for Noto Sans + images to load before triggering print */
+    setTimeout(() => win.print(), 900);
+  };
+
   return (
     <Box sx={{ p: { xs: 2, md: 3 }, minHeight: '100vh' }}>
       <Stack spacing={3}>
@@ -933,6 +1290,14 @@ export default function InternalTransferDetails() {
                   {downloadingGatePass ? 'Generating\u2026' : 'Gate Pass'}
                 </Button>
               )}
+              <Button
+                variant="contained"
+                startIcon={<Iconify icon="solar:printer-bold" width={16} />}
+                onClick={handlePrintStockTransfer}
+                sx={{ fontWeight: 600 }}
+              >
+                Print
+              </Button>
               <Button
                 variant="outlined"
                 color="error"

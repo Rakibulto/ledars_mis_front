@@ -1,12 +1,14 @@
 'use client';
 
-import { useEffect, useMemo } from 'react';
-import { useForm } from 'react-hook-form';
 import { z } from 'zod';
+import { useForm } from 'react-hook-form';
+import { useMemo, useEffect } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Box, Button, Divider, MenuItem, Stack, Typography } from '@mui/material';
+
+import { Box, Stack, Button, Divider, MenuItem, Typography } from '@mui/material';
 
 import { CONFIG } from 'src/config-global';
+
 import { Form, Field } from 'src/components/hook-form';
 
 export function resolveDonorPhotoUrl(photo) {
@@ -184,7 +186,10 @@ export function DonorForm({ initialValues = {}, onSubmit, submitLabel = 'Save' }
           </Box>
         </Box>
 
-        <FormSection title="Basic Information" description="Primary donor identity and classification">
+        <FormSection
+          title="Basic Information"
+          description="Primary donor identity and classification"
+        >
           <Field.Text name="name" label="Donor Name" fullWidth />
           <Field.Text name="email" label="Email" fullWidth />
           <Field.Text name="phone" label="Phone" fullWidth />
@@ -202,13 +207,24 @@ export function DonorForm({ initialValues = {}, onSubmit, submitLabel = 'Save' }
           </Field.Select>
         </FormSection>
 
-        <FormSection title="Donation Details" description="Financial contribution history and currency">
+        <FormSection
+          title="Donation Details"
+          description="Financial contribution history and currency"
+        >
           <Field.Text name="currency" label="Currency" fullWidth />
-          <Field.Text name="total_donated_amount" label="Total Donated Amount" type="number" fullWidth />
+          <Field.Text
+            name="total_donated_amount"
+            label="Total Donated Amount"
+            type="number"
+            fullWidth
+          />
           <Field.DatePicker name="last_donation_date" label="Last Donation Date" fullWidth />
         </FormSection>
 
-        <FormSection title="Personal Details" description="Demographic and identification information">
+        <FormSection
+          title="Personal Details"
+          description="Demographic and identification information"
+        >
           <Field.DatePicker name="date_of_birth" label="Date of Birth" fullWidth />
           <Field.Select name="gender" label="Gender" fullWidth>
             <MenuItem value="">Select</MenuItem>
@@ -221,7 +237,10 @@ export function DonorForm({ initialValues = {}, onSubmit, submitLabel = 'Save' }
           <Field.Text name="registration_number" label="Registration Number" fullWidth />
         </FormSection>
 
-        <FormSection title="Contact Preferences" description="Emergency contacts and communication preferences">
+        <FormSection
+          title="Contact Preferences"
+          description="Emergency contacts and communication preferences"
+        >
           <Field.Text name="emergency_contact_name" label="Emergency Contact Name" fullWidth />
           <Field.Text name="emergency_contact_phone" label="Emergency Contact Phone" fullWidth />
           <Field.Text name="preferred_language" label="Preferred Language" fullWidth />
@@ -233,12 +252,31 @@ export function DonorForm({ initialValues = {}, onSubmit, submitLabel = 'Save' }
             <MenuItem value="whatsapp">WhatsApp</MenuItem>
             <MenuItem value="sms">SMS</MenuItem>
           </Field.Select>
-          <Field.Text name="address" label="Address" multiline minRows={2} fullWidth sx={{ gridColumn: { md: 'span 2' } }} />
+          <Field.Text
+            name="address"
+            label="Address"
+            multiline
+            minRows={2}
+            fullWidth
+            sx={{ gridColumn: { md: 'span 2' } }}
+          />
         </FormSection>
 
         <FormSection title="Additional Notes" description="Supporting context and file attachments">
-          <Field.Text name="description" label="Description" multiline minRows={3} fullWidth sx={{ gridColumn: { md: 'span 2' } }} />
-          <Field.Upload name="document" label="Supporting Document" accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png" fullWidth />
+          <Field.Text
+            name="description"
+            label="Description"
+            multiline
+            minRows={3}
+            fullWidth
+            sx={{ gridColumn: { md: 'span 2' } }}
+          />
+          <Field.Upload
+            name="document"
+            label="Supporting Document"
+            accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
+            fullWidth
+          />
         </FormSection>
       </Stack>
 

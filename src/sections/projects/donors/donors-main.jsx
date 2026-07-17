@@ -3,7 +3,6 @@
 import { mutate } from 'swr';
 import { toast } from 'sonner';
 import React, { useMemo, useState } from 'react';
-import { RouterLink } from 'src/routes/components';
 
 import {
   Box,
@@ -24,15 +23,14 @@ import {
   TableContainer,
 } from '@mui/material';
 
+import { paths } from 'src/routes/paths';
+import { RouterLink } from 'src/routes/components';
+
 import { useBoolean } from 'src/hooks/use-boolean';
 
 import { endpoints } from 'src/utils/axios';
-import { paths } from 'src/routes/paths';
 
-import {
-  useGetRequest,
-  useDeleteRequest as deleteRequest,
-} from 'src/actions/ledars-hook';
+import { useGetRequest, useDeleteRequest as deleteRequest } from 'src/actions/ledars-hook';
 
 import { Label } from 'src/components/label';
 import { Iconify } from 'src/components/iconify';
@@ -74,17 +72,20 @@ export default function DonorManagementMain() {
     [rawData]
   );
 
-  const donorNameOptions = useMemo(() => {
-    return [...new Set(tableData.map((row) => row.name).filter(Boolean))].sort();
-  }, [tableData]);
+  const donorNameOptions = useMemo(
+    () => [...new Set(tableData.map((row) => row.name).filter(Boolean))].sort(),
+    [tableData]
+  );
 
-  const donorEmailOptions = useMemo(() => {
-    return [...new Set(tableData.map((row) => row.email).filter(Boolean))].sort();
-  }, [tableData]);
+  const donorEmailOptions = useMemo(
+    () => [...new Set(tableData.map((row) => row.email).filter(Boolean))].sort(),
+    [tableData]
+  );
 
-  const donorPhoneOptions = useMemo(() => {
-    return [...new Set(tableData.map((row) => row.phone).filter(Boolean))].sort();
-  }, [tableData]);
+  const donorPhoneOptions = useMemo(
+    () => [...new Set(tableData.map((row) => row.phone).filter(Boolean))].sort(),
+    [tableData]
+  );
 
   const filtered = useMemo(() => {
     let result = tableData;
@@ -118,8 +119,6 @@ export default function DonorManagementMain() {
 
     return result;
   }, [searchTerm, statusFilter, typeFilter, nameFilter, emailFilter, phoneFilter, tableData]);
-
-
 
   const hasActiveFilters =
     statusFilter !== 'all' ||
@@ -455,7 +454,11 @@ export default function DonorManagementMain() {
                           color: 'primary.dark',
                         }}
                       >
-                        <Typography variant="caption" fontWeight={600} sx={{ textTransform: 'capitalize' }}>
+                        <Typography
+                          variant="caption"
+                          fontWeight={600}
+                          sx={{ textTransform: 'capitalize' }}
+                        >
                           {TYPE_LABELS[row.type] || row.type || '—'}
                         </Typography>
                       </Box>

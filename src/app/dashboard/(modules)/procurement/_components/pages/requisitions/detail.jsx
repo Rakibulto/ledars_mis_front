@@ -2,8 +2,8 @@
 
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
+import { toWords } from 'number-to-words';
 import { useParams } from 'next/navigation';
-import { PDFDownloadLink } from '@react-pdf/renderer';
 import {
   Eye,
   Send,
@@ -30,9 +30,9 @@ import {
 
 import { endpoints } from 'src/utils/axios';
 
+import { CONFIG } from 'src/config-global';
 import { useGetRequest } from 'src/actions/ledars-hook';
 
-import { MrfPDF } from './mrf-pdf';
 import { ApprovalModal } from './approval-modal';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
@@ -58,6 +58,7 @@ export function RequisitionDetail() {
   );
 
   const apiData = apiDataResponse?.[0] || null;
+  console.log('api data:', apiData);
   const boqItems = useMemo(() => {
     if (!apiData?.mr_items || !Array.isArray(apiData?.mr_items)) return [];
     return apiData.mr_items.map((item, idx) => ({
@@ -71,6 +72,7 @@ export function RequisitionDetail() {
       amount:
         item?.total_price ||
         (item?.quantity || 0) * (item?.requested_unit_price || item?.unit_price || 0),
+      current_stock: item?.current_stock || '-',
     }));
   }, [apiData]);
 
@@ -234,155 +236,457 @@ export function RequisitionDetail() {
       }));
   }, [apiData]);
 
+  const totalAmount = Number(apiData?.total_amount || 0);
+
+  const amountInWords =
+    totalAmount > 0
+      ? `${toWords(totalAmount)
+          .replace(/,/g, '')
+          .replace(/^./, (c) => c.toUpperCase())} Taka only`
+      : '';
+
   const handlePrint = () => {
+    const baseUrl = CONFIG.appDomainUrl.replace(/\/+$/, '');
+    /* ── helpers ──────────────────────────────────────────────────── */
     const escape = (v) =>
-      String(v ?? '-')
+      String(v ?? '')
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;');
 
-    const boqRows = boqItems
+    const extractName = (val) =>
+      val && typeof val === 'object' ? String(val.name ?? val.username ?? '') : String(val ?? '');
+
+    const fmtDate = (d) => {
+      if (!d) return '';
+      try {
+        return new Date(d).toLocaleDateString('en-GB');
+      } catch {
+        return String(d);
+      }
+    };
+
+    /* ── derived header values (no field name changes) ───────────── */
+    const projectName = extractName(apiData?.project_info) || String(apiData?.project ?? '');
+    const deptName = extractName(apiData?.department_name);
+    const reqOfficeName = extractName(apiData?.requesting_office_info);
+    const requesterName = extractName(apiData?.created_by);
+    const approver1Name = extractName(apiData?.approver1_info);
+    const approver2Name = extractName(apiData?.approver2_info);
+    const createdDate = fmtDate(apiData?.created_at);
+
+    /* ── items: pad to minimum 14 rows so blank lines always render ─ */
+    const MIN_ROWS = 14;
+    const srcItems = boqItems ?? [];
+    const paddedRows = [...srcItems, ...Array(Math.max(0, MIN_ROWS - srcItems.length)).fill(null)];
+
+    const boqRows = paddedRows
       .map(
         (item) => `
-        <tr>
-          <td class="tc">${escape(item.sl)}</td>
-          <td>${escape(item.description)}</td>
-          <td>${escape(item.specification)}</td>
-          <td class="tc">${escape(item.unit)}</td>
-          <td class="tc">${escape(item.qty?.toLocaleString())}</td>
-          <td class="tr">${escape(item.rate?.toLocaleString())}</td>
-          <td class="tr">${escape(item.amount?.toLocaleString())}</td>
-        </tr>`
+      <tr>
+        <td class="tc">${item ? escape(item.sl) : ''}</td>
+        <td>${
+          item
+            ? escape(item.description) +
+              (item.specification
+                ? `<br><span class="spec">${escape(item.specification)}</span>`
+                : '')
+            : ''
+        }</td>
+        <td class="tc">${
+          item ? [escape(item.qty), escape(item.unit)].filter(Boolean).join(' ') : ''
+        }</td>
+        <td class="tc">${item ? escape(item.current_stock) : ''}</td>
+        <td class="tr">${item ? escape(Number(item.rate ?? 0).toLocaleString()) : ''}</td>
+        <td class="tr">${item ? escape(Number(item.amount ?? 0).toLocaleString()) : ''}</td>
+      </tr>`
       )
       .join('');
 
+    /* ── full HTML ───────────────────────────────────────────────── */
     const html = `<!DOCTYPE html>
-<html><head><title>${escape(apiData?.requisition_no)} — MRF</title>
-<style>
-  *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:Arial,sans-serif;font-size:11px;color:#222;padding:24px}
-  .header{text-align:center;border-bottom:2px solid #222;padding-bottom:8px;margin-bottom:16px}
-  .org{font-size:18px;font-weight:700}
-  .doc-title{font-size:13px;font-weight:700;margin-top:2px}
-  .sub{font-size:9px;color:#555;margin-top:2px}
-  .section{margin-bottom:14px}
-  .section-title{font-size:11px;font-weight:700;background:#eee;padding:3px 6px;border-bottom:1px solid #bbb;margin-bottom:6px}
-  .grid{display:grid;grid-template-columns:1fr 1fr;gap:4px 20px}
-  .field{display:flex;gap:6px;padding:2px 0;border-bottom:1px dotted #ddd;font-size:10px}
-  .lbl{color:#666;min-width:100px;flex-shrink:0}
-  .val{font-weight:600}
-  table{width:100%;border-collapse:collapse;font-size:10px}
-  th{background:#eee;border:1px solid #bbb;padding:4px 5px;text-align:left}
-  td{border:1px solid #ccc;padding:4px 5px}
-  .tc{text-align:center}.tr{text-align:right}
-  tfoot tr{background:#ddeef6;font-weight:700}
-  .sig{display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;margin-top:10px}
-  .sig-box{border-top:1px solid #333;padding-top:6px;text-align:center}
-  .sig-name{font-weight:700;font-size:10px}
-  .sig-role{font-size:9px;color:#555;margin-top:2px}
-  .sig-date{font-size:9px;color:#555;margin-top:2px}
-  @page{margin:1.2cm}
-</style></head><body>
+<html lang="bn">
+<head>
+  <meta charset="UTF-8">
+  <title>${escape(apiData?.requisition_no)} — ক্রয় চাহিদা পত্র</title>
+  <link
+    rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@400;700&display=swap"
+  >
+  <style>
+    /* ── Reset ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-<div class="header">
-  <div class="org">LEDARS</div>
-  <div class="doc-title">Material Requisition Form (MRF)</div>
-  <div class="sub">${escape(apiData?.requisition_no)} &nbsp;|&nbsp; ${escape(apiData?.status?.replace(/_/g, ' ').toUpperCase())} &nbsp;|&nbsp; ${escape(apiData?.created_at ? new Date(apiData.created_at).toLocaleDateString('en-GB') : '')}</div>
-</div>
+    body {
+      font-family: 'Noto Sans Bengali', Arial, sans-serif;
+      font-size: 10px;
+      color: #000;
+      background: #fff;
+      padding: 22px 28px;
+    }
 
-<div class="section">
-  <div class="section-title">Basic Information</div>
-  <div class="grid">
-    <div>
-      <div class="field"><span class="lbl">MRF Number:</span><span class="val">${escape(apiData?.requisition_no)}</span></div>
-      <div class="field"><span class="lbl">Office:</span><span class="val">${escape(apiData?.requesting_office_info?.name)}</span></div>
-      <div class="field"><span class="lbl">Department:</span><span class="val">${escape(apiData?.department_name)}</span></div>
-      <div class="field"><span class="lbl">Project:</span><span class="val">${escape(apiData?.project_info?.name || apiData?.project)}</span></div>
+    /* ── Org header ── */
+    .org-wrap {
+      display: flex;
+      align-items: center;
+      margin-bottom: 3px;
+    }
+    /* Logo sits on the left, fixed width */
+    .org-logo {
+      width: 64px;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+    }
+    .org-logo img {
+      width: 58px;
+      height: 58px;
+      object-fit: contain;
+    }
+    /* Centre column takes remaining space */
+    .org-center {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+    }
+    /* Right spacer keeps centre column truly centred */
+    .org-spacer {
+      width: 64px;
+      flex-shrink: 0;
+    }
+    /* name_img.png replaces the LEDARS + Shyamnagar, Satkhira. text */
+    .org-name-img {
+      max-height: 54px;
+      width: auto;
+      object-fit: contain;
+      display: block;
+    }
+    .org-web { font-size: 10px; text-decoration: underline; color: #0000cc; margin-top: 2px; }
+    .rule     { border-top: 3px solid #000; margin: 5px 0 6px; }
+
+    /* ── Form title ── */
+    .title-wrap { text-align: center; margin-bottom: 9px; }
+    .title-box  {
+      display: inline-block;
+      background: #1c1c1c;
+      color: #fff;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 5px 22px;
+      border-radius: 4px;
+    }
+
+    /* ── Info strip ── */
+    .info-strip { display: flex; margin-bottom: 10px; }
+    .info-chunk {
+      flex: 1;
+      display: flex;
+      gap: 3px;
+      margin-right: 10px;
+    }
+    .info-chunk:last-child { margin-right: 0; }
+    .i-lbl { font-weight: 700; white-space: nowrap; font-size: 10px; }
+    .i-val {
+      flex: 1;
+      font-size: 10px;
+      border-bottom: 0.7px solid #000;
+      padding-bottom: 1px;
+      min-height: 14px;
+    }
+
+    /* ── Tables shared ── */
+    table               { width: 100%; border-collapse: collapse; margin-bottom: 5px; }
+    table th, table td  { border: 0.7px solid #000; padding: 2px 4px; font-size: 10px; }
+    table th            { font-weight: 700; text-align: center; background: #fff; }
+    .tc { text-align: center; }
+    .tr { text-align: right; }
+    .bold { font-weight: 700; }
+    .spec { color: #444; font-size: 8.5px; }
+
+    /* ── Approval table ── */
+    .ap-role  { width: 90px; font-weight: 700; }
+    .ap-name  { }
+    .ap-sig   { width: 110px; }
+    .ap-date  { width: 90px; }
+
+    /* ── Items table ── */
+    .it-sl     { width: 30px; }
+    .it-qty    { width: 68px; }
+    .it-stock  { width: 65px; }
+    .it-rate   { width: 62px; }
+    .it-budget { width: 74px; }
+    .items-tbl td { min-height: 18px; height: 18px; }
+
+    /* ── Below-table field rows ── */
+    .field-row { display: flex; gap: 4px; margin-bottom: 5px; }
+    .f-lbl {
+      font-weight: 700;
+      white-space: nowrap;
+      font-size: 10px;
+    }
+    .f-val {
+      flex: 1;
+      font-size: 10px;
+      border-bottom: 0.7px solid #000;
+      padding-bottom: 1px;
+      min-height: 14px;
+    }
+
+    /* ── Shaded dept strips ── */
+    .shade-strip {
+      display: flex;
+      gap: 4px;
+      background: #d4d4d4;
+      border: 0.7px solid #000;
+      padding: 3px 5px;
+      margin-bottom: 3px;
+      font-size: 10px;
+    }
+    .s-lbl { font-weight: 700; white-space: nowrap; }
+    .s-val  { flex: 1; }
+
+    /* ── Buyer / Receiver row ── */
+    .two-col {
+      display: flex;
+      justify-content: space-between;
+      margin: 12px 0 3px;
+    
+    }
+    .half { width: 48%; display: flex; gap: 4px; }
+
+    /* ── Signature section ── */
+    .sig-wrap {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 10px;
+    }
+    .sig-block { width: 44%; }
+    .sig-line  { display: flex; gap: 4px; margin-bottom: 8px; }
+    .sig-lbl   {
+      font-weight: 700;
+      width: 48px;
+      flex-shrink: 0;
+      font-size: 10px;
+    }
+    .sig-val {
+      flex: 1;
+      font-size: 10px;
+      border-bottom: 0.7px solid #000;
+      padding-bottom: 1px;
+      min-height: 14px;
+    }
+
+    /* ── Print ── */
+    @media print {
+      body { padding: 0; }
+      @page { size: A4; margin: 1.1cm 1.2cm; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ═══════════════════ ORG HEADER ═══════════════════ -->
+  <div class="org-wrap">
+    <!-- Logo — left column -->
+    <div class="org-logo">
+      <img
+        src="${baseUrl}/icons/logo.png"
+        alt="LEDARS Logo"
+        onerror="this.style.display='none'"
+      >
     </div>
-    <div>
-      <div class="field"><span class="lbl">Category:</span><span class="val">${escape(apiData?.category)}</span></div>
-      <div class="field"><span class="lbl">Priority:</span><span class="val">${escape(apiData?.priority)}</span></div>
-      <div class="field"><span class="lbl">Required By:</span><span class="val">${escape(apiData?.delivery_date)}</span></div>
-      <div class="field"><span class="lbl">Fiscal Year:</span><span class="val">${escape(apiData?.fiscal_year)}</span></div>
+
+    <!-- Org name image (LEDARS + Shyamnagar, Satkhira.) + website — centre column -->
+    <div class="org-center">
+      <img
+        class="org-name-img"
+        src="${baseUrl}/icons/name_img.png"
+        alt="LEDARS — Shyamnagar, Satkhira."
+        onerror="this.style.display='none'"
+      >
+      <div class="org-web">www.ledars.org</div>
+    </div>
+
+    <!-- Spacer — right column (mirrors logo width to keep text truly centred) -->
+    <div class="org-spacer"></div>
+  </div>
+  <div class="rule"></div>
+
+  <!-- ═══════════════════ FORM TITLE ═══════════════════ -->
+  <div class="title-wrap">
+    <span class="title-box">ক্রয় চাহিদা পত্র</span>
+  </div>
+
+  <!-- ═══════════════════ INFO STRIP ═══════════════════ -->
+  <div class="info-strip">
+    <div class="info-chunk">
+      <span class="i-lbl">চাহিদাপত্র নং :</span>
+      <span class="i-val">${escape(apiData?.requisition_no)}</span>
+    </div>
+    <div class="info-chunk">
+      <span class="i-lbl">প্রকল্পের নাম :</span>
+      <span class="i-val">${escape(projectName)}</span>
+    </div>
+    <div class="info-chunk">
+      <span class="i-lbl">তারিখ :</span>
+      <span class="i-val">${escape(createdDate)}</span>
     </div>
   </div>
-</div>
 
-<div class="section">
-  <div class="section-title">Requester &amp; Budget</div>
-  <div class="grid">
-    <div>
-      <div class="field"><span class="lbl">Requester:</span><span class="val">${escape(apiData?.created_by?.username || apiData?.created_by?.name)}</span></div>
-      <div class="field"><span class="lbl">Designation:</span><span class="val">${escape(apiData?.created_by?.designation)}</span></div>
-      <div class="field"><span class="lbl">Email:</span><span class="val">${escape(apiData?.created_by?.email)}</span></div>
-    </div>
-    <div>
-      <div class="field"><span class="lbl">Budget Code:</span><span class="val">${escape(apiData?.budget_code_display?.name)}</span></div>
-      <div class="field"><span class="lbl">Donor Code:</span><span class="val">${escape(apiData?.donor_code_info?.name)}</span></div>
-      <div class="field"><span class="lbl">Account Head:</span><span class="val">${escape(apiData?.account_code_display?.name)}</span></div>
-    </div>
-  </div>
-</div>
-
-<div class="section">
-  <div class="section-title">Purpose &amp; Justification</div>
-  <p style="font-size:10px;line-height:1.5">${escape(apiData?.purpose)}</p>
-</div>
-
-<div class="section">
-  <div class="section-title">Bill of Quantities (BOQ) — Total: &#2547;${escape(apiData?.total_amount?.toLocaleString())}</div>
+  <!-- ═══════════════════ APPROVAL TABLE ═══════════════════ -->
   <table>
-    <thead><tr>
-      <th class="tc" style="width:5%">#</th>
-      <th style="width:26%">Item Name</th>
-      <th style="width:21%">Specification</th>
-      <th class="tc" style="width:8%">Unit</th>
-      <th class="tc" style="width:7%">Qty</th>
-      <th class="tr" style="width:16%">Rate (&#2547;)</th>
-      <th class="tr" style="width:17%">Amount (&#2547;)</th>
-    </tr></thead>
-    <tbody>${boqRows}</tbody>
-    <tfoot><tr>
-      <td colspan="6" class="tr">Grand Total:</td>
-      <td class="tr">&#2547;${escape(apiData?.total_amount?.toLocaleString())}</td>
-    </tr></tfoot>
+    <thead>
+      <tr>
+        <th class="ap-role"></th>
+        <th class="ap-name">নাম</th>
+        <th class="ap-sig">স্বাক্ষর</th>
+        <th class="ap-date">তারিখ</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="ap-role bold">অনুরোধকারী</td>
+        <td>${escape(requesterName)}</td>
+        <td></td>
+        <td>${escape(createdDate)}</td>
+      </tr>
+      <tr>
+        <td class="ap-role bold">সুপারিশকারী</td>
+        <td>${escape(approver1Name)}</td>
+        <td></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td class="ap-role bold">অনুমোদনকারী</td>
+        <td>${escape(approver2Name)}</td>
+        <td></td>
+        <td></td>
+      </tr>
+    </tbody>
   </table>
-</div>
 
-<div class="section">
-  <div class="section-title">Approval Signatures</div>
-  <div class="sig">
-    <div class="sig-box">
-      <p style="font-size:9px;margin-bottom:18px">Prepared by</p>
-      <div class="sig-name">${escape(apiData?.created_by?.username || '______________________')}</div>
-      <div class="sig-role">${escape(apiData?.created_by?.designation || 'Requester')}</div>
-      <div class="sig-date">Date: ${escape(apiData?.created_at ? new Date(apiData.created_at).toLocaleDateString('en-GB') : '____________')}</div>
+  <!-- ═══════════════════ ITEMS TABLE ═══════════════════ -->
+  <table class="items-tbl">
+    <thead>
+      <tr>
+        <th class="it-sl">ক্র.নং</th>
+        <th>বিবরণ</th>
+        <th class="it-qty">চাহিদার<br>পরিমাণ</th>
+        <th class="it-stock">বর্তমান<br>মজুদ</th>
+        <th class="it-rate">একক দর</th>
+        <th class="it-budget">বাজেটকৃত<br>অর্থ</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${boqRows}
+    </tbody>
+    <tfoot>
+      <tr>
+        <td></td>
+        <td class="tc bold">মোট</td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td class="tr bold">
+          ${escape(Number(apiData?.total_amount ?? 0).toLocaleString())}
+        </td>
+      </tr>
+    </tfoot>
+  </table>
+
+  <!-- ═══════════════════ কথায় ═══════════════════ -->
+  <div class="field-row">
+    <span class="f-lbl">কথায় :</span>
+    <span class="f-val">${escape(amountInWords)}</span>
+  </div>
+
+  <!-- ═══════════════════ মন্তব্য ═══════════════════ -->
+  <div class="field-row">
+    <span class="f-lbl">মন্তব্য :</span>
+    <span class="f-val">${escape(apiData?.special_instruction)}</span>
+  </div>
+
+  <!-- ═══════════════════ SHADED DEPT STRIPS ═══════════════════ -->
+  <div class="shade-strip">
+    <span class="s-lbl">হিসাব বিভাগ :</span>
+    <span class="s-val">${escape(deptName)}</span>
+  </div>
+  <div class="shade-strip">
+    <span class="s-lbl">প্রকল্প বাস্তবায়ন বিভাগ :</span>
+    <span class="s-val">${escape(reqOfficeName)}</span>
+  </div>
+
+  <!-- ═══════════════════ BUYER / RECEIVER ═══════════════════ -->
+  <div class="two-col">
+    <div class="half">
+      <span class="f-lbl">ক্রয়কারী :</span>
+      <span class="f-val">${escape(apiData?.contact_person)}</span>
     </div>
-    <div class="sig-box">
-      <p style="font-size:9px;margin-bottom:18px">Endorsed by</p>
-      <div class="sig-name">______________________</div>
-      <div class="sig-role">Area Manager</div>
-      <div class="sig-date">Date: ____________</div>
-    </div>
-    <div class="sig-box">
-      <p style="font-size:9px;margin-bottom:18px">Approved by</p>
-      <div class="sig-name">______________________</div>
-      <div class="sig-role">Head of Operations</div>
-      <div class="sig-date">Date: ____________</div>
+    <div class="half">
+      <span class="f-lbl">গ্রহণকারী :</span>
+      <span class="f-val"></span>
     </div>
   </div>
-</div>
 
-</body></html>`;
+  <!-- ═══════════════════ SIGNATURE SECTION ═══════════════════ -->
+  <div class="sig-wrap">
 
+    <!-- Left — Requester -->
+    <div class="sig-block">
+      <div class="sig-line">
+        <span class="sig-lbl">স্বাক্ষর :</span>
+        <span class="sig-val"></span>
+      </div>
+      <div class="sig-line">
+        <span class="sig-lbl">নাম :</span>
+        <span class="sig-val">${escape(requesterName)}</span>
+      </div>
+      <div class="sig-line">
+        <span class="sig-lbl">পদবী :</span>
+        <span class="sig-val"></span>
+      </div>
+      <div class="sig-line">
+        <span class="sig-lbl">তারিখ :</span>
+        <span class="sig-val">${escape(createdDate)}</span>
+      </div>
+    </div>
+
+    <!-- Right — Receiver -->
+    <div class="sig-block">
+      <div class="sig-line">
+        <span class="sig-lbl">স্বাক্ষর :</span>
+        <span class="sig-val"></span>
+      </div>
+      <div class="sig-line">
+        <span class="sig-lbl">নাম :</span>
+        <span class="sig-val"></span>
+      </div>
+      <div class="sig-line">
+        <span class="sig-lbl">পদবী :</span>
+        <span class="sig-val"></span>
+      </div>
+      <div class="sig-line">
+        <span class="sig-lbl">তারিখ :</span>
+        <span class="sig-val"></span>
+      </div>
+    </div>
+
+  </div>
+
+</body>
+</html>`;
+
+    /* ── open print window ─────────────────────────────────────────── */
     const win = window.open('', '_blank');
     win.document.write(html);
     win.document.close();
     win.focus();
-    setTimeout(() => {
-      win.print();
-    }, 400);
+    // Wait for Noto Sans Bengali to load before triggering print
+    setTimeout(() => win.print(), 900);
   };
 
   const tabs = [
@@ -488,7 +792,7 @@ export function RequisitionDetail() {
               <Printer className="w-4 h-4 mr-2" />
               Print
             </Button>
-            <PDFDownloadLink
+            {/* <PDFDownloadLink
               document={<MrfPDF data={apiData} boqItems={boqItems} />}
               fileName={`${apiData?.requisition_no || 'MRF'}.pdf`}
               style={{ textDecoration: 'none' }}
@@ -499,7 +803,7 @@ export function RequisitionDetail() {
                   {loading ? 'Generating…' : 'Export PDF'}
                 </Button>
               )}
-            </PDFDownloadLink>
+            </PDFDownloadLink> */}
             <Button variant="primary" size="sm" onClick={() => setShowApprovalModal(true)}>
               <CheckCircle className="w-4 h-4 mr-2" />
               Take Action

@@ -26,7 +26,11 @@ import DialogTitle from '@mui/material/DialogTitle';
 import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
 import TableContainer from '@mui/material/TableContainer';
-import { Balance as BalanceIcon, Category as CategoryIcon, AccountTree as AccountTreeIcon } from '@mui/icons-material';
+import {
+  Balance as BalanceIcon,
+  Category as CategoryIcon,
+  AccountTree as AccountTreeIcon,
+} from '@mui/icons-material';
 
 import { Iconify } from 'src/components/iconify';
 

@@ -20,10 +20,10 @@ import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import DialogTitle from '@mui/material/DialogTitle';
 import CardContent from '@mui/material/CardContent';
-import LinearProgress from '@mui/material/LinearProgress';
 import { alpha, useTheme } from '@mui/material/styles';
 import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
+import LinearProgress from '@mui/material/LinearProgress';
 import CircularProgress from '@mui/material/CircularProgress';
 
 import { paths } from 'src/routes/paths';
@@ -512,7 +512,9 @@ function summarizeTaskTitles(tasks, limit = 2) {
 }
 
 function getExecutionGroupTitle(group, fallback = 'Untitled task') {
-  const titles = (group?.entries || []).map((entry) => String(entry?.title || '').trim()).filter(Boolean);
+  const titles = (group?.entries || [])
+    .map((entry) => String(entry?.title || '').trim())
+    .filter(Boolean);
 
   if (!titles.length) return fallback;
   if (titles.length === 1) return titles[0];
@@ -704,7 +706,8 @@ function getPlanBoardItems(plan, projectUsers = []) {
     isLocked: false,
     canAdvance: true,
     sequenceLabel: item.state === 'Done' ? 'Completed' : 'Available',
-    sequenceHelper: item.state === 'Done' ? 'Marked completed.' : 'This task can be updated anytime.',
+    sequenceHelper:
+      item.state === 'Done' ? 'Marked completed.' : 'This task can be updated anytime.',
     assigned_to: item.assigned_to || getAssignableUsers(projectUsers, plan)[0] || null,
   }));
 }
@@ -922,7 +925,14 @@ function summarizeTasksForSlot(tasks, projectStatus, slot, projectUsers = [], as
   });
 }
 
-function summarizeTasksForEntryKeys(tasks, projectStatus, slot, projectUsers = [], assigneeId = null, entryKeys = []) {
+function summarizeTasksForEntryKeys(
+  tasks,
+  projectStatus,
+  slot,
+  projectUsers = [],
+  assigneeId = null,
+  entryKeys = []
+) {
   const summary = summarizeTasksForSlot(tasks, projectStatus, slot, projectUsers, assigneeId);
 
   if (!entryKeys.length) {
@@ -933,7 +943,9 @@ function summarizeTasksForEntryKeys(tasks, projectStatus, slot, projectUsers = [
   }
 
   const entryKeySet = new Set(entryKeys.map((entryKey) => String(entryKey)));
-  const filteredEntries = summary.entries.filter((entry) => entryKeySet.has(String(entry.entryKey)));
+  const filteredEntries = summary.entries.filter((entry) =>
+    entryKeySet.has(String(entry.entryKey))
+  );
 
   return buildEntrySummary(filteredEntries, projectStatus, slot.start, slot.end, {
     key: slot.key,
@@ -944,7 +956,13 @@ function summarizeTasksForEntryKeys(tasks, projectStatus, slot, projectUsers = [
   });
 }
 
-function buildExecutionRangeGroups(tasks, projectStatus, slots, projectUsers = [], assigneeId = null) {
+function buildExecutionRangeGroups(
+  tasks,
+  projectStatus,
+  slots,
+  projectUsers = [],
+  assigneeId = null
+) {
   const entries = tasks
     .flatMap((plan) => buildShiftedWorkItemSchedule(plan, projectUsers))
     .filter((entry) =>
@@ -954,8 +972,17 @@ function buildExecutionRangeGroups(tasks, projectStatus, slots, projectUsers = [
   const groupedRanges = new Map();
 
   entries.forEach((entry, index) => {
-    const rangeStart = (entry.effectiveStartDate || entry.plannedDate || entry.effectiveDate).startOf('day');
-    const rangeEnd = (entry.effectiveEndDate || entry.plannedEndDate || entry.effectiveDate || entry.plannedDate).startOf('day');
+    const rangeStart = (
+      entry.effectiveStartDate ||
+      entry.plannedDate ||
+      entry.effectiveDate
+    ).startOf('day');
+    const rangeEnd = (
+      entry.effectiveEndDate ||
+      entry.plannedEndDate ||
+      entry.effectiveDate ||
+      entry.plannedDate
+    ).startOf('day');
     const key = `${entry.entryKey || buildExecutionEntryKey(entry.planId, entry, index)}__${rangeStart.format('YYYY-MM-DD')}__${rangeEnd.format('YYYY-MM-DD')}`;
 
     if (!groupedRanges.has(key)) {
@@ -1103,46 +1130,51 @@ export default function ProjectDetail({ projectId }) {
     Math.min(
       100,
       Number(
-        project?.progressPercent
-        ?? (project?.plansCount ? Math.round((completedPlans / project.plansCount) * 100) : 0)
+        project?.progressPercent ??
+          (project?.plansCount ? Math.round((completedPlans / project.plansCount) * 100) : 0)
       ) || 0
     )
   );
   const projectTaskProgress = useMemo(
-    () => (project?.plans || [])
-      .map((plan) => {
-        const workItems = normalizePlanWorkItems(plan.work_items, plan, plan.assigned_users || []);
-        const total = workItems.length;
-        const completed = workItems.filter((item) => item.state === 'Done').length;
-        const inProgress = workItems.filter((item) => item.state === 'Doing').length;
-        const pending = workItems.filter((item) => item.state === 'Todo').length;
-        const percent = total
-          ? Math.round((completed / total) * 100)
-          : plan.status === 'Completed'
-            ? 100
-            : 0;
+    () =>
+      (project?.plans || [])
+        .map((plan) => {
+          const workItems = normalizePlanWorkItems(
+            plan.work_items,
+            plan,
+            plan.assigned_users || []
+          );
+          const total = workItems.length;
+          const completed = workItems.filter((item) => item.state === 'Done').length;
+          const inProgress = workItems.filter((item) => item.state === 'Doing').length;
+          const pending = workItems.filter((item) => item.state === 'Todo').length;
+          const percent = total
+            ? Math.round((completed / total) * 100)
+            : plan.status === 'Completed'
+              ? 100
+              : 0;
 
-        return {
-          id: plan.id || plan.serial_no || plan.title,
-          serialNo: plan.serial_no,
-          title: plan.title,
-          percent,
-          total,
-          completed,
-          inProgress,
-          pending,
-        };
-      })
-      .sort((left, right) => {
-        const leftSerial = Number(left.serialNo || 0);
-        const rightSerial = Number(right.serialNo || 0);
+          return {
+            id: plan.id || plan.serial_no || plan.title,
+            serialNo: plan.serial_no,
+            title: plan.title,
+            percent,
+            total,
+            completed,
+            inProgress,
+            pending,
+          };
+        })
+        .sort((left, right) => {
+          const leftSerial = Number(left.serialNo || 0);
+          const rightSerial = Number(right.serialNo || 0);
 
-        if (leftSerial && rightSerial && leftSerial !== rightSerial) {
-          return leftSerial - rightSerial;
-        }
+          if (leftSerial && rightSerial && leftSerial !== rightSerial) {
+            return leftSerial - rightSerial;
+          }
 
-        return String(left.title || '').localeCompare(String(right.title || ''));
-      }),
+          return String(left.title || '').localeCompare(String(right.title || ''));
+        }),
     [project]
   );
   const materials = Array.isArray(project?.materials) ? project.materials : [];
@@ -1241,8 +1273,9 @@ export default function ProjectDetail({ projectId }) {
   const openAssignmentWorkItem = (plan, item) => {
     const targetTaskId = plan?.id || plan?.serial_no;
     const workItemId = item?.id || item?.key;
-    const assigneeId = item?.assigned_to?.id
-      || (selectedWorkloadDetail?.user?.id && String(selectedWorkloadDetail.user.id) !== 'all'
+    const assigneeId =
+      item?.assigned_to?.id ||
+      (selectedWorkloadDetail?.user?.id && String(selectedWorkloadDetail.user.id) !== 'all'
         ? selectedWorkloadDetail.user.id
         : null);
 
@@ -1717,9 +1750,18 @@ export default function ProjectDetail({ projectId }) {
                 </Typography>
               </Box>
 
-              <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.5} alignItems={{ xs: 'stretch', md: 'center' }}>
+              <Stack
+                direction={{ xs: 'column', md: 'row' }}
+                spacing={1.5}
+                alignItems={{ xs: 'stretch', md: 'center' }}
+              >
                 <Box sx={{ flex: 1 }}>
-                  <Stack direction="row" justifyContent="space-between" spacing={1} sx={{ mb: 0.9 }}>
+                  <Stack
+                    direction="row"
+                    justifyContent="space-between"
+                    spacing={1}
+                    sx={{ mb: 0.9 }}
+                  >
                     <Typography variant="subtitle2" fontWeight={800}>
                       {projectProgressPercent}% complete
                     </Typography>
@@ -1744,8 +1786,22 @@ export default function ProjectDetail({ projectId }) {
                   variant="outlined"
                   color="inherit"
                   onClick={() => setIsProgressBreakdownOpen((current) => !current)}
-                  endIcon={<Iconify icon={isProgressBreakdownOpen ? 'solar:alt-arrow-up-bold' : 'solar:alt-arrow-down-bold'} width={16} />}
-                  sx={{ minWidth: { xs: '100%', md: 164 }, borderRadius: 2.5, fontWeight: 700, textTransform: 'none' }}
+                  endIcon={
+                    <Iconify
+                      icon={
+                        isProgressBreakdownOpen
+                          ? 'solar:alt-arrow-up-bold'
+                          : 'solar:alt-arrow-down-bold'
+                      }
+                      width={16}
+                    />
+                  }
+                  sx={{
+                    minWidth: { xs: '100%', md: 164 },
+                    borderRadius: 2.5,
+                    fontWeight: 700,
+                    textTransform: 'none',
+                  }}
                 >
                   Task Progress
                 </Button>
@@ -1753,46 +1809,79 @@ export default function ProjectDetail({ projectId }) {
 
               {isProgressBreakdownOpen ? (
                 <Stack spacing={1.5}>
-                  {projectTaskProgress.length ? projectTaskProgress.map((task) => (
-                    <Box
-                      key={`project-progress-${task.id}`}
-                      sx={{
-                        p: 1.5,
-                        borderRadius: 2,
-                        border: `1px solid ${alpha(theme.palette.grey[500], 0.16)}`,
-                        bgcolor: alpha(theme.palette.background.paper, 0.82),
-                      }}
-                    >
-                      <Stack spacing={0.9}>
-                        <Stack direction="row" justifyContent="space-between" spacing={1} alignItems="center">
-                          <Typography variant="subtitle2" fontWeight={700} sx={{ minWidth: 0 }} noWrap>
-                            {task.serialNo ? `SL ${task.serialNo} • ` : ''}{task.title}
-                          </Typography>
-                          <Typography variant="caption" fontWeight={800} color={`${getProgressTone(task.percent)}.main`}>
-                            {task.percent}%
-                          </Typography>
-                        </Stack>
+                  {projectTaskProgress.length ? (
+                    projectTaskProgress.map((task) => (
+                      <Box
+                        key={`project-progress-${task.id}`}
+                        sx={{
+                          p: 1.5,
+                          borderRadius: 2,
+                          border: `1px solid ${alpha(theme.palette.grey[500], 0.16)}`,
+                          bgcolor: alpha(theme.palette.background.paper, 0.82),
+                        }}
+                      >
+                        <Stack spacing={0.9}>
+                          <Stack
+                            direction="row"
+                            justifyContent="space-between"
+                            spacing={1}
+                            alignItems="center"
+                          >
+                            <Typography
+                              variant="subtitle2"
+                              fontWeight={700}
+                              sx={{ minWidth: 0 }}
+                              noWrap
+                            >
+                              {task.serialNo ? `SL ${task.serialNo} • ` : ''}
+                              {task.title}
+                            </Typography>
+                            <Typography
+                              variant="caption"
+                              fontWeight={800}
+                              color={`${getProgressTone(task.percent)}.main`}
+                            >
+                              {task.percent}%
+                            </Typography>
+                          </Stack>
 
-                        <LinearProgress
-                          variant="determinate"
-                          value={task.percent}
-                          color={getProgressTone(task.percent)}
-                          sx={{
-                            height: 10,
-                            borderRadius: 999,
-                            bgcolor: alpha(theme.palette.grey[500], 0.14),
-                          }}
-                        />
+                          <LinearProgress
+                            variant="determinate"
+                            value={task.percent}
+                            color={getProgressTone(task.percent)}
+                            sx={{
+                              height: 10,
+                              borderRadius: 999,
+                              bgcolor: alpha(theme.palette.grey[500], 0.14),
+                            }}
+                          />
 
-                        <Stack direction="row" spacing={0.75} useFlexGap flexWrap="wrap">
-                          <Chip size="small" variant="outlined" label={`${task.total} total`} />
-                          <Chip size="small" color="success" variant="outlined" label={`Done ${task.completed}`} />
-                          <Chip size="small" color="success" variant="outlined" label={`Doing ${task.inProgress}`} sx={getChecklistChipSx(theme, 'Doing')} />
-                          <Chip size="small" color="warning" variant="outlined" label={`Todo ${task.pending}`} />
+                          <Stack direction="row" spacing={0.75} useFlexGap flexWrap="wrap">
+                            <Chip size="small" variant="outlined" label={`${task.total} total`} />
+                            <Chip
+                              size="small"
+                              color="success"
+                              variant="outlined"
+                              label={`Done ${task.completed}`}
+                            />
+                            <Chip
+                              size="small"
+                              color="success"
+                              variant="outlined"
+                              label={`Doing ${task.inProgress}`}
+                              sx={getChecklistChipSx(theme, 'Doing')}
+                            />
+                            <Chip
+                              size="small"
+                              color="warning"
+                              variant="outlined"
+                              label={`Todo ${task.pending}`}
+                            />
+                          </Stack>
                         </Stack>
-                      </Stack>
-                    </Box>
-                  )) : (
+                      </Box>
+                    ))
+                  ) : (
                     <Alert severity="info" sx={{ borderRadius: 2 }}>
                       No task progress is available yet for this project.
                     </Alert>
@@ -2594,121 +2683,129 @@ export default function ProjectDetail({ projectId }) {
                                 </Box>
                               ) : null}
 
-                            {startingRangeGroups.map((group) => {
-                              const groupVisual = getSlotVisualStyles(group, theme);
-                              const isCompleteSummary = !!(group.completed && !group.inProgress && !group.pending);
-                              const isInProgressSummary = !!group.inProgress;
-                              const barBackground =
-                                isInProgressSummary
+                              {startingRangeGroups.map((group) => {
+                                const groupVisual = getSlotVisualStyles(group, theme);
+                                const isCompleteSummary = !!(
+                                  group.completed &&
+                                  !group.inProgress &&
+                                  !group.pending
+                                );
+                                const isInProgressSummary = !!group.inProgress;
+                                const barBackground = isInProgressSummary
                                   ? alpha(theme.palette.success.main, 0.16)
                                   : groupVisual.tone === 'success'
-                                  ? theme.palette.success.light
-                                  : groupVisual.tone === 'primary'
-                                    ? theme.palette.primary.light
-                                    : groupVisual.tone === 'warning'
-                                      ? theme.palette.warning.light
-                                      : groupVisual.tone === 'error'
-                                        ? theme.palette.error.light
-                                        : theme.palette.grey[200];
-                              const barTextColor =
-                                isInProgressSummary
+                                    ? theme.palette.success.light
+                                    : groupVisual.tone === 'primary'
+                                      ? theme.palette.primary.light
+                                      : groupVisual.tone === 'warning'
+                                        ? theme.palette.warning.light
+                                        : groupVisual.tone === 'error'
+                                          ? theme.palette.error.light
+                                          : theme.palette.grey[200];
+                                const barTextColor = isInProgressSummary
                                   ? theme.palette.success.dark
                                   : groupVisual.tone === 'success'
-                                  ? theme.palette.success.dark
-                                  : groupVisual.tone === 'primary'
-                                    ? theme.palette.primary.dark
-                                    : groupVisual.tone === 'warning'
-                                      ? theme.palette.warning.dark
-                                      : groupVisual.tone === 'error'
-                                        ? theme.palette.error.dark
-                                        : theme.palette.text.primary;
-                              const barBorderColor =
-                                isInProgressSummary
+                                    ? theme.palette.success.dark
+                                    : groupVisual.tone === 'primary'
+                                      ? theme.palette.primary.dark
+                                      : groupVisual.tone === 'warning'
+                                        ? theme.palette.warning.dark
+                                        : groupVisual.tone === 'error'
+                                          ? theme.palette.error.dark
+                                          : theme.palette.text.primary;
+                                const barBorderColor = isInProgressSummary
                                   ? alpha(theme.palette.success.main, 0.46)
                                   : groupVisual.tone === 'success'
-                                  ? theme.palette.success.main
-                                  : groupVisual.tone === 'primary'
-                                    ? theme.palette.primary.main
-                                    : groupVisual.tone === 'warning'
-                                      ? theme.palette.warning.main
-                                      : groupVisual.tone === 'error'
-                                        ? theme.palette.error.main
-                                        : theme.palette.grey[400];
+                                    ? theme.palette.success.main
+                                    : groupVisual.tone === 'primary'
+                                      ? theme.palette.primary.main
+                                      : groupVisual.tone === 'warning'
+                                        ? theme.palette.warning.main
+                                        : groupVisual.tone === 'error'
+                                          ? theme.palette.error.main
+                                          : theme.palette.grey[400];
 
-                              return (
-                                <Box
-                                  key={group.key}
-                                  sx={{
-                                    position: 'absolute',
-                                    top: 46 + group.laneIndex * 26,
-                                    left: 4,
-                                    width: `calc(${group.span * 100}% - 8px)`,
-                                    minHeight: 22,
-                                    px: 0.7,
-                                    py: 0.15,
-                                    border: `1px solid ${barBorderColor}`,
-                                    bgcolor: barBackground,
-                                    color: barTextColor,
-                                    borderRadius: 0,
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'space-between',
-                                    cursor: 'pointer',
-                                    overflow: 'hidden',
-                                    zIndex: 2,
-                                    gap: 0.5,
-                                    boxShadow: 'none',
-                                    transition: 'filter 0.18s ease',
-                                    '&:hover': {
-                                      filter: 'brightness(0.98)',
-                                    },
-                                  }}
-                                  onClick={(event) => {
-                                    event.stopPropagation();
-                                    setSelectedWorkloadDetail({
-                                      user: {
-                                        id: 'all',
-                                        username: 'All Tasks',
+                                return (
+                                  <Box
+                                    key={group.key}
+                                    sx={{
+                                      position: 'absolute',
+                                      top: 46 + group.laneIndex * 26,
+                                      left: 4,
+                                      width: `calc(${group.span * 100}% - 8px)`,
+                                      minHeight: 22,
+                                      px: 0.7,
+                                      py: 0.15,
+                                      border: `1px solid ${barBorderColor}`,
+                                      bgcolor: barBackground,
+                                      color: barTextColor,
+                                      borderRadius: 0,
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'space-between',
+                                      cursor: 'pointer',
+                                      overflow: 'hidden',
+                                      zIndex: 2,
+                                      gap: 0.5,
+                                      boxShadow: 'none',
+                                      transition: 'filter 0.18s ease',
+                                      '&:hover': {
+                                        filter: 'brightness(0.98)',
                                       },
-                                      slot: {
-                                        ...group,
-                                        tasks: group.tasks.map((task) => normalizePlanForDialog(task)),
-                                      },
-                                    });
-                                  }}
-                                >
-                                  <Typography variant="caption" fontWeight={700} noWrap sx={{ color: 'inherit', lineHeight: 1.1, flexShrink: 0 }}>
-                                    {getExecutionGroupTitle(group)}
-                                  </Typography>
-                                  {isCompleteSummary ? (
-                                    <Box
-                                      component="span"
-                                      sx={{
-                                        width: 16,
-                                        height: 16,
-                                        borderRadius: 0.75,
-                                        bgcolor: theme.palette.success.main,
-                                        color: theme.palette.success.contrastText,
-                                        display: 'inline-flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        fontSize: 11,
-                                        fontWeight: 900,
-                                        lineHeight: 1,
-                                        flexShrink: 0,
-                                      }}
+                                    }}
+                                    onClick={(event) => {
+                                      event.stopPropagation();
+                                      setSelectedWorkloadDetail({
+                                        user: {
+                                          id: 'all',
+                                          username: 'All Tasks',
+                                        },
+                                        slot: {
+                                          ...group,
+                                          tasks: group.tasks.map((task) =>
+                                            normalizePlanForDialog(task)
+                                          ),
+                                        },
+                                      });
+                                    }}
+                                  >
+                                    <Typography
+                                      variant="caption"
+                                      fontWeight={700}
+                                      noWrap
+                                      sx={{ color: 'inherit', lineHeight: 1.1, flexShrink: 0 }}
                                     >
-                                      ✓
-                                    </Box>
-                                  ) : null}
-                                </Box>
-                              );
-                            })}
-                          </Box>
-                        );
-                      })}
-                    </Box>
-                  );
+                                      {getExecutionGroupTitle(group)}
+                                    </Typography>
+                                    {isCompleteSummary ? (
+                                      <Box
+                                        component="span"
+                                        sx={{
+                                          width: 16,
+                                          height: 16,
+                                          borderRadius: 0.75,
+                                          bgcolor: theme.palette.success.main,
+                                          color: theme.palette.success.contrastText,
+                                          display: 'inline-flex',
+                                          alignItems: 'center',
+                                          justifyContent: 'center',
+                                          fontSize: 11,
+                                          fontWeight: 900,
+                                          lineHeight: 1,
+                                          flexShrink: 0,
+                                        }}
+                                      >
+                                        ✓
+                                      </Box>
+                                    ) : null}
+                                  </Box>
+                                );
+                              })}
+                            </Box>
+                          );
+                        })}
+                      </Box>
+                    );
                   })}
                 </Box>
               </Box>
@@ -2877,122 +2974,257 @@ export default function ProjectDetail({ projectId }) {
                               Status options include Pending, In Progress, On Hold, and Completed.
                             </Typography>
                             <Stack spacing={1.25} sx={{ mt: 1.5 }}>
-                              {getPlanBoardItems(selectedPlan, project.assigned_users).map((item, index) => (
-                                <Card key={item.key} variant="outlined" sx={{ borderRadius: 2, borderColor: item.isCurrent ? alpha(theme.palette.primary.main, 0.4) : undefined, bgcolor: item.isLocked ? alpha(theme.palette.grey[500], 0.05) : 'background.paper' }}>
-                                  <CardContent sx={{ p: 1.5 }}>
-                                    <Stack spacing={1.25}>
-                                      <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" spacing={1}>
-                                        <Stack direction="row" spacing={0.75} alignItems="center" flexWrap="wrap">
-                                          <Chip size="small" color={item.isCurrent ? 'primary' : item.isLocked ? 'default' : 'success'} label={item.title || `Task ${index + 1}`} />
-                                          <Chip size="small" variant="outlined" label={item.sequenceLabel} />
-                                          <Chip
+                              {getPlanBoardItems(selectedPlan, project.assigned_users).map(
+                                (item, index) => (
+                                  <Card
+                                    key={item.key}
+                                    variant="outlined"
+                                    sx={{
+                                      borderRadius: 2,
+                                      borderColor: item.isCurrent
+                                        ? alpha(theme.palette.primary.main, 0.4)
+                                        : undefined,
+                                      bgcolor: item.isLocked
+                                        ? alpha(theme.palette.grey[500], 0.05)
+                                        : 'background.paper',
+                                    }}
+                                  >
+                                    <CardContent sx={{ p: 1.5 }}>
+                                      <Stack spacing={1.25}>
+                                        <Stack
+                                          direction={{ xs: 'column', sm: 'row' }}
+                                          justifyContent="space-between"
+                                          spacing={1}
+                                        >
+                                          <Stack
+                                            direction="row"
+                                            spacing={0.75}
+                                            alignItems="center"
+                                            flexWrap="wrap"
+                                          >
+                                            <Chip
+                                              size="small"
+                                              color={
+                                                item.isCurrent
+                                                  ? 'primary'
+                                                  : item.isLocked
+                                                    ? 'default'
+                                                    : 'success'
+                                              }
+                                              label={item.title || `Task ${index + 1}`}
+                                            />
+                                            <Chip
+                                              size="small"
+                                              variant="outlined"
+                                              label={item.sequenceLabel}
+                                            />
+                                            <Chip
+                                              size="small"
+                                              color={getChecklistTone(item.state)}
+                                              label={getChecklistLabel(item.state)}
+                                              onClick={() =>
+                                                handleToggleWorkItem(selectedPlan, item)
+                                              }
+                                              disabled={
+                                                !item.canAdvance || savingPlanId === selectedPlan.id
+                                              }
+                                              sx={{
+                                                ...getChecklistChipSx(theme, item.state),
+                                                cursor:
+                                                  !item.canAdvance ||
+                                                  savingPlanId === selectedPlan.id
+                                                    ? 'not-allowed'
+                                                    : 'pointer',
+                                              }}
+                                            />
+                                            <Chip
+                                              size="small"
+                                              color={getWorkItemApprovalTone(item)}
+                                              variant={
+                                                getWorkItemApprovalStatus(item) === 'Approved'
+                                                  ? 'filled'
+                                                  : 'outlined'
+                                              }
+                                              label={getWorkItemApprovalLabel(item)}
+                                            />
+                                          </Stack>
+                                          <Stack
+                                            direction={{ xs: 'column', sm: 'row' }}
+                                            spacing={1}
+                                            useFlexGap
+                                            flexWrap="wrap"
+                                          >
+                                            <Button
+                                              size="small"
+                                              color={
+                                                getWorkItemApprovalStatus(item) === 'Approved'
+                                                  ? 'success'
+                                                  : 'primary'
+                                              }
+                                              variant={
+                                                getWorkItemApprovalStatus(item) === 'Approved'
+                                                  ? 'contained'
+                                                  : 'outlined'
+                                              }
+                                              onClick={() =>
+                                                handleApproveWorkItem(selectedPlan, item)
+                                              }
+                                              disabled={
+                                                approvingWorkItemId === item.id ||
+                                                getWorkItemApprovalStatus(item) === 'Approved' ||
+                                                item.state !== 'Done'
+                                              }
+                                              startIcon={
+                                                getWorkItemApprovalStatus(item) === 'Approved' ? (
+                                                  <Iconify
+                                                    icon="solar:verified-check-bold"
+                                                    width={15}
+                                                  />
+                                                ) : (
+                                                  <Iconify
+                                                    icon="solar:shield-check-bold"
+                                                    width={15}
+                                                  />
+                                                )
+                                              }
+                                              sx={{
+                                                ...getDialogActionButtonSx(
+                                                  theme,
+                                                  getWorkItemApprovalStatus(item) === 'Approved'
+                                                    ? 'contained'
+                                                    : 'outlined'
+                                                ),
+                                              }}
+                                            >
+                                              {getWorkItemApprovalStatus(item) === 'Approved'
+                                                ? 'Approved'
+                                                : item.state === 'Done'
+                                                  ? 'Approve Task'
+                                                  : 'Await Done'}
+                                            </Button>
+                                            <Button
+                                              color="inherit"
+                                              size="small"
+                                              onClick={() => handleRemoveWorkItem(item.key)}
+                                              disabled={
+                                                savingPlanId === selectedPlan.id ||
+                                                getPlanChecklistItems(selectedPlan).length === 1
+                                              }
+                                              startIcon={
+                                                <Iconify
+                                                  icon="solar:trash-bin-trash-bold"
+                                                  width={15}
+                                                />
+                                              }
+                                              sx={{
+                                                ...getDialogActionButtonSx(theme, 'outlined'),
+                                                borderColor: alpha(theme.palette.error.main, 0.2),
+                                              }}
+                                            >
+                                              Remove
+                                            </Button>
+                                          </Stack>
+                                        </Stack>
+                                        <Typography variant="caption" color="text.secondary">
+                                          {item.sequenceHelper}
+                                        </Typography>
+                                        <Stack direction={{ xs: 'column', md: 'row' }} spacing={1}>
+                                          <TextField
                                             size="small"
-                                            color={getChecklistTone(item.state)}
-                                            label={getChecklistLabel(item.state)}
-                                            onClick={() => handleToggleWorkItem(selectedPlan, item)}
-                                            disabled={!item.canAdvance || savingPlanId === selectedPlan.id}
-                                            sx={{ ...getChecklistChipSx(theme, item.state), cursor: !item.canAdvance || savingPlanId === selectedPlan.id ? 'not-allowed' : 'pointer' }}
+                                            label="Task Name"
+                                            value={item.title}
+                                            onChange={(event) =>
+                                              handleDraftWorkItemChange(
+                                                item.key,
+                                                'title',
+                                                event.target.value
+                                              )
+                                            }
+                                            disabled={savingPlanId === selectedPlan.id}
+                                            fullWidth
                                           />
-                                          <Chip
+                                          <TextField
                                             size="small"
-                                            color={getWorkItemApprovalTone(item)}
-                                            variant={getWorkItemApprovalStatus(item) === 'Approved' ? 'filled' : 'outlined'}
-                                            label={getWorkItemApprovalLabel(item)}
+                                            type="date"
+                                            label="Task Date"
+                                            value={item.scheduled_date || ''}
+                                            onChange={(event) =>
+                                              handleDraftWorkItemChange(
+                                                item.key,
+                                                'scheduled_date',
+                                                event.target.value
+                                              )
+                                            }
+                                            disabled={savingPlanId === selectedPlan.id}
+                                            InputLabelProps={{ shrink: true }}
+                                            sx={{ minWidth: { xs: '100%', md: 180 } }}
                                           />
                                         </Stack>
-                                        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} useFlexGap flexWrap="wrap">
-                                          <Button
-                                            size="small"
-                                            color={getWorkItemApprovalStatus(item) === 'Approved' ? 'success' : 'primary'}
-                                            variant={getWorkItemApprovalStatus(item) === 'Approved' ? 'contained' : 'outlined'}
-                                            onClick={() => handleApproveWorkItem(selectedPlan, item)}
-                                            disabled={approvingWorkItemId === item.id || getWorkItemApprovalStatus(item) === 'Approved' || item.state !== 'Done'}
-                                            startIcon={getWorkItemApprovalStatus(item) === 'Approved' ? <Iconify icon="solar:verified-check-bold" width={15} /> : <Iconify icon="solar:shield-check-bold" width={15} />}
-                                            sx={{
-                                              ...getDialogActionButtonSx(theme, getWorkItemApprovalStatus(item) === 'Approved' ? 'contained' : 'outlined'),
-                                            }}
-                                          >
-                                            {getWorkItemApprovalStatus(item) === 'Approved' ? 'Approved' : item.state === 'Done' ? 'Approve Task' : 'Await Done'}
-                                          </Button>
-                                          <Button
-                                            color="inherit"
-                                            size="small"
-                                            onClick={() => handleRemoveWorkItem(item.key)}
-                                            disabled={savingPlanId === selectedPlan.id || getPlanChecklistItems(selectedPlan).length === 1}
-                                            startIcon={<Iconify icon="solar:trash-bin-trash-bold" width={15} />}
-                                            sx={{
-                                              ...getDialogActionButtonSx(theme, 'outlined'),
-                                              borderColor: alpha(theme.palette.error.main, 0.2),
-                                            }}
-                                          >
-                                            Remove
-                                          </Button>
-                                        </Stack>
-                                      </Stack>
-                                      <Typography variant="caption" color="text.secondary">
-                                        {item.sequenceHelper}
-                                      </Typography>
-                                      <Stack direction={{ xs: 'column', md: 'row' }} spacing={1}>
                                         <TextField
+                                          select
                                           size="small"
-                                          label="Task Name"
-                                          value={item.title}
-                                          onChange={(event) => handleDraftWorkItemChange(item.key, 'title', event.target.value)}
+                                          label="Owner"
+                                          value={item.assigned_to?.id || ''}
+                                          onChange={(event) => {
+                                            const selectedUser =
+                                              getAssignableUsers(
+                                                project.assigned_users,
+                                                selectedPlan
+                                              ).find(
+                                                (user) =>
+                                                  String(user.id) === String(event.target.value)
+                                              ) || null;
+                                            handleDraftWorkItemChange(
+                                              item.key,
+                                              'assigned_to',
+                                              selectedUser
+                                            );
+                                          }}
                                           disabled={savingPlanId === selectedPlan.id}
                                           fullWidth
+                                        >
+                                          <MenuItem value="">Unassigned</MenuItem>
+                                          {getAssignableUsers(
+                                            project.assigned_users,
+                                            selectedPlan
+                                          ).map((user) => (
+                                            <MenuItem
+                                              key={`plan-work-item-user-${selectedPlan.id}-${item.key}-${user.id}`}
+                                              value={user.id}
+                                            >
+                                              {user.username}
+                                            </MenuItem>
+                                          ))}
+                                        </TextField>
+                                        <Chip
+                                          size="small"
+                                          variant="outlined"
+                                          color="info"
+                                          label={`Scheduled: ${formatDate(item.scheduled_date, 'Not set')}`}
+                                          sx={{ alignSelf: 'flex-start' }}
                                         />
                                         <TextField
                                           size="small"
-                                          type="date"
-                                          label="Task Date"
-                                          value={item.scheduled_date || ''}
-                                          onChange={(event) => handleDraftWorkItemChange(item.key, 'scheduled_date', event.target.value)}
+                                          label="Assignee remarks / issues"
+                                          placeholder="Assigned person can note blockers, updates, risks, or handoff remarks here"
+                                          value={item.notes || ''}
+                                          onChange={(event) =>
+                                            handleDraftWorkItemChange(
+                                              item.key,
+                                              'notes',
+                                              event.target.value
+                                            )
+                                          }
                                           disabled={savingPlanId === selectedPlan.id}
-                                          InputLabelProps={{ shrink: true }}
-                                          sx={{ minWidth: { xs: '100%', md: 180 } }}
+                                          fullWidth
+                                          multiline
+                                          minRows={2}
                                         />
                                       </Stack>
-                                      <TextField
-                                        select
-                                        size="small"
-                                        label="Owner"
-                                        value={item.assigned_to?.id || ''}
-                                        onChange={(event) => {
-                                          const selectedUser = getAssignableUsers(project.assigned_users, selectedPlan).find((user) => String(user.id) === String(event.target.value)) || null;
-                                          handleDraftWorkItemChange(item.key, 'assigned_to', selectedUser);
-                                        }}
-                                        disabled={savingPlanId === selectedPlan.id}
-                                        fullWidth
-                                      >
-                                        <MenuItem value="">Unassigned</MenuItem>
-                                        {getAssignableUsers(project.assigned_users, selectedPlan).map((user) => (
-                                          <MenuItem key={`plan-work-item-user-${selectedPlan.id}-${item.key}-${user.id}`} value={user.id}>
-                                            {user.username}
-                                          </MenuItem>
-                                        ))}
-                                      </TextField>
-                                      <Chip
-                                        size="small"
-                                        variant="outlined"
-                                        color="info"
-                                        label={`Scheduled: ${formatDate(item.scheduled_date, 'Not set')}`}
-                                        sx={{ alignSelf: 'flex-start' }}
-                                      />
-                                      <TextField
-                                        size="small"
-                                        label="Assignee remarks / issues"
-                                        placeholder="Assigned person can note blockers, updates, risks, or handoff remarks here"
-                                        value={item.notes || ''}
-                                        onChange={(event) => handleDraftWorkItemChange(item.key, 'notes', event.target.value)}
-                                        disabled={savingPlanId === selectedPlan.id}
-                                        fullWidth
-                                        multiline
-                                        minRows={2}
-                                      />
-                                    </Stack>
-                                  </CardContent>
-                                </Card>
-                              ))}
+                                    </CardContent>
+                                  </Card>
+                                )
+                              )}
                             </Stack>
                             {selectedPlan.isDirty ? (
                               <Typography
@@ -3130,11 +3362,32 @@ export default function ProjectDetail({ projectId }) {
                 <Grid size={{ xs: 12, md: 4 }}>
                   <Card variant="outlined" sx={{ borderRadius: 2.5, height: '100%' }}>
                     <CardContent sx={{ p: 2.25 }}>
-                      <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1.5 }}>Workload Summary</Typography>
-                      <Stack direction="row" spacing={0.75} useFlexGap flexWrap="wrap" sx={{ mb: 1.5 }}>
-                        <Chip size="small" color="success" label={`Doing ${selectedWorkloadDetail.slot.inProgress}`} sx={getChecklistChipSx(theme, 'Doing')} />
-                        <Chip size="small" color="success" label={`Done ${selectedWorkloadDetail.slot.completed}`} />
-                        <Chip size="small" color="warning" label={`Remaining ${selectedWorkloadDetail.slot.pending}`} />
+                      <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1.5 }}>
+                        Workload Summary
+                      </Typography>
+                      <Stack
+                        direction="row"
+                        spacing={0.75}
+                        useFlexGap
+                        flexWrap="wrap"
+                        sx={{ mb: 1.5 }}
+                      >
+                        <Chip
+                          size="small"
+                          color="success"
+                          label={`Doing ${selectedWorkloadDetail.slot.inProgress}`}
+                          sx={getChecklistChipSx(theme, 'Doing')}
+                        />
+                        <Chip
+                          size="small"
+                          color="success"
+                          label={`Done ${selectedWorkloadDetail.slot.completed}`}
+                        />
+                        <Chip
+                          size="small"
+                          color="warning"
+                          label={`Remaining ${selectedWorkloadDetail.slot.pending}`}
+                        />
                       </Stack>
                       <Typography variant="body2" color="text.secondary">
                         {selectedWorkloadDetail.slot.total} execution item
@@ -3205,48 +3458,75 @@ export default function ProjectDetail({ projectId }) {
                                           String(selectedWorkloadDetail.user.id))
                                   )
                                   .map((item) => (
-                                  <Stack key={item.key} direction="row" spacing={1} alignItems="flex-start">
-                                    <Chip
-                                      size="small"
-                                      color={getChecklistTone(item.state)}
-                                      label={getChecklistLabel(item.state)}
-                                      onClick={() => handleToggleWorkItem(task, item)}
-                                      disabled={!item.canAdvance || savingPlanId === task.id}
-                                      sx={{ ...getChecklistChipSx(theme, item.state), mt: 0.1, cursor: !item.canAdvance || savingPlanId === task.id ? 'not-allowed' : 'pointer' }}
-                                    />
-                                    <Box sx={{ flex: 1 }}>
-                                      <Typography
-                                        component="button"
-                                        type="button"
-                                        variant="body2"
-                                        onClick={() => openAssignmentWorkItem(task, item)}
+                                    <Stack
+                                      key={item.key}
+                                      direction="row"
+                                      spacing={1}
+                                      alignItems="flex-start"
+                                    >
+                                      <Chip
+                                        size="small"
+                                        color={getChecklistTone(item.state)}
+                                        label={getChecklistLabel(item.state)}
+                                        onClick={() => handleToggleWorkItem(task, item)}
+                                        disabled={!item.canAdvance || savingPlanId === task.id}
                                         sx={{
-                                          p: 0,
-                                          border: 'none',
-                                          background: 'transparent',
-                                          color: 'primary.main',
-                                          cursor: 'pointer',
-                                          textAlign: 'left',
-                                          fontWeight: 700,
-                                          '&:hover': { textDecoration: 'underline' },
+                                          ...getChecklistChipSx(theme, item.state),
+                                          mt: 0.1,
+                                          cursor:
+                                            !item.canAdvance || savingPlanId === task.id
+                                              ? 'not-allowed'
+                                              : 'pointer',
                                         }}
-                                      >
-                                        {item.title}
-                                      </Typography>
-                                      <Typography variant="caption" color={item.isLocked ? 'warning.main' : 'text.disabled'}>
-                                        {item.assigned_to?.username ? `Owner: ${item.assigned_to.username} • ` : ''}
-                                        {item.plannedDate ? `Planned: ${formatDateRange(item.plannedDate, item.plannedEndDate)} • ` : ''}
-                                        {item.effectiveDate && formatDate(item.effectiveDate) !== formatDate(item.plannedDate) ? `In slot: ${formatDate(item.effectiveDate)} • ` : ''}
-                                        {item.sequenceHelper}
-                                      </Typography>
-                                      {item.notes ? (
-                                        <Typography variant="caption" color="info.main" sx={{ display: 'block', mt: 0.45 }}>
-                                          Remarks / issues: {item.notes}
+                                      />
+                                      <Box sx={{ flex: 1 }}>
+                                        <Typography
+                                          component="button"
+                                          type="button"
+                                          variant="body2"
+                                          onClick={() => openAssignmentWorkItem(task, item)}
+                                          sx={{
+                                            p: 0,
+                                            border: 'none',
+                                            background: 'transparent',
+                                            color: 'primary.main',
+                                            cursor: 'pointer',
+                                            textAlign: 'left',
+                                            fontWeight: 700,
+                                            '&:hover': { textDecoration: 'underline' },
+                                          }}
+                                        >
+                                          {item.title}
                                         </Typography>
-                                      ) : null}
-                                    </Box>
-                                  </Stack>
-                                ))}
+                                        <Typography
+                                          variant="caption"
+                                          color={item.isLocked ? 'warning.main' : 'text.disabled'}
+                                        >
+                                          {item.assigned_to?.username
+                                            ? `Owner: ${item.assigned_to.username} • `
+                                            : ''}
+                                          {item.plannedDate
+                                            ? `Planned: ${formatDateRange(item.plannedDate, item.plannedEndDate)} • `
+                                            : ''}
+                                          {item.effectiveDate &&
+                                          formatDate(item.effectiveDate) !==
+                                            formatDate(item.plannedDate)
+                                            ? `In slot: ${formatDate(item.effectiveDate)} • `
+                                            : ''}
+                                          {item.sequenceHelper}
+                                        </Typography>
+                                        {item.notes ? (
+                                          <Typography
+                                            variant="caption"
+                                            color="info.main"
+                                            sx={{ display: 'block', mt: 0.45 }}
+                                          >
+                                            Remarks / issues: {item.notes}
+                                          </Typography>
+                                        ) : null}
+                                      </Box>
+                                    </Stack>
+                                  ))}
                               </Stack>
                             </Box>
                           </Stack>

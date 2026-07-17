@@ -28,9 +28,6 @@ import {
   DialogActions,
 } from '@mui/material';
 
-import { paths } from 'src/routes/paths';
-import { RouterLink } from 'src/routes/components';
-
 import { Iconify } from 'src/components/iconify';
 
 import { useLockDatesApi } from './use-lock-dates-api';

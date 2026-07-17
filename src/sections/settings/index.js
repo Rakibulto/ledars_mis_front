@@ -2,6 +2,8 @@ export * from './role-view';
 
 export * from './shift-view';
 
+export * from './grade-view';
+
 export * from './branch-view';
 
 export * from './department-view';

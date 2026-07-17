@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useRef } from 'react';
+import { useRef, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { Printer, Download, ArrowLeft } from 'lucide-react';
 

@@ -116,7 +116,16 @@ export function useDebitNotesApi() {
         : [];
     return list
       .map(enrichBill)
+      .filter((bill) => bill.status !== 'paid' && bill.balance_due > 0)
       .map((bill) => {
+        // Fix supplier_id ID-space mismatch: accounting Vendor PK vs VendorProfile PK
+        const vendorName = bill.vendor_name || bill.vendor_detail?.name || '';
+        if (vendorName) {
+          const matchedVP = vendors.find((v) => v.name === vendorName);
+          if (matchedVP) {
+            bill.supplier_id = matchedVP.id;
+          }
+        }
         const appliedAdjustmentAmount = Number(appliedAmountByBill[bill.number] || 0);
         const remainingAdjustmentExposure = Math.max(
           Number(bill.balance_due || 0) - appliedAdjustmentAmount,
@@ -136,7 +145,7 @@ export function useDebitNotesApi() {
         };
       })
       .sort((a, b) => new Date(a.due_date) - new Date(b.due_date));
-  }, [rawBills, appliedAmountByBill]);
+  }, [rawBills, appliedAmountByBill, vendors]);
 
   // ── Actions ───────────────────────────────────────────────────────────────
 
@@ -160,6 +169,8 @@ export function useDebitNotesApi() {
   async function applyDebitNote(id) {
     const { data } = await axiosInstance.post(endpoints.accounting.debit_note_apply(id));
     await mutate(notesUrl);
+    await mutate(billsUrl);
+    await mutate(`${endpoints.accounting.bills}unpaid/`);
     return enrichDebitNote(data);
   }
 

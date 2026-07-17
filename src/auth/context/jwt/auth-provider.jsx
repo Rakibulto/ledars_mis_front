@@ -33,8 +33,17 @@ export function AuthProvider({ children }) {
 
         const res = await axios.get(endpoints.auth.me);
 
-        const { id, employee_id, username, email, role, profile_picture, user_permissions_list } =
-          res.data;
+        const {
+          id,
+          employee_id,
+          username,
+          email,
+          role,
+          profile_picture,
+          signature,
+          user_permissions_list,
+          is_superuser,
+        } = res.data;
 
         setState({
           user: {
@@ -44,7 +53,9 @@ export function AuthProvider({ children }) {
             email,
             role,
             profile_picture,
+            signature,
             user_permissions_list,
+            is_superuser,
             accessToken,
           },
           loading: false,
@@ -55,8 +66,17 @@ export function AuthProvider({ children }) {
 
         const res = await axios.get(endpoints.auth.me);
 
-        const { id, employee_id, username, email, role, profile_picture, user_permissions_list } =
-          res.data;
+        const {
+          id,
+          employee_id,
+          username,
+          email,
+          role,
+          profile_picture,
+          signature,
+          user_permissions_list,
+          is_superuser,
+        } = res.data;
 
         setState({
           user: {
@@ -66,7 +86,9 @@ export function AuthProvider({ children }) {
             email,
             role,
             profile_picture,
+            signature,
             user_permissions_list,
+            is_superuser,
             accessToken: newAccessToken,
           },
           loading: false,

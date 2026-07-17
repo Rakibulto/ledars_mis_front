@@ -191,6 +191,7 @@ export function CreateRFQ() {
     'TIN Certificate',
     'Bank Solvency Certificate',
     'Up to date Trade License',
+    'Other relevant certifications (if applicable)',
   ]);
   const [newDocument, setNewDocument] = useState('');
   const [attachments, setAttachments] = useState([]); // [{ file: File, type: string }]

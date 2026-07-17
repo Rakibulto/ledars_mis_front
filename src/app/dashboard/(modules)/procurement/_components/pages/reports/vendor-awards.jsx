@@ -16,10 +16,12 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 
+import { endpoints } from 'src/utils/axios';
+
+import { useGetRequest } from 'src/actions/ledars-hook';
+
 import { ReportLayout } from '../../components/report-layout';
 import { Card, CardBody, CardHeader } from '../../components/ui/card';
-import { useGetRequest } from 'src/actions/ledars-hook';
-import { endpoints } from 'src/utils/axios';
 
 const COLORS = ['#1e40af', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
 
@@ -48,28 +50,28 @@ export function VendorAwardReport() {
     () => (Array.isArray(allAwardsRaw) ? allAwardsRaw : []),
     [allAwardsRaw]
   );
-  const allVendors = useMemo(
-    () => (Array.isArray(vendorsRaw) ? vendorsRaw : []),
-    [vendorsRaw]
-  );
+  const allVendors = useMemo(() => (Array.isArray(vendorsRaw) ? vendorsRaw : []), [vendorsRaw]);
 
   // ── Date + vendor filter ───────────────────────────────────────────────────
-  const filteredAwards = useMemo(() => {
-    return allAwards.filter((a) => {
-      const d = a.awardDate || a.award_date || a.created_at;
-      if (dateFrom && d && d < dateFrom) return false;
-      if (dateTo && d && d > dateTo) return false;
-      if (vendorFilter !== 'all' && String(a.vendor_profile) !== vendorFilter) return false;
-      return true;
-    });
-  }, [allAwards, dateFrom, dateTo, vendorFilter]);
+  const filteredAwards = useMemo(
+    () =>
+      allAwards.filter((a) => {
+        const d = a.awardDate || a.award_date || a.created_at;
+        if (dateFrom && d && d < dateFrom) return false;
+        if (dateTo && d && d > dateTo) return false;
+        if (vendorFilter !== 'all' && String(a.vendor_profile) !== vendorFilter) return false;
+        return true;
+      }),
+    [allAwards, dateFrom, dateTo, vendorFilter]
+  );
 
   // ── Per-vendor aggregation ─────────────────────────────────────────────────
   const awardData = useMemo(() => {
     const map = {};
     for (const a of filteredAwards) {
       const vendorId = a.vendor_profile;
-      const vendorName = a.vendor?.name || a.vendor_name || a.vendor_profile_name || `Vendor #${vendorId}`;
+      const vendorName =
+        a.vendor?.name || a.vendor_name || a.vendor_profile_name || `Vendor #${vendorId}`;
       if (!vendorId) continue;
       if (!map[vendorId]) map[vendorId] = { vendor: vendorName, awards: 0, value: 0 };
       map[vendorId].awards += 1;
@@ -292,4 +294,3 @@ export function VendorAwardReport() {
     />
   );
 }
-

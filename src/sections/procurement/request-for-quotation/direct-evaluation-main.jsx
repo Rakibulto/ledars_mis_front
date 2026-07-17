@@ -146,6 +146,34 @@ export default function DirectEvaluationMain() {
   // Fetch RFQ list for dropdown
   const { data: rfqData, isLoading: rfqLoading } = useGetRequest(EP?.rfqs ?? null);
   const rfqList = rfqData?.results ?? rfqData ?? [];
+
+  // Fetch awards to identify RFQs that already have awards
+  const { data: awardsData } = useGetRequest(endpoints.procurement_management.awards);
+  const awardsList = useMemo(() => {
+    if (!awardsData) return [];
+    return Array.isArray(awardsData) ? awardsData : (awardsData.results ?? []);
+  }, [awardsData]);
+
+  // Set of RFQ numbers that already have awards
+  const awardedRfqNumbers = useMemo(
+    () => new Set(awardsList.map((a) => a.rfqNumber).filter(Boolean)),
+    [awardsList]
+  );
+
+  // Filter RFQs: only active (deadline not expired) and not yet awarded
+  const filteredRfqList = useMemo(() => {
+    const today = dayjs().startOf('day');
+    return rfqList.filter((rfq) => {
+      if (rfq.submission_deadline && dayjs(rfq.submission_deadline).isBefore(today)) {
+        return false;
+      }
+      if (rfq.rfq_number && awardedRfqNumbers.has(rfq.rfq_number)) {
+        return false;
+      }
+      return true;
+    });
+  }, [rfqList, awardedRfqNumbers]);
+
   const { data: formOptionsData } = useGetRequest(
     endpoints.procurement_management.material_requisitions_form_options
   );
@@ -408,7 +436,7 @@ export default function DirectEvaluationMain() {
               <MenuItem value="" disabled>
                 {rfqLoading ? 'Loading RFQs…' : '— Select an RFQ —'}
               </MenuItem>
-              {rfqList.map((rfq) => (
+              {filteredRfqList.map((rfq) => (
                 <MenuItem key={rfq.id} value={rfq.id}>
                   {rfq.rfq_number} {rfq.rfq_title ? `— ${rfq.rfq_title}` : ''}
                 </MenuItem>

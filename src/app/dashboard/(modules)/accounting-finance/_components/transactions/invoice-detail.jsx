@@ -64,6 +64,16 @@ const INVOICE_STATUS_ACTIONS = {
     },
   ],
   sent: [
+    { status: 'posted', label: 'Post Invoice', variant: 'contained', confirmation: 'posted' },
+    {
+      status: 'cancelled',
+      label: 'Cancel Invoice',
+      variant: 'outlined',
+      color: 'error',
+      confirmation: 'cancelled',
+    },
+  ],
+  posted: [
     { status: 'paid', label: 'Mark as Paid', variant: 'contained', confirmation: 'paid' },
     {
       status: 'cancelled',
@@ -268,7 +278,18 @@ export default function InvoiceDetail({ id }) {
     try {
       const loadingToastId = toast.loading(`Updating status to ${formatStatusLabel(nextStatus)}…`);
       setPendingAction(`status:${nextStatus}`);
-      await transitionStatus({ id, status: nextStatus });
+      if (nextStatus === 'posted') {
+        await axiosInstance.post(endpoints.accounting.customer_invoice_post(id));
+      } else if (nextStatus === 'paid') {
+        // Register payment for the full balance — creates payment journal entry
+        await axiosInstance.post(endpoints.accounting.customer_invoice_register_payment(id), {
+          amount: invoice.balance_due,
+        });
+      } else {
+        await transitionStatus({ id, status: nextStatus });
+      }
+      // Refresh data
+      await mutate(detailUrl);
       toast.dismiss(loadingToastId);
       toast.success(`Invoice status changed to ${formatStatusLabel(nextStatus)}`);
     } catch (error) {
@@ -299,25 +320,6 @@ export default function InvoiceDetail({ id }) {
     } finally {
       setPendingAction(null);
     }
-  };
-
-  const handleRecordPayment = () => {
-    const amountToApply = Math.min(invoice.balance_due, 15000);
-    runActionWithToast(
-      async () => {
-        await axiosInstance.post(endpoints.accounting.customer_invoice_register_payment(id), {
-          amount: amountToApply,
-          date: new Date().toISOString().split('T')[0],
-          method: 'Bank transfer',
-          reference: `RCPT-${String(Date.now()).slice(-6)}`,
-        });
-        await mutate(detailUrl);
-      },
-      `Payment of ${formatCurrency(amountToApply)} registered`,
-      'Failed to register payment',
-      'Registering payment…',
-      'Register Payment'
-    );
   };
 
   const handleEscalateDunning = () => {
@@ -616,16 +618,6 @@ export default function InvoiceDetail({ id }) {
               {transition.label}
             </Button>
           ))}
-          {invoice.balance_due > 0 && (
-            <Button
-              variant="contained"
-              color="success"
-              startIcon={<Iconify icon="solar:wallet-money-bold" />}
-              onClick={handleRecordPayment}
-            >
-              Register Payment
-            </Button>
-          )}
           {invoice.status !== 'paid' && (
             <Button
               variant="outlined"
@@ -907,6 +899,7 @@ export default function InvoiceDetail({ id }) {
                     <TableHead>
                       <TableRow>
                         <TableCell>Description</TableCell>
+                        <TableCell>Account</TableCell>
                         <TableCell>Analytic</TableCell>
                         <TableCell align="right">Qty</TableCell>
                         <TableCell align="right">Rate</TableCell>
@@ -917,6 +910,7 @@ export default function InvoiceDetail({ id }) {
                       {invoice.lines.map((line, index) => (
                         <TableRow key={`${line.description}-${index}`}>
                           <TableCell>{line.description}</TableCell>
+                          <TableCell>{line.account_code ? `${line.account_code} - ${line.account_name || ''}` : '-'}</TableCell>
                           <TableCell>{line.analytic || '-'}</TableCell>
                           <TableCell align="right">{line.quantity}</TableCell>
                           <TableCell align="right">{formatCurrency(line.unit_price)}</TableCell>

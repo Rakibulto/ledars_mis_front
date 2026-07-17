@@ -1,8 +1,9 @@
 'use client';
 
+import useSWR from 'swr';
+import { toast } from 'sonner';
 import { Icon } from '@iconify/react';
 import { useRef, useMemo, useState, useEffect } from 'react';
-import useSWR from 'swr';
 
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
@@ -30,10 +31,7 @@ import DialogTitle from '@mui/material/DialogTitle';
 import { alpha, useTheme } from '@mui/material/styles';
 import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
-import InputAdornment from '@mui/material/InputAdornment';
 import TableContainer from '@mui/material/TableContainer';
-
-import { toast } from 'sonner';
 
 import { paths } from 'src/routes/paths';
 import { RouterLink } from 'src/routes/components';
@@ -99,17 +97,29 @@ export default function VoucherManagement() {
   const { data: rawAccounts } = useSWR(endpoints.accounting.accounts, fetcher);
 
   const projects = useMemo(() => {
-    const list = Array.isArray(rawProjects) ? rawProjects : Array.isArray(rawProjects?.results) ? rawProjects.results : [];
+    const list = Array.isArray(rawProjects)
+      ? rawProjects
+      : Array.isArray(rawProjects?.results)
+        ? rawProjects.results
+        : [];
     return list;
   }, [rawProjects]);
 
   const costCenters = useMemo(() => {
-    const list = Array.isArray(rawCostCenters) ? rawCostCenters : Array.isArray(rawCostCenters?.results) ? rawCostCenters.results : [];
+    const list = Array.isArray(rawCostCenters)
+      ? rawCostCenters
+      : Array.isArray(rawCostCenters?.results)
+        ? rawCostCenters.results
+        : [];
     return list;
   }, [rawCostCenters]);
 
   const accounts = useMemo(() => {
-    const list = Array.isArray(rawAccounts) ? rawAccounts : Array.isArray(rawAccounts?.results) ? rawAccounts.results : [];
+    const list = Array.isArray(rawAccounts)
+      ? rawAccounts
+      : Array.isArray(rawAccounts?.results)
+        ? rawAccounts.results
+        : [];
     return list;
   }, [rawAccounts]);
 
@@ -250,9 +260,7 @@ export default function VoucherManagement() {
 
     setApprovals((current) =>
       current.map((item) =>
-        item.voucher_id === voucher.id
-          ? { ...item, status: nextApproval || item.status }
-          : item
+        item.voucher_id === voucher.id ? { ...item, status: nextApproval || item.status } : item
       )
     );
 
@@ -285,22 +293,21 @@ export default function VoucherManagement() {
         );
         setApprovals((current) =>
           current.map((item) =>
-            item.voucher_id === voucher.id
-              ? { ...item, status: prevApproval || 'pending' }
-              : item
+            item.voucher_id === voucher.id ? { ...item, status: prevApproval || 'pending' } : item
           )
         );
         const message =
-          err?.response?.data?.detail ||
-          err?.response?.data?.message ||
-          `Voucher ${type} failed`;
+          err?.response?.data?.detail || err?.response?.data?.message || `Voucher ${type} failed`;
         toast.error(message);
       }
     }
   };
 
   const addVoucherLine = () => {
-    setVoucherLines((current) => [...current, { ...EMPTY_VOUCHER_LINE, _key: Date.now() + Math.random() }]);
+    setVoucherLines((current) => [
+      ...current,
+      { ...EMPTY_VOUCHER_LINE, _key: Date.now() + Math.random() },
+    ]);
   };
 
   const removeVoucherLine = (index) => {
@@ -315,10 +322,7 @@ export default function VoucherManagement() {
 
   const handleCreateVoucher = async () => {
     const amount = Number(draftVoucher.amount || 0);
-    const totalFromLines = voucherLines.reduce(
-      (sum, l) => sum + (Number(l.debit) || 0),
-      0
-    );
+    const totalFromLines = voucherLines.reduce((sum, l) => sum + (Number(l.debit) || 0), 0);
     const finalAmount = voucherLines.length > 0 ? totalFromLines : amount;
 
     if (editTarget) {
@@ -346,9 +350,7 @@ export default function VoucherManagement() {
         toast.success('Voucher updated successfully');
       } catch (err) {
         const message =
-          err?.response?.data?.detail ||
-          err?.response?.data?.message ||
-          'Failed to update voucher';
+          err?.response?.data?.detail || err?.response?.data?.message || 'Failed to update voucher';
         toast.error(message);
       }
       return;
@@ -377,9 +379,7 @@ export default function VoucherManagement() {
       toast.success('Voucher created successfully');
     } catch (err) {
       const message =
-        err?.response?.data?.detail ||
-        err?.response?.data?.message ||
-        'Failed to create voucher';
+        err?.response?.data?.detail || err?.response?.data?.message || 'Failed to create voucher';
       toast.error(message);
     }
   };
@@ -1040,7 +1040,11 @@ export default function VoucherManagement() {
               <Typography variant="subtitle2" fontWeight={700}>
                 Voucher Lines
               </Typography>
-              <Button size="small" startIcon={<Icon icon="solar:add-circle-bold" />} onClick={addVoucherLine}>
+              <Button
+                size="small"
+                startIcon={<Icon icon="solar:add-circle-bold" />}
+                onClick={addVoucherLine}
+              >
                 Add Line
               </Button>
             </Stack>
@@ -1050,8 +1054,12 @@ export default function VoucherManagement() {
                   <TableRow sx={{ bgcolor: 'background.neutral' }}>
                     <TableCell sx={{ fontWeight: 700 }}>Account</TableCell>
                     <TableCell sx={{ fontWeight: 700 }}>Description</TableCell>
-                    <TableCell sx={{ fontWeight: 700, width: 110 }} align="right">Debit</TableCell>
-                    <TableCell sx={{ fontWeight: 700, width: 110 }} align="right">Credit</TableCell>
+                    <TableCell sx={{ fontWeight: 700, width: 110 }} align="right">
+                      Debit
+                    </TableCell>
+                    <TableCell sx={{ fontWeight: 700, width: 110 }} align="right">
+                      Credit
+                    </TableCell>
                     <TableCell sx={{ width: 40 }} />
                   </TableRow>
                 </TableHead>
@@ -1090,7 +1098,9 @@ export default function VoucherManagement() {
                             size="small"
                             placeholder="Line description"
                             value={line.description}
-                            onChange={(e) => updateVoucherLine(index, 'description', e.target.value)}
+                            onChange={(e) =>
+                              updateVoucherLine(index, 'description', e.target.value)
+                            }
                             variant="standard"
                           />
                         </TableCell>

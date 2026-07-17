@@ -1,8 +1,8 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-
 import { toast } from 'sonner';
+import { useMemo, useState } from 'react';
+import { PDFViewer, PDFDownloadLink } from '@react-pdf/renderer';
 
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
@@ -10,28 +10,27 @@ import Chip from '@mui/material/Chip';
 import Grid from '@mui/material/Grid';
 import Alert from '@mui/material/Alert';
 import Stack from '@mui/material/Stack';
-import Dialog from '@mui/material/Dialog';
 import Table from '@mui/material/Table';
+import Dialog from '@mui/material/Dialog';
+import Button from '@mui/material/Button';
 import TableRow from '@mui/material/TableRow';
-import IconButton from '@mui/material/IconButton';
-import DialogTitle from '@mui/material/DialogTitle';
 import TableBody from '@mui/material/TableBody';
 import TableCell from '@mui/material/TableCell';
 import TableHead from '@mui/material/TableHead';
-import Button from '@mui/material/Button';
+import IconButton from '@mui/material/IconButton';
 import Typography from '@mui/material/Typography';
+import DialogTitle from '@mui/material/DialogTitle';
 import CardContent from '@mui/material/CardContent';
+import { alpha, useTheme } from '@mui/material/styles';
 import DialogContent from '@mui/material/DialogContent';
 import LinearProgress from '@mui/material/LinearProgress';
 import TableContainer from '@mui/material/TableContainer';
 import CircularProgress from '@mui/material/CircularProgress';
-import { alpha, useTheme } from '@mui/material/styles';
-import { PDFDownloadLink, PDFViewer } from '@react-pdf/renderer';
 
 import { Iconify } from 'src/components/iconify';
 
-import { useProjectManagementsApi } from './use-project-managements-api';
 import ProjectReportPackPdf from './report-pack-pdf';
+import { useProjectManagementsApi } from './use-project-managements-api';
 
 const STATUS_COLOR = {
   Active: 'success',
@@ -90,9 +89,12 @@ function getReportActionButtonSx(theme, tone = 'default') {
       ? `0 16px 30px ${alpha(theme.palette.grey[900], 0.22)}`
       : `0 10px 24px ${alpha(theme.palette.grey[900], 0.08)}`,
     backdropFilter: 'blur(8px)',
-    transition: theme.transitions.create(['transform', 'box-shadow', 'border-color', 'background-color'], {
-      duration: theme.transitions.duration.shorter,
-    }),
+    transition: theme.transitions.create(
+      ['transform', 'box-shadow', 'border-color', 'background-color'],
+      {
+        duration: theme.transitions.duration.shorter,
+      }
+    ),
     '&:hover': {
       transform: 'translateY(-1px)',
       borderColor: isPrimary ? 'transparent' : alpha(theme.palette.primary.main, 0.22),
@@ -167,7 +169,10 @@ export default function ProjectReport() {
     },
   ];
 
-  const reportPackDocument = useMemo(() => <ProjectReportPackPdf snapshot={reportSnapshot} />, [reportSnapshot]);
+  const reportPackDocument = useMemo(
+    () => <ProjectReportPackPdf snapshot={reportSnapshot} />,
+    [reportSnapshot]
+  );
 
   function handleOpenPrintPack() {
     setIsPrintPackOpen(true);
@@ -193,7 +198,15 @@ export default function ProjectReport() {
 
       if (format === 'csv') {
         const rows = [
-          ['Project', 'Status', 'Progress Percent', 'Completed Work Items', 'Total Work Items', 'Donor', 'Approved Budget'],
+          [
+            'Project',
+            'Status',
+            'Progress Percent',
+            'Completed Work Items',
+            'Total Work Items',
+            'Donor',
+            'Approved Budget',
+          ],
           ...overview.projectProgressRows.map((project) => [
             project.title,
             project.derivedStatus,
@@ -319,7 +332,8 @@ export default function ProjectReport() {
           '',
           'Per-Project Progress',
           ...overview.projectProgressRows.map(
-            (project) => `- ${project.title}: ${project.progressPercent}% (${project.completedWorkItems}/${project.totalWorkItems || 0}) • ${project.derivedStatus}`
+            (project) =>
+              `- ${project.title}: ${project.progressPercent}% (${project.completedWorkItems}/${project.totalWorkItems || 0}) • ${project.derivedStatus}`
           ),
         ];
 
@@ -356,11 +370,23 @@ export default function ProjectReport() {
           </Typography>
         </Box>
 
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.25} alignItems={{ xs: 'stretch', sm: 'center' }} useFlexGap flexWrap="wrap">
+        <Stack
+          direction={{ xs: 'column', sm: 'row' }}
+          spacing={1.25}
+          alignItems={{ xs: 'stretch', sm: 'center' }}
+          useFlexGap
+          flexWrap="wrap"
+        >
           <Button
             variant="outlined"
             color="inherit"
-            startIcon={activeAction === 'csv' ? <CircularProgress size={16} color="inherit" /> : <Iconify icon="solar:document-text-bold" width={18} />}
+            startIcon={
+              activeAction === 'csv' ? (
+                <CircularProgress size={16} color="inherit" />
+              ) : (
+                <Iconify icon="solar:document-text-bold" width={18} />
+              )
+            }
             onClick={() => handleDownloadReport('csv')}
             disabled={Boolean(activeAction)}
             sx={getReportActionButtonSx(theme)}
@@ -371,7 +397,13 @@ export default function ProjectReport() {
           <Button
             variant="outlined"
             color="inherit"
-            startIcon={activeAction === 'excel' ? <CircularProgress size={16} color="inherit" /> : <Iconify icon="solar:file-text-bold" width={18} />}
+            startIcon={
+              activeAction === 'excel' ? (
+                <CircularProgress size={16} color="inherit" />
+              ) : (
+                <Iconify icon="solar:file-text-bold" width={18} />
+              )
+            }
             onClick={() => handleDownloadReport('excel')}
             disabled={Boolean(activeAction)}
             sx={getReportActionButtonSx(theme)}
@@ -382,7 +414,13 @@ export default function ProjectReport() {
           <Button
             variant="outlined"
             color="inherit"
-            startIcon={activeAction === 'json' ? <CircularProgress size={16} color="inherit" /> : <Iconify icon="solar:code-bold" width={18} />}
+            startIcon={
+              activeAction === 'json' ? (
+                <CircularProgress size={16} color="inherit" />
+              ) : (
+                <Iconify icon="solar:code-bold" width={18} />
+              )
+            }
             onClick={() => handleDownloadReport('json')}
             disabled={Boolean(activeAction)}
             sx={getReportActionButtonSx(theme)}
@@ -432,12 +470,21 @@ export default function ProjectReport() {
             </Box>
 
             <Stack direction="row" spacing={1} alignItems="center">
-              <PDFDownloadLink document={reportPackDocument} fileName={`project-report-pack-${new Date().toISOString().slice(0, 10)}.pdf`}>
+              <PDFDownloadLink
+                document={reportPackDocument}
+                fileName={`project-report-pack-${new Date().toISOString().slice(0, 10)}.pdf`}
+              >
                 {({ loading }) => (
                   <Button
                     variant="outlined"
                     color="inherit"
-                    startIcon={loading ? <CircularProgress size={16} color="inherit" /> : <Iconify icon="solar:file-download-bold" width={18} />}
+                    startIcon={
+                      loading ? (
+                        <CircularProgress size={16} color="inherit" />
+                      ) : (
+                        <Iconify icon="solar:file-download-bold" width={18} />
+                      )
+                    }
                     sx={{
                       ...getReportActionButtonSx(theme),
                       minWidth: 'auto',
@@ -467,7 +514,11 @@ export default function ProjectReport() {
 
         <DialogContent sx={{ p: 0, bgcolor: alpha(theme.palette.grey[950] || '#020617', 0.98) }}>
           {isPrintPackOpen ? (
-            <PDFViewer width="100%" height="100%" style={{ border: 0, minHeight: 'calc(100vh - 88px)' }}>
+            <PDFViewer
+              width="100%"
+              height="100%"
+              style={{ border: 0, minHeight: 'calc(100vh - 88px)' }}
+            >
               {reportPackDocument}
             </PDFViewer>
           ) : null}

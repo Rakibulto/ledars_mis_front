@@ -1,4 +1,4 @@
-import { Document, Page, StyleSheet, Text, View } from '@react-pdf/renderer';
+import { Page, Text, View, Document, StyleSheet } from '@react-pdf/renderer';
 
 function formatDateTime(value) {
   if (!value) return 'Not recorded';
@@ -254,7 +254,12 @@ export default function ProjectReportPackPdf({ snapshot }) {
           <Text style={styles.sectionTitle}>Executive Summary</Text>
           <View style={styles.summaryGrid}>
             {summaryCards.map((card) => (
-              <SummaryCard key={card.label} label={card.label} value={card.value} helper={card.helper} />
+              <SummaryCard
+                key={card.label}
+                label={card.label}
+                value={card.value}
+                helper={card.helper}
+              />
             ))}
           </View>
         </View>
@@ -289,7 +294,9 @@ export default function ProjectReportPackPdf({ snapshot }) {
           <View style={styles.header}>
             <Text style={styles.brand}>LEDARS • Project Management</Text>
             <Text style={styles.title}>Project Progress Overview</Text>
-            <Text style={styles.subtitle}>Detailed project-level completion and budget tracking</Text>
+            <Text style={styles.subtitle}>
+              Detailed project-level completion and budget tracking
+            </Text>
           </View>
 
           <SimpleTable

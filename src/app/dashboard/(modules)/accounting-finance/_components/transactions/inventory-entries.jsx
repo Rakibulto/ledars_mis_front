@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import useSWR from 'swr';
 
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
@@ -31,6 +32,7 @@ import CircularProgress from '@mui/material/CircularProgress';
 
 import { paths } from 'src/routes/paths';
 import { RouterLink } from 'src/routes/components';
+import axiosInstance, { fetcher, endpoints } from 'src/utils/axios';
 
 import { Iconify } from 'src/components/iconify';
 
@@ -65,6 +67,8 @@ const EMPTY_INVENTORY_FORM = {
   itemReference: '',
   quantity: '',
   unitCost: '',
+  inventory_account: '',
+  cogs_account: '',
   procurementReference: '',
   description: '',
 };
@@ -79,6 +83,12 @@ export default function InventoryEntries() {
     deleteEntry,
     postEntry,
   } = useWorkspaceInventoryApi();
+
+  const { data: rawAccounts } = useSWR(endpoints.accounting.accounts, fetcher);
+  const accounts = useMemo(() => {
+    const list = Array.isArray(rawAccounts) ? rawAccounts : rawAccounts?.results ?? [];
+    return list.filter((a) => a.is_active !== false);
+  }, [rawAccounts]);
 
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('all');
@@ -133,6 +143,8 @@ export default function InventoryEntries() {
       item_reference: draftEntry.itemReference,
       quantity: draftEntry.quantity,
       unit_cost: draftEntry.unitCost,
+      inventory_account: draftEntry.inventory_account ? Number(draftEntry.inventory_account) : undefined,
+      cogs_account: draftEntry.cogs_account ? Number(draftEntry.cogs_account) : undefined,
       procurement_reference: draftEntry.procurementReference,
       description: draftEntry.description,
     };
@@ -462,6 +474,40 @@ export default function InventoryEntries() {
                     ),
                   }}
                 />
+              </Grid>
+              <Grid size={{ xs: 12, md: 3 }}>
+                <TextField
+                  select
+                  fullWidth
+                  size="small"
+                  label="Inventory asset account"
+                  value={draftEntry.inventory_account}
+                  onChange={(event) => updateDraftEntry('inventory_account', event.target.value)}
+                >
+                  <MenuItem value="">Select asset account</MenuItem>
+                  {accounts.map((a) => (
+                    <MenuItem key={a.id} value={a.id}>
+                      {a.code} — {a.name}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              </Grid>
+              <Grid size={{ xs: 12, md: 3 }}>
+                <TextField
+                  select
+                  fullWidth
+                  size="small"
+                  label="COGS expense account"
+                  value={draftEntry.cogs_account}
+                  onChange={(event) => updateDraftEntry('cogs_account', event.target.value)}
+                >
+                  <MenuItem value="">Select COGS account</MenuItem>
+                  {accounts.map((a) => (
+                    <MenuItem key={a.id} value={a.id}>
+                      {a.code} — {a.name}
+                    </MenuItem>
+                  ))}
+                </TextField>
               </Grid>
               <Grid size={{ xs: 12, md: 6 }}>
                 <TextField

@@ -9,7 +9,7 @@ import axiosInstance, { fetcher, endpoints } from 'src/utils/axios';
 // Derive all display fields the card UI expects from a raw
 // backend Journal object + the already-fetched accounts list
 // ------------------------------------------------------------
-function enrichJournal(journal, accounts) {
+function enrichJournal(journal, accounts, entryCounts) {
   // Backend uses "sales"; the UI colour/icon maps use "sale".
   // Normalise so both render correctly without touching the maps.
   const type = journal.journal_type === 'sales' ? 'sale' : journal.journal_type || 'general';
@@ -19,6 +19,9 @@ function enrichJournal(journal, accounts) {
     (a) => Number(a.id) === Number(journal.default_credit_account)
   );
 
+  const entryCount = entryCounts[journal.id] || { total: 0, draft: 0, posted: 0 };
+  const lastEntry = entryCounts[journal.id]?.lastEntry || null;
+
   return {
     ...journal,
     // normalise type so TYPE_COLORS / TYPE_ICONS work unchanged
@@ -26,9 +29,10 @@ function enrichJournal(journal, accounts) {
     active: journal.is_active !== false,
     defaultDebitName: defaultDebit?.name || 'Not assigned',
     defaultCreditName: defaultCredit?.name || 'Not assigned',
-    // Posting queue requires a heavy entries fetch; keep as placeholder
-    postingQueue: 0,
-    lastEntryDate: '—',
+    postingQueue: entryCount.draft,
+    totalEntries: entryCount.total,
+    postedEntries: entryCount.posted,
+    lastEntryDate: lastEntry?.date || '—',
     reviewPolicy:
       type === 'bank'
         ? 'Bank reconciliation review'
@@ -57,6 +61,7 @@ function enrichJournal(journal, accounts) {
 export function useJournalsApi() {
   const journalsUrl = endpoints.accounting.journals;
   const accountsUrl = endpoints.accounting.accounts;
+  const entriesUrl = endpoints.accounting.journal_entries;
 
   const { data: rawJournals, isLoading, error } = useSWR(journalsUrl, fetcher);
   // Reuse cached accounts (same SWR key as chart-of-accounts page)
@@ -74,16 +79,58 @@ export function useJournalsApi() {
       : Array.isArray(rawJournals?.results)
         ? rawJournals.results
         : [];
-    return list.map((j) => enrichJournal(j, accountsList));
-  }, [rawJournals, accountsList]);
+    return list;
+  }, [rawJournals]);
+
+  // Fetch entry counts for all journals in one batch
+  const journalIds = useMemo(() => journals.map((j) => j.id), [journals]);
+
+  const { data: entriesData } = useSWR(
+    journalIds.length > 0 ? `${entriesUrl}?page_size=1000` : null,
+    fetcher
+  );
+
+  const entryCounts = useMemo(() => {
+    const counts = {};
+    const allEntries = Array.isArray(entriesData)
+      ? entriesData
+      : Array.isArray(entriesData?.results)
+        ? entriesData.results
+        : [];
+
+    // Initialize counts for all journals
+    journalIds.forEach((id) => {
+      counts[id] = { total: 0, draft: 0, posted: 0, lastEntry: null };
+    });
+
+    // Count entries per journal
+    allEntries.forEach((entry) => {
+      const jid = entry.journal;
+      if (!counts[jid]) counts[jid] = { total: 0, draft: 0, posted: 0, lastEntry: null };
+      counts[jid].total += 1;
+      if (entry.status === 'draft') counts[jid].draft += 1;
+      if (entry.status === 'posted') counts[jid].posted += 1;
+      // Track most recent entry per journal
+      if (!counts[jid].lastEntry || entry.date > counts[jid].lastEntry.date) {
+        counts[jid].lastEntry = { date: entry.date, reference: entry.reference };
+      }
+    });
+
+    return counts;
+  }, [entriesData, journalIds]);
+
+  const enrichedJournals = useMemo(
+    () => journals.map((j) => enrichJournal(j, accountsList, entryCounts)),
+    [journals, accountsList, entryCounts]
+  );
 
   const overview = useMemo(
     () => ({
-      activeJournals: journals.filter((j) => j.active).length,
-      postingQueue: journals.reduce((sum, j) => sum + j.postingQueue, 0),
-      sequencedJournals: journals.filter((j) => j.sequence_prefix).length,
+      activeJournals: enrichedJournals.filter((j) => j.active).length,
+      postingQueue: enrichedJournals.reduce((sum, j) => sum + j.postingQueue, 0),
+      sequencedJournals: enrichedJournals.filter((j) => j.sequence_prefix).length,
     }),
-    [journals]
+    [enrichedJournals]
   );
 
   // ── Mutations ──────────────────────────────────────────────
@@ -107,7 +154,7 @@ export function useJournalsApi() {
   };
 
   const toggleJournalStatus = async (journalId) => {
-    const journal = journals.find((j) => String(j.id) === String(journalId));
+    const journal = enrichedJournals.find((j) => String(j.id) === String(journalId));
     if (!journal) return;
     await axiosInstance.patch(endpoints.accounting.journal_by_id(journalId), {
       is_active: !journal.active,
@@ -134,8 +181,14 @@ export function useJournalsApi() {
     await mutate(journalsUrl);
   };
 
+  const seedJournals = async () => {
+    const { data } = await axiosInstance.post(endpoints.accounting.journal_seed);
+    await mutate(journalsUrl);
+    return data;
+  };
+
   return {
-    journals,
+    journals: enrichedJournals,
     accountsList,
     overview,
     loading: isLoading,
@@ -145,6 +198,7 @@ export function useJournalsApi() {
       toggleJournalStatus,
       updateJournal,
       deleteJournal,
+      seedJournals,
     },
   };
 }

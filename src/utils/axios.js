@@ -238,6 +238,7 @@ export const endpoints = {
     attachments: '/api/ngo-project-plan-attachments/',
     attachmentById: (id) => `/api/ngo-project-plan-attachments/${id}/`,
     expenses: '/api/ngo-project-expenses/',
+    expenseAdvances: '/api/ngo-project-advances/',
     expenseById: (id) => `/api/ngo-project-expenses/${id}/`,
     transitionExpense: (id) => `/api/ngo-project-expenses/${id}/transition/`,
     exportExpensePdf: (id) => `/api/ngo-project-expenses/${id}/export-pdf/`,
@@ -481,11 +482,15 @@ export const endpoints = {
     quotations: '/api/quotations/',
     quotation_by_id: (id) => `/api/quotations/${id}/`,
     quotation_summary: '/api/quotations/summary/',
+    quotation_validation: '/api/quotations/simple-quotation-validation/',
     quotation_items: '/api/quotation-items/',
     quotation_item_by_id: (id) => `/api/quotation-items/${id}/`,
     quotation_openings: '/api/quotation-openings/',
     quotation_opening_by_id: (id) => `/api/quotation-openings/${id}/`,
     vendor_rfq_submissions: '/api/vendor-rfq-submission/',
+    vendor_rfq_submission_by_id: (id) => `/api/vendor-rfq-submission/${id}/`,
+    vendor_rfq_submission_delete_document: (id, docId) =>
+      `/api/vendor-rfq-submission/${id}/documents/${docId}/`,
     quotation_direct_evaluation: '/api/quotations/direct-evaluation/',
 
     // Comparative Statements
@@ -506,7 +511,9 @@ export const endpoints = {
 
     // Work Orders
     work_orders: '/api/work-orders/',
+    work_orders_lean: '/api/work-orders/lean/',
     work_order_by_id: (id) => `/api/work-orders/${id}/`,
+    work_order_full: (id) => `/api/work-orders/${id}/full/`,
     work_order_summary: '/api/work-orders/summary/',
     work_order_approve: (id) => `/api/work-orders/${id}/approve/`,
     work_order_reject: (id) => `/api/work-orders/${id}/reject/`,
@@ -692,6 +699,8 @@ export const endpoints = {
     designationById: (id) => `/api/designations/${id}/`,
     branch: '/api/branches/',
     branchById: (id) => `/api/branches/${id}/`,
+    grade: '/api/grades/',
+    gradeById: (id) => `/api/grades/${id}/`,
     shift: '/api/shifts/',
     shiftById: (id) => `/api/shifts/${id}/`,
     shiftCreate: '/api/shifts/create',
@@ -789,6 +798,28 @@ export const endpoints = {
     summary: '/api/todo/todo/summary/',
     users: '/api/todo/todo/users/',
     byId: (id) => `/api/todo/todo/${id}/`,
+    attachments: (id) => `/api/todo/todo/${id}/attachments/`,
+    attachmentById: (id, attachmentId) => `/api/todo/todo/${id}/attachments/${attachmentId}/`,
+  },
+
+  meetingManagement: {
+    meetings: '/api/meeting_management/meetings/',
+    meetingById: (id) => `/api/meeting_management/meetings/${id}/`,
+    attachments: (meetingId) => `/api/meeting_management/meetings/${meetingId}/attachments/`,
+  },
+
+  projectManagementAdvances: {
+    list: '/api/ngo-project-advances/',
+    detail: (id) => `/api/ngo-project-advances/${id}/`,
+  },
+  projectManagementsProjects: '/api/ngo-projects/',
+
+  // ── CRM (Leads Management) ──
+  crm: {
+    leads: '/api/crm/leads/',
+    leadById: (id) => `/api/crm/leads/${id}/`,
+    followUps: (leadId) => `/api/crm/leads/${leadId}/followups/`,
+    followUpById: (leadId, id) => `/api/crm/leads/${leadId}/followups/${id}/`,
   },
 
   // ── Project Management (ClickUp-style) ──
@@ -963,6 +994,39 @@ export const endpoints = {
     pm_user_role_by_id: (id) => `/api/pm-user-roles/${id}/`,
   },
 
+  // ── Final Settlement ──
+  finalSettlement: {
+    list: '/api/final-settlement/',
+    byId: (id) => `/api/final-settlement/${id}/`,
+    submit: (id) => `/api/final-settlement/${id}/submit/`,
+    sign: (id) => `/api/final-settlement/${id}/sign/`,
+    paymentComplete: (id) => `/api/final-settlement/${id}/payment-complete/`,
+  },
+
+  // ── Movement Management ──
+  movementManagement: {
+    list: '/api/movement-management/',
+    summary: '/api/movement-management/summary/',
+    byId: (id) => `/api/movement-management/${id}/`,
+    sign: (id) => `/api/movement-management/${id}/sign/`,
+  },
+
+  // ── Provident Fund ──
+  providentFund: {
+    list: '/api/provident-fund/',
+    byId: (id) => `/api/provident-fund/${id}/`,
+    sign: (id) => `/api/provident-fund/${id}/sign/`,
+  },
+
+  // ── Travel Expense ──
+  travelExpense: {
+    list: '/api/travel-expense/',
+    byId: (id) => `/api/travel-expense/${id}/`,
+    sign: (id) => `/api/travel-expense/${id}/sign/`,
+    uploadFile: (id) => `/api/travel-expense/${id}/upload_file/`,
+    deleteFile: (id, fileId) => `/api/travel-expense/${id}/delete_file/${fileId}/`,
+  },
+
   // ══════════════════════════════════════════════════
   // Accounting & Finance
   // ══════════════════════════════════════════════════
@@ -980,6 +1044,9 @@ export const endpoints = {
     account_by_id: (id) => `/api/acc-accounts/${id}/`,
     account_tree: '/api/acc-accounts/tree/',
     account_summary: '/api/acc-accounts/summary/',
+    account_seed: '/api/acc-accounts/seed/',
+    account_relatable: '/api/acc-accounts/relatable/',
+    account_trial_balance: '/api/acc-accounts/trial_balance/',
     account_tags: '/api/acc-account-tags/',
     account_tag_by_id: (id) => `/api/acc-account-tags/${id}/`,
 
@@ -995,12 +1062,15 @@ export const endpoints = {
     // Journals
     journals: '/api/acc-journals/',
     journal_by_id: (id) => `/api/acc-journals/${id}/`,
+    journal_seed: '/api/acc-journals/seed/',
     journal_entries: '/api/acc-journal-entries/',
     journal_entry_by_id: (id) => `/api/acc-journal-entries/${id}/`,
     journal_entry_post: (id) => `/api/acc-journal-entries/${id}/post-entry/`,
     journal_entry_cancel: (id) => `/api/acc-journal-entries/${id}/cancel/`,
     journal_items: '/api/acc-journal-items/',
     journal_item_by_id: (id) => `/api/acc-journal-items/${id}/`,
+    journal_attachments: '/api/acc-journal-attachments/',
+    journal_attachment_by_id: (id) => `/api/acc-journal-attachments/${id}/`,
     recurring_journals: '/api/acc-recurring-journals/',
     recurring_journal_by_id: (id) => `/api/acc-recurring-journals/${id}/`,
     recurring_journal_execute: (id) => `/api/acc-recurring-journals/${id}/execute/`,
@@ -1078,6 +1148,7 @@ export const endpoints = {
     customer_invoice_customers: '/api/acc-customer-invoices/customers/',
     customer_invoice_by_id: (id) => `/api/acc-customer-invoices/${id}/`,
     customer_invoice_send: (id) => `/api/acc-customer-invoices/${id}/send/`,
+    customer_invoice_post: (id) => `/api/acc-customer-invoices/${id}/post/`,
     customer_invoice_register_payment: (id) => `/api/acc-customer-invoices/${id}/register-payment/`,
 
     // Workspace transaction pages
@@ -1189,6 +1260,17 @@ export const endpoints = {
     asset_disposal_by_id: (id) => `/api/acc-asset-disposals/${id}/`,
     asset_impairments: '/api/acc-asset-impairments/',
     asset_transfers: '/api/acc-asset-transfers/',
+
+    // Perdium
+    perdium: '/api/acc-perdium/',
+    perdium_by_id: (id) => `/api/acc-perdium/${id}/`,
+    lookup: '/api/acc-perdium/lookup/',
+
+    // Perdium Claims
+    perdium_claims: '/api/acc-perdium-claims/',
+    perdium_claim_by_id: (id) => `/api/acc-perdium-claims/${id}/`,
+    perdium_claim_sign: (id) => `/api/acc-perdium-claims/${id}/sign/`,
+    create: '/api/accounting/perdium-claim/',
 
     // Payment Terms
     payment_terms: '/api/acc-payment-terms/',

@@ -10,21 +10,20 @@ import { MOCK_CASH_TRANSACTIONS } from './mock-data';
 // ── Enrichment ──────────────────────────────────────────────────────────────
 
 export function enrichCashTransaction(item) {
+  const accountName = item.account_name ?? item.accountName ?? '';
   return {
     ...item,
     number: item.number || item.transaction_number || `CASH-${item.id}`,
     amount: Number(item.amount || 0),
-    // Normalise account: backend may send an object, an id, or a plain string name
     account:
       typeof item.account === 'object' && item.account !== null
         ? item.account.name || String(item.account.id)
-        : item.account_name || item.account || '',
-    // Counterparty
+        : accountName || item.account || '',
+    accountName,
     counterparty:
       typeof item.counterparty === 'object' && item.counterparty !== null
         ? item.counterparty.name || String(item.counterparty.id)
         : item.counterparty_name || item.counterparty || '',
-    // Snake → camelCase aliases expected by the detail component
     paymentMethod: item.paymentMethod || item.payment_method || '',
     reference: item.reference || '',
     description: item.description || '',

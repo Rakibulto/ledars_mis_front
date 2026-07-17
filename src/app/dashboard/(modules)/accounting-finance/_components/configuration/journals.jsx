@@ -63,6 +63,7 @@ export default function JournalsList() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [editTarget, setEditTarget] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [seeding, setSeeding] = useState(false);
 
   const printContent = (
     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -149,6 +150,18 @@ export default function JournalsList() {
     }
   };
 
+  const handleSeed = async () => {
+    setSeeding(true);
+    try {
+      const result = await workspace.actions.seedJournals();
+      toast.success(result?.detail || 'Journals seeded successfully');
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || 'Failed to seed journals');
+    } finally {
+      setSeeding(false);
+    }
+  };
+
   return (
     <Box sx={{ p: 3 }}>
       <CoreLedgerConfigToolbar printTitle="Journals" printContent={printContent} />
@@ -162,13 +175,24 @@ export default function JournalsList() {
             Manage posting journals, queue posture, and default routing controls.
           </Typography>
         </Box>
-        <Button
-          variant="contained"
-          startIcon={<Iconify icon="solar:add-circle-bold" />}
-          onClick={() => setOpen(true)}
-        >
-          New Journal
-        </Button>
+        <Stack direction="row" spacing={1}>
+          <Button
+            variant="outlined"
+            color="secondary"
+            startIcon={seeding ? null : <Iconify icon="solar:magic-stick-bold-duotone" />}
+            onClick={handleSeed}
+            disabled={seeding}
+          >
+            {seeding ? 'Seeding...' : 'Seed Journals'}
+          </Button>
+          <Button
+            variant="contained"
+            startIcon={<Iconify icon="solar:add-circle-bold" />}
+            onClick={() => setOpen(true)}
+          >
+            New Journal
+          </Button>
+        </Stack>
       </Box>
 
       <Grid container spacing={2} sx={{ mb: 3 }}>
@@ -286,7 +310,19 @@ export default function JournalsList() {
                       color: TYPE_COLORS[journal.type],
                     }}
                   />
-                  <Chip label={`${journal.postingQueue} entries`} size="small" variant="outlined" />
+                  <Chip
+                    label={`${journal.totalEntries || 0} entries`}
+                    size="small"
+                    variant="outlined"
+                  />
+                  {journal.postingQueue > 0 && (
+                    <Chip
+                      label={`${journal.postingQueue} draft`}
+                      size="small"
+                      color="warning"
+                      variant="outlined"
+                    />
+                  )}
                 </Stack>
                 <Typography variant="caption" color="text.secondary" display="block">
                   Default Dr: {journal.defaultDebitName}

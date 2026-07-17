@@ -153,20 +153,19 @@ export default function ExpenseCreate() {
         currency: formValues.currency,
         project_id: Number(formValues.projectId),
         plan_id: formValues.planId ? Number(formValues.planId) : null,
-        items: sanitized
-          .concat(
-            Number(taxRate || 0) > 0 && totals.taxAmount > 0
-              ? [
-                  {
-                    title: `Tax (${Number(taxRate || 0)}%)`,
-                    description: 'Auto-generated tax line',
-                    quantity: 1,
-                    unit_price: Number(totals.taxAmount || 0),
-                    sort_order: items.filter((item) => item.title.trim()).length + 1,
-                  },
-                ]
-              : []
-          ),
+        items: sanitized.concat(
+          Number(taxRate || 0) > 0 && totals.taxAmount > 0
+            ? [
+                {
+                  title: `Tax (${Number(taxRate || 0)}%)`,
+                  description: 'Auto-generated tax line',
+                  quantity: 1,
+                  unit_price: Number(totals.taxAmount || 0),
+                  sort_order: items.filter((item) => item.title.trim()).length + 1,
+                },
+              ]
+            : []
+        ),
       };
 
       const createdExpense = await createProjectManagementExpense(payload);

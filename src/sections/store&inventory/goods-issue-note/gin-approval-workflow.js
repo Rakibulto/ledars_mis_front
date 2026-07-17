@@ -122,8 +122,7 @@ export function computeGinWorkflowInfo(gin, rawWorkflow, userEmail) {
   const alreadyApproved = userEmail
     ? approvalLog.some(
         (entry) =>
-          entry?.action !== 'issue' &&
-          (entry.email ?? '').toLowerCase() === userEmail.toLowerCase()
+          entry?.action !== 'issue' && (entry.email ?? '').toLowerCase() === userEmail.toLowerCase()
       )
     : false;
 
@@ -143,9 +142,7 @@ export function computeGinWorkflowInfo(gin, rawWorkflow, userEmail) {
   const levelUsers = Array.isArray(matchedLevel.level_users) ? matchedLevel.level_users : [];
   const orderedApproval = matchedLevel.level_maintain_require === 'yes';
   const workflowComplete = approvalLevel >= minRequired || isApproved || isIssued;
-  const remainingApprovalCount = workflowComplete
-    ? 0
-    : Math.max(0, minRequired - approvalLevel);
+  const remainingApprovalCount = workflowComplete ? 0 : Math.max(0, minRequired - approvalLevel);
 
   const pendingLevelUsers = workflowComplete
     ? []

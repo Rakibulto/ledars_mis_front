@@ -9,10 +9,14 @@ import { MOCK_CREDIT_NOTES } from './mock-data';
 
 // ── Enrichment ────────────────────────────────────────────────────────────────
 
+function stripCinv(s) {
+  if (!s || typeof s !== 'string') return s || '';
+  return s.startsWith('CINV:') ? (s.includes('|') ? s.slice(s.indexOf('|') + 1) : '') : s;
+}
+
 export function enrichCreditNote(raw) {
   return {
     ...raw,
-    // Frontend aliases
     number: raw.number || raw.credit_note_number || '',
     customer_id: raw.customer_id ?? raw.customer,
     amount: Number(raw.amount ?? raw.total_amount ?? 0),
@@ -21,8 +25,7 @@ export function enrichCreditNote(raw) {
     adjustmentType: raw.adjustment_type ?? '',
     approvalRoute: raw.approval_route ?? '',
     refundReference: raw.refund_reference ?? '',
-    notes: raw.application_notes ?? raw.notes ?? '',
-    // Alias for display
+    notes: stripCinv(raw.application_notes ?? raw.notes ?? ''),
     date: raw.date ?? '',
     reason: raw.reason ?? '',
     status: raw.status ?? 'draft',
@@ -121,9 +124,12 @@ export function useCreditNotesApi() {
     return enrichCreditNote(data);
   }
 
-  async function applyCreditNote(id) {
-    const { data } = await axiosInstance.post(endpoints.accounting.credit_note_apply(id));
+  async function applyCreditNote(id, invoiceRef) {
+    const { data } = await axiosInstance.post(endpoints.accounting.credit_note_apply(id), {
+      invoice_ref: invoiceRef || '',
+    });
     await mutate(notesUrl);
+    await mutate(invoicesUrl);
     return enrichCreditNote(data);
   }
 

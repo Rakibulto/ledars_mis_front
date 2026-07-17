@@ -30,9 +30,9 @@ import {
 import { useBoolean } from 'src/hooks/use-boolean';
 
 import axiosInstance, { endpoints } from 'src/utils/axios';
+import { getAmountInWords } from 'src/utils/amountInWords';
 
-import { useAuthContext } from 'src/auth/hooks';
-
+import { CONFIG } from 'src/config-global';
 import {
   useGetRequest,
   extractErrorMessage,
@@ -43,12 +43,14 @@ import {
 import { Iconify } from 'src/components/iconify';
 import { ConfirmDialog } from 'src/components/custom-dialog';
 
+import { useAuthContext } from 'src/auth/hooks';
+
+import GinApprovalInfo from './gin-approval-info';
+import GinDecisionDialog from './gin-decision-dialog';
+import GinApprovalSummary from './gin-approval-summary';
 import IssueDocumentChallanPDF from './issue-document-challan-pdf';
 import { getIssueDocumentModuleConfig } from './issue-document-module-config';
 import { revalidateInventoryLogInsights } from '../inventory-log/inventory-log-utils';
-import GinApprovalInfo from './gin-approval-info';
-import GinApprovalSummary from './gin-approval-summary';
-import GinDecisionDialog from './gin-decision-dialog';
 import {
   EMPTY_TRANSPORT,
   createDecisionLineItems,
@@ -300,9 +302,7 @@ export default function GoodsIssueNoteDetails({ moduleKey = 'goodsIssueNote' }) 
     loading,
     error,
   } = useGetRequest(ginId ? moduleConfig.detailEndpoint(ginId) : null);
-  const { data: rawWorkflow } = useGetRequest(
-    workflowEnabled ? GIN_APPROVAL_WORKFLOW_URL : null
-  );
+  const { data: rawWorkflow } = useGetRequest(workflowEnabled ? GIN_APPROVAL_WORKFLOW_URL : null);
 
   const [deleting, setDeleting] = useState(false);
   const [downloadingChallan, setDownloadingChallan] = useState(false);
@@ -352,8 +352,7 @@ export default function GoodsIssueNoteDetails({ moduleKey = 'goodsIssueNote' }) 
     fallback: normalizeStatus(gin?.status) === 'draft' ? 'Pending approval' : 'Not captured',
   });
   const wfInfo = useMemo(
-    () =>
-      workflowEnabled && gin ? computeGinWorkflowInfo(gin, rawWorkflow, user?.email) : null,
+    () => (workflowEnabled && gin ? computeGinWorkflowInfo(gin, rawWorkflow, user?.email) : null),
     [workflowEnabled, gin, rawWorkflow, user?.email]
   );
 
@@ -579,7 +578,9 @@ export default function GoodsIssueNoteDetails({ moduleKey = 'goodsIssueNote' }) 
               `Failed to mark the selected ${moduleConfig.recordSingular} as issued.`
             : `Failed to mark the selected ${moduleConfig.recordSingular} as cancelled.`;
 
-      toast.error(extractErrorMessage(requestError?.response?.data || requestError) || fallbackMessage);
+      toast.error(
+        extractErrorMessage(requestError?.response?.data || requestError) || fallbackMessage
+      );
     } finally {
       setDecisionSubmitting(false);
     }
@@ -616,6 +617,419 @@ export default function GoodsIssueNoteDetails({ moduleKey = 'goodsIssueNote' }) 
     } finally {
       setDownloadingGatePass(false);
     }
+  };
+
+  const amountInwords = getAmountInWords(gin?.total_value);
+  const handlePrintGIN = () => {
+    /* ── helpers ─────────────────────────────────────────────────── */
+
+    const baseUrl = CONFIG.appDomainUrl.replace(/\/+$/, '');
+    const escape = (v) =>
+      String(v ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+
+    const fmtDate = (d) => {
+      if (!d) return '';
+      try {
+        return new Date(d).toLocaleDateString('en-GB');
+      } catch {
+        return String(d);
+      }
+    };
+
+    const fmtNum = (v) => {
+      const n = Number(v);
+
+      return Number.isNaN(n)
+        ? ''
+        : n.toLocaleString('en-BD', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          });
+    };
+    /* ── derived header values ───────────────────────────────────── */
+    const projectName = escape(gin?.project ?? '');
+    const reqNo = escape(gin?.gin_number ?? '');
+    const issueDate = fmtDate(gin?.issue_date);
+    const totalValue = fmtNum(gin?.total_value);
+    const requesterName = escape(gin?.requested_by_name ?? '');
+    const verifiedBy = escape(gin?.issued_by_name ?? '');
+    const approvedBy = escape(gin?.approved_by_name ?? '');
+
+    /* ── first table : Particulars/Budget Items ──────────────────── */
+    const MIN_PART_ROWS = 12;
+    const lineItemss = gin?.line_items ?? [];
+    const paddedPart = [
+      ...lineItems,
+      ...Array(Math.max(0, MIN_PART_ROWS - lineItemss.length)).fill(null),
+    ];
+
+    const partRows = paddedPart
+      .map((item, i) => {
+        const lineAmt = item
+          ? fmtNum(
+              Number(item.unit_price ?? 0) * Number(item.issued_qty ?? item.requested_qty ?? 0)
+            )
+          : '';
+        return `
+      <tr>
+        <td class="tc">${item ? i + 1 : ''}</td>
+        <td>${item ? escape(item.item_name || item.product_name || '') : ''}</td>
+        <td class="tc">${item ? escape(item.item_code ?? '') : ''}</td>
+        <td class="tr">${item ? lineAmt : ''}</td>
+        <td>${item ? escape(item.remarks ?? '') : ''}</td>
+      </tr>`;
+      })
+      .join('');
+
+    /* ── second table : Cheque details (blank rows — no cheque data) */
+    const MIN_CHQ_ROWS = 8;
+    const chequeItems = gin?.cheque_items ?? [];
+    const paddedChq = [
+      ...chequeItems,
+      ...Array(Math.max(0, MIN_CHQ_ROWS - chequeItems.length)).fill(null),
+    ];
+
+    const chequeRows = paddedChq
+      .map(
+        (item, i) => `
+      <tr>
+        <td class="tc">${item ? i + 1 : ''}</td>
+        <td>${item ? escape(item.account_name ?? '') : ''}</td>
+        <td class="tc">${item ? escape(item.cheque_number ?? '') : ''}</td>
+        <td class="tr">${item ? fmtNum(item.total_amount ?? 0) : ''}</td>
+      </tr>`
+      )
+      .join('');
+
+    /* ── full HTML ───────────────────────────────────────────────── */
+    const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>${reqNo} — Cheque Issue Requisition Form</title>
+  <link
+    rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@400;700&display=swap"
+  >
+  <style>
+    /* ── Reset ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: Arial, 'Noto Sans Bengali', sans-serif;
+      font-size: 11px;
+      color: #000;
+      background: #fff;
+      padding: 22px 28px;
+    }
+
+    /* ════════════════════════════════════════════
+       ORG HEADER  (shared template — do not change)
+    ════════════════════════════════════════════ */
+    .org-wrap {
+      display: flex;
+      align-items: center;
+      margin-bottom: 3px;
+    }
+    .org-logo {
+      width: 66px;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+    }
+    .org-logo img {
+      width: 60px;
+      height: 60px;
+      object-fit: contain;
+    }
+    .org-center {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+    }
+    .org-spacer { width: 66px; flex-shrink: 0; }
+    .org-name-img {
+      max-height: 56px;
+      width: auto;
+      object-fit: contain;
+      display: block;
+    }
+    .org-web {
+      font-size: 10px;
+      text-decoration: underline;
+      color: #0000cc;
+      margin-top: 2px;
+    }
+    .rule { border-top: 3px solid #000; margin: 5px 0 10px; }
+
+    /* ════════════════════════════════════════════
+       FORM TITLE
+    ════════════════════════════════════════════ */
+    .title-wrap { text-align: center; margin-bottom: 14px; }
+    .title-box {
+      display: inline-block;
+      background: #1c1c1c;
+      color: #fff;
+      font-size: 13px;
+      font-weight: 700;
+      padding: 5px 24px;
+      border-radius: 5px;
+      letter-spacing: 0.4px;
+    }
+
+    /* ════════════════════════════════════════════
+       INFO FIELDS  (dotted underline style)
+    ════════════════════════════════════════════ */
+    .info-row {
+      display: flex;
+      align-items: baseline;
+      gap: 24px;
+      margin-bottom: 7px;
+    }
+    .info-field {
+      display: flex;
+      align-items: baseline;
+      flex: 1;
+    }
+    .i-lbl {
+      font-size: 11px;
+      font-weight: 400;
+      white-space: nowrap;
+    }
+    .i-dots {
+      flex: 1;
+      border-bottom: 1.5px dotted #333;
+      padding-left: 3px;
+      padding-bottom: 1px;
+      font-size: 11px;
+      min-width: 50px;
+    }
+
+    /* ════════════════════════════════════════════
+       SHARED TABLE STYLES
+    ════════════════════════════════════════════ */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 10px;
+    }
+    table th, table td {
+      border: 1px solid #555;
+      padding: 3px 5px;
+      font-size: 11px;
+    }
+    table th {
+      background: #d8d8d8;
+      font-weight: 700;
+      text-align: center;
+    }
+    /* blank data rows always render as visible lines */
+    table tbody td { height: 22px; vertical-align: middle; }
+
+    .tc  { text-align: center; }
+    .tr  { text-align: right;  }
+    .tl  { text-align: left;   }
+    .bold { font-weight: 700;  }
+
+    /* ── Particulars table column widths ── */
+    .col-sl1   { width: 38px; }
+    .col-part  { }
+    .col-bcode { width: 96px; }
+    .col-amt1  { width: 130px; }
+    .col-rem   { width: 90px; }
+
+    /* Grand Total row */
+    .grand-row td { font-weight: 700; background: #f0f0f0; }
+
+    /* ── Cheque table column widths ── */
+    .col-sl2   { width: 50px; }
+    .col-acc   { }
+    .col-chqno { width: 130px; }
+    .col-amt2  { width: 140px; }
+
+    /* Amount in words field */
+    .amt-words-row {
+      display: flex;
+      align-items: baseline;
+      margin-bottom: 10px;
+    }
+    .amt-words-lbl  { font-size: 11px; white-space: nowrap; }
+    .amt-words-dots {
+      flex: 1;
+      border-bottom: 1.5px dotted #333;
+      padding-left: 3px;
+      padding-bottom: 1px;
+      font-size: 11px;
+    }
+
+    /* ════════════════════════════════════════════
+       SIGNATURE FOOTER
+    ════════════════════════════════════════════ */
+    .sig-section {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 32px;
+      gap: 10px;
+    }
+    .sig-block {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+    }
+    .sig-line {
+      width: 100%;
+      border-top: 1.5px dotted #333;
+      margin-bottom: 5px;
+    }
+    .sig-name  { font-size: 11px; font-weight: 700; }
+    .sig-value { font-size: 10px; color: #333; margin-top: 2px; }
+
+    /* ════════════════════════════════════════════
+       PRINT
+    ════════════════════════════════════════════ */
+    @media print {
+      body { padding: 0; }
+      @page { size: A4; margin: 1.1cm 1.2cm; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ═══════════════════ ORG HEADER (shared template) ═══════════════════ -->
+  <div class="org-wrap">
+    <div class="org-logo">
+      <img
+      src="${baseUrl}/icons/logo.png"
+        alt="LEDARS Logo"
+        onerror="this.style.display='none'"
+      >
+    </div>
+    <div class="org-center">
+      <img
+        class="org-name-img"
+        src="${baseUrl}/icons/name_img.png"
+        alt="LEDARS — Shyamnagar, Satkhira."
+        onerror="this.style.display='none'"
+      >
+      <div class="org-web">www.ledars.org</div>
+    </div>
+    <div class="org-spacer"></div>
+  </div>
+  <div class="rule"></div>
+
+  <!-- ═══════════════════ FORM TITLE ═══════════════════ -->
+  <div class="title-wrap">
+    <span class="title-box">Cheque Issue Requisition Form</span>
+  </div>
+
+  <!-- ═══════════════════ INFO FIELDS ═══════════════════ -->
+
+  <!-- Project Name — full width -->
+  <div class="info-row">
+    <div class="info-field">
+      <span class="i-lbl">Project Name :</span>
+      <span class="i-dots">${projectName}</span>
+    </div>
+  </div>
+
+  <!-- Requisition No (left) | Date (right) -->
+  <div class="info-row" style="margin-bottom:12px;">
+    <div class="info-field">
+      <span class="i-lbl">Requisition No :</span>
+      <span class="i-dots">${reqNo}</span>
+    </div>
+    <div class="info-field">
+      <span class="i-lbl">Date :</span>
+      <span class="i-dots">${issueDate}</span>
+    </div>
+  </div>
+
+  <!-- ═══════════════════ PARTICULARS / BUDGET ITEMS TABLE ═══════════════════ -->
+  <table>
+    <thead>
+      <tr>
+        <th class="col-sl1">Sl.No</th>
+        <th class="col-part">Particulars/Budget Items</th>
+        <th class="col-bcode">Budget Code</th>
+        <th class="col-amt1">Total Amount (BDT)</th>
+        <th class="col-rem">Remarks</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${partRows}
+    </tbody>
+    <tfoot>
+      <tr class="grand-row">
+        <td colspan="3" class="tr bold" style="padding-right:8px;">Grand Total =</td>
+        <td class="tr bold">${totalValue}</td>
+        <td></td>
+      </tr>
+    </tfoot>
+  </table>
+
+  <!-- ═══════════════════ AMOUNT IN WORDS ═══════════════════ -->
+  <div class="amt-words-row">
+    <span class="amt-words-lbl">Amount in words :</span>
+    <span class="amt-words-dots">${amountInwords}</span>
+  </div>
+
+  <!-- ═══════════════════ CHEQUE TABLE ═══════════════════ -->
+  <table>
+    <thead>
+      <tr>
+        <th class="col-sl2">Sl. No</th>
+        <th class="col-acc">Account Name</th>
+        <th class="col-chqno">Cheque Number</th>
+        <th class="col-amt2">Total Amount (BDT)</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${chequeRows}
+    </tbody>
+  </table>
+
+  <!-- ═══════════════════ SIGNATURE FOOTER ═══════════════════ -->
+  <div class="sig-section">
+
+    <div class="sig-block">
+      <div class="sig-line"></div>
+      <div class="sig-name">Requested By</div>
+      <div class="sig-value">${requesterName}</div>
+    </div>
+
+    <div class="sig-block">
+      <div class="sig-line"></div>
+      <div class="sig-name">Verified By</div>
+      <div class="sig-value">${verifiedBy}</div>
+    </div>
+
+    <div class="sig-block">
+      <div class="sig-line"></div>
+      <div class="sig-name">Approved By</div>
+      <div class="sig-value">${approvedBy}</div>
+    </div>
+
+  </div>
+
+</body>
+</html>`;
+
+    /* ── open print window ─────────────────────────────────────── */
+    const win = window.open('', '_blank');
+    win.document.write(html);
+    win.document.close();
+    win.focus();
+    /* wait for images + font to load before triggering print */
+    setTimeout(() => win.print(), 900);
   };
 
   return (
@@ -692,6 +1106,13 @@ export default function GoodsIssueNoteDetails({ moduleKey = 'goodsIssueNote' }) 
                   {moduleConfig.issueActionLabel || 'Issue'}
                 </Button>
               ) : null}
+              <Button
+                variant="outlined"
+                startIcon={<Iconify icon="solar:printer-bold" />}
+                onClick={handlePrintGIN}
+              >
+                Print
+              </Button>
               <Button
                 variant="outlined"
                 startIcon={<Iconify icon="solar:download-bold" />}

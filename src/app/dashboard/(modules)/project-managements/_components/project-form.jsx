@@ -507,7 +507,9 @@ function mapProjectToForm(project) {
           description: material.description || '',
           unit: material.unit || 'pcs',
           quantity: String(material.quantity ?? '1'),
-          estimated_unit_cost: String(material.estimatedUnitCost ?? material.estimated_unit_cost ?? ''),
+          estimated_unit_cost: String(
+            material.estimatedUnitCost ?? material.estimated_unit_cost ?? ''
+          ),
           tax_rate: String(material.taxRate ?? material.tax_rate ?? '5'),
           preferred_vendor: material.preferredVendor || material.preferred_vendor || '',
           required_by: material.requiredBy || material.required_by || '',
@@ -1465,8 +1467,14 @@ export default function ProjectForm({ mode = 'create', projectId = null }) {
                       ) : null}
 
                       {form.materials.map((material, index) => {
-                        const lineSubtotal = calculateMaterialEstimatedTotal(material.quantity, material.estimated_unit_cost);
-                        const lineTaxAmount = calculateMaterialTaxAmount(lineSubtotal, material.tax_rate);
+                        const lineSubtotal = calculateMaterialEstimatedTotal(
+                          material.quantity,
+                          material.estimated_unit_cost
+                        );
+                        const lineTaxAmount = calculateMaterialTaxAmount(
+                          lineSubtotal,
+                          material.tax_rate
+                        );
                         const lineTotal = lineSubtotal + lineTaxAmount;
 
                         return (
@@ -1492,8 +1500,14 @@ export default function ProjectForm({ mode = 'create', projectId = null }) {
                                   flexWrap="wrap"
                                 >
                                   <Chip label={`ML ${index + 1}`} color="primary" size="small" />
-                                  <Typography variant="subtitle2" fontWeight={800}>Material Line {index + 1}</Typography>
-                                  <Chip label={formatCurrencyAmount(form.currency, lineTotal)} size="small" variant="outlined" />
+                                  <Typography variant="subtitle2" fontWeight={800}>
+                                    Material Line {index + 1}
+                                  </Typography>
+                                  <Chip
+                                    label={formatCurrencyAmount(form.currency, lineTotal)}
+                                    size="small"
+                                    variant="outlined"
+                                  />
                                 </Stack>
                                 <IconButton color="error" onClick={() => removeMaterial(index)}>
                                   <Iconify icon="solar:trash-bin-trash-bold" width={18} />
@@ -1517,25 +1531,82 @@ export default function ProjectForm({ mode = 'create', projectId = null }) {
                                           Material Details
                                         </Typography>
                                         <Typography variant="body2" color="text.secondary">
-                                          Keep the identity, sourcing, date, and roadmap mapping together.
+                                          Keep the identity, sourcing, date, and roadmap mapping
+                                          together.
                                         </Typography>
                                       </Box>
 
                                       <Grid container spacing={1.5}>
                                         <Grid size={{ xs: 12, md: 6 }}>
-                                          <TextField size="small" label="Material Name" fullWidth value={material.title} onChange={(event) => updateMaterial(index, 'title', event.target.value)} />
+                                          <TextField
+                                            size="small"
+                                            label="Material Name"
+                                            fullWidth
+                                            value={material.title}
+                                            onChange={(event) =>
+                                              updateMaterial(index, 'title', event.target.value)
+                                            }
+                                          />
                                         </Grid>
                                         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-                                          <TextField size="small" select label="Category" fullWidth value={material.category} onChange={(event) => updateMaterial(index, 'category', event.target.value)}>
+                                          <TextField
+                                            size="small"
+                                            select
+                                            label="Category"
+                                            fullWidth
+                                            value={material.category}
+                                            onChange={(event) =>
+                                              updateMaterial(index, 'category', event.target.value)
+                                            }
+                                          >
                                             <MenuItem value="">Select</MenuItem>
-                                            {MATERIAL_CATEGORY_OPTIONS.map((option) => <MenuItem key={option} value={option}>{option}</MenuItem>)}
+                                            {MATERIAL_CATEGORY_OPTIONS.map((option) => (
+                                              <MenuItem key={option} value={option}>
+                                                {option}
+                                              </MenuItem>
+                                            ))}
                                           </TextField>
                                         </Grid>
                                         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-                                          <TextField size="small" label="Required By" type="date" fullWidth InputLabelProps={{ shrink: true }} value={material.required_by} onChange={(event) => updateMaterial(index, 'required_by', event.target.value)} inputProps={{ min: form.start_date || undefined, max: form.end_date || undefined }} helperText={form.start_date && form.end_date ? `Within project: ${form.start_date} to ${form.end_date}` : 'Select project dates first'} />
+                                          <TextField
+                                            size="small"
+                                            label="Required By"
+                                            type="date"
+                                            fullWidth
+                                            InputLabelProps={{ shrink: true }}
+                                            value={material.required_by}
+                                            onChange={(event) =>
+                                              updateMaterial(
+                                                index,
+                                                'required_by',
+                                                event.target.value
+                                              )
+                                            }
+                                            inputProps={{
+                                              min: form.start_date || undefined,
+                                              max: form.end_date || undefined,
+                                            }}
+                                            helperText={
+                                              form.start_date && form.end_date
+                                                ? `Within project: ${form.start_date} to ${form.end_date}`
+                                                : 'Select project dates first'
+                                            }
+                                          />
                                         </Grid>
                                         <Grid size={{ xs: 12, md: 6 }}>
-                                          <TextField size="small" label="Preferred Vendor / Source" fullWidth value={material.preferred_vendor} onChange={(event) => updateMaterial(index, 'preferred_vendor', event.target.value)} />
+                                          <TextField
+                                            size="small"
+                                            label="Preferred Vendor / Source"
+                                            fullWidth
+                                            value={material.preferred_vendor}
+                                            onChange={(event) =>
+                                              updateMaterial(
+                                                index,
+                                                'preferred_vendor',
+                                                event.target.value
+                                              )
+                                            }
+                                          />
                                         </Grid>
                                         <Grid size={{ xs: 12, md: 6 }}>
                                           <TextField
@@ -1544,10 +1615,23 @@ export default function ProjectForm({ mode = 'create', projectId = null }) {
                                             label="Linked Roadmap Step"
                                             fullWidth
                                             value={material.plan_serial_no}
-                                            onChange={(event) => updateMaterial(index, 'plan_serial_no', event.target.value)}
+                                            onChange={(event) =>
+                                              updateMaterial(
+                                                index,
+                                                'plan_serial_no',
+                                                event.target.value
+                                              )
+                                            }
                                           >
                                             <MenuItem value="">No linked step</MenuItem>
-                                            {planStepOptions.map((option) => <MenuItem key={option.serialNo} value={String(option.serialNo)}>{option.label}</MenuItem>)}
+                                            {planStepOptions.map((option) => (
+                                              <MenuItem
+                                                key={option.serialNo}
+                                                value={String(option.serialNo)}
+                                              >
+                                                {option.label}
+                                              </MenuItem>
+                                            ))}
                                           </TextField>
                                         </Grid>
                                       </Grid>
@@ -1575,8 +1659,22 @@ export default function ProjectForm({ mode = 'create', projectId = null }) {
                                         </Typography>
                                       </Box>
 
-                                      <MultilineField label="Specification / Description" value={material.description} onChange={(event) => updateMaterial(index, 'description', event.target.value)} minRows={3} />
-                                      <MultilineField label="Internal Notes" value={material.notes} onChange={(event) => updateMaterial(index, 'notes', event.target.value)} minRows={3} />
+                                      <MultilineField
+                                        label="Specification / Description"
+                                        value={material.description}
+                                        onChange={(event) =>
+                                          updateMaterial(index, 'description', event.target.value)
+                                        }
+                                        minRows={3}
+                                      />
+                                      <MultilineField
+                                        label="Internal Notes"
+                                        value={material.notes}
+                                        onChange={(event) =>
+                                          updateMaterial(index, 'notes', event.target.value)
+                                        }
+                                        minRows={3}
+                                      />
                                     </Stack>
                                   </Box>
                                 </Grid>
@@ -1597,7 +1695,8 @@ export default function ProjectForm({ mode = 'create', projectId = null }) {
                                     <Box
                                       sx={{
                                         display: { xs: 'none', md: 'grid' },
-                                        gridTemplateColumns: 'minmax(220px, 1.6fr) 88px 120px 120px 140px',
+                                        gridTemplateColumns:
+                                          'minmax(220px, 1.6fr) 88px 120px 120px 140px',
                                         gap: 2,
                                         px: 2,
                                         py: 1.5,
@@ -1605,11 +1704,42 @@ export default function ProjectForm({ mode = 'create', projectId = null }) {
                                         borderBottom: `1px solid ${alpha(theme.palette.grey[500], 0.12)}`,
                                       }}
                                     >
-                                      <Typography variant="subtitle2" fontWeight={700} color="text.secondary">Cost Setup</Typography>
-                                      <Typography variant="subtitle2" fontWeight={700} color="text.secondary">Qty</Typography>
-                                      <Typography variant="subtitle2" fontWeight={700} color="text.secondary">Unit</Typography>
-                                      <Typography variant="subtitle2" fontWeight={700} color="text.secondary">Unit Price</Typography>
-                                      <Typography variant="caption" fontWeight={800} color="text.secondary" textAlign="right">Amount</Typography>
+                                      <Typography
+                                        variant="subtitle2"
+                                        fontWeight={700}
+                                        color="text.secondary"
+                                      >
+                                        Cost Setup
+                                      </Typography>
+                                      <Typography
+                                        variant="subtitle2"
+                                        fontWeight={700}
+                                        color="text.secondary"
+                                      >
+                                        Qty
+                                      </Typography>
+                                      <Typography
+                                        variant="subtitle2"
+                                        fontWeight={700}
+                                        color="text.secondary"
+                                      >
+                                        Unit
+                                      </Typography>
+                                      <Typography
+                                        variant="subtitle2"
+                                        fontWeight={700}
+                                        color="text.secondary"
+                                      >
+                                        Unit Price
+                                      </Typography>
+                                      <Typography
+                                        variant="caption"
+                                        fontWeight={800}
+                                        color="text.secondary"
+                                        textAlign="right"
+                                      >
+                                        Amount
+                                      </Typography>
                                     </Box>
 
                                     <Box
@@ -1630,7 +1760,8 @@ export default function ProjectForm({ mode = 'create', projectId = null }) {
                                           {material.title || `Material line ${index + 1}`}
                                         </Typography>
                                         <Typography variant="caption" color="text.secondary" noWrap>
-                                          {material.category || 'Set unit, quantity, and unit price to calculate this line.'}
+                                          {material.category ||
+                                            'Set unit, quantity, and unit price to calculate this line.'}
                                         </Typography>
                                       </Box>
                                       <TextField
@@ -1638,7 +1769,9 @@ export default function ProjectForm({ mode = 'create', projectId = null }) {
                                         variant="standard"
                                         type="number"
                                         value={material.quantity}
-                                        onChange={(event) => updateMaterial(index, 'quantity', event.target.value)}
+                                        onChange={(event) =>
+                                          updateMaterial(index, 'quantity', event.target.value)
+                                        }
                                         inputProps={{ min: 0, step: '0.01' }}
                                       />
                                       <TextField
@@ -1646,16 +1779,28 @@ export default function ProjectForm({ mode = 'create', projectId = null }) {
                                         variant="standard"
                                         select
                                         value={material.unit}
-                                        onChange={(event) => updateMaterial(index, 'unit', event.target.value)}
+                                        onChange={(event) =>
+                                          updateMaterial(index, 'unit', event.target.value)
+                                        }
                                       >
-                                        {MATERIAL_UNIT_OPTIONS.map((option) => <MenuItem key={option} value={option}>{option}</MenuItem>)}
+                                        {MATERIAL_UNIT_OPTIONS.map((option) => (
+                                          <MenuItem key={option} value={option}>
+                                            {option}
+                                          </MenuItem>
+                                        ))}
                                       </TextField>
                                       <TextField
                                         fullWidth
                                         variant="standard"
                                         type="number"
                                         value={material.estimated_unit_cost}
-                                        onChange={(event) => updateMaterial(index, 'estimated_unit_cost', event.target.value)}
+                                        onChange={(event) =>
+                                          updateMaterial(
+                                            index,
+                                            'estimated_unit_cost',
+                                            event.target.value
+                                          )
+                                        }
                                         inputProps={{ min: 0, step: '0.01' }}
                                       />
                                       <TextField
@@ -1665,21 +1810,38 @@ export default function ProjectForm({ mode = 'create', projectId = null }) {
                                         InputProps={{ readOnly: true }}
                                         sx={{ display: { xs: 'block', md: 'none' } }}
                                       />
-                                      <Typography variant="subtitle2" fontWeight={700} textAlign={{ xs: 'left', md: 'right' }} sx={{ whiteSpace: 'nowrap' }}>
+                                      <Typography
+                                        variant="subtitle2"
+                                        fontWeight={700}
+                                        textAlign={{ xs: 'left', md: 'right' }}
+                                        sx={{ whiteSpace: 'nowrap' }}
+                                      >
                                         {formatCurrencyAmount(form.currency, lineSubtotal)}
                                       </Typography>
                                     </Box>
                                   </Box>
 
-                                  <Stack direction="row" justifyContent="flex-end" alignItems="center" spacing={1.25} sx={{ ml: 'auto', width: 'fit-content' }}>
-                                    <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: 'nowrap' }}>
+                                  <Stack
+                                    direction="row"
+                                    justifyContent="flex-end"
+                                    alignItems="center"
+                                    spacing={1.25}
+                                    sx={{ ml: 'auto', width: 'fit-content' }}
+                                  >
+                                    <Typography
+                                      variant="body2"
+                                      color="text.secondary"
+                                      sx={{ whiteSpace: 'nowrap' }}
+                                    >
                                       Tax rate %
                                     </Typography>
                                     <TextField
                                       size="small"
                                       type="number"
                                       value={material.tax_rate || '0'}
-                                      onChange={(event) => updateMaterial(index, 'tax_rate', event.target.value)}
+                                      onChange={(event) =>
+                                        updateMaterial(index, 'tax_rate', event.target.value)
+                                      }
                                       inputProps={{ min: 0, step: '0.01' }}
                                       sx={{ width: 110, '& .MuiInputBase-root': { width: 110 } }}
                                     />
@@ -1696,18 +1858,42 @@ export default function ProjectForm({ mode = 'create', projectId = null }) {
                                     }}
                                   >
                                     <Stack spacing={1.1}>
-                                      <Stack direction="row" justifyContent="space-between" spacing={2}>
-                                        <Typography variant="body2" color="text.secondary">Subtotal</Typography>
-                                        <Typography variant="body2" fontWeight={700}>{formatCurrencyAmount(form.currency, lineSubtotal)}</Typography>
+                                      <Stack
+                                        direction="row"
+                                        justifyContent="space-between"
+                                        spacing={2}
+                                      >
+                                        <Typography variant="body2" color="text.secondary">
+                                          Subtotal
+                                        </Typography>
+                                        <Typography variant="body2" fontWeight={700}>
+                                          {formatCurrencyAmount(form.currency, lineSubtotal)}
+                                        </Typography>
                                       </Stack>
-                                      <Stack direction="row" justifyContent="space-between" spacing={2}>
-                                        <Typography variant="body2" color="text.secondary">Tax ({Number(material.tax_rate || 0)}%)</Typography>
-                                        <Typography variant="body2" fontWeight={700}>{formatCurrencyAmount(form.currency, lineTaxAmount)}</Typography>
+                                      <Stack
+                                        direction="row"
+                                        justifyContent="space-between"
+                                        spacing={2}
+                                      >
+                                        <Typography variant="body2" color="text.secondary">
+                                          Tax ({Number(material.tax_rate || 0)}%)
+                                        </Typography>
+                                        <Typography variant="body2" fontWeight={700}>
+                                          {formatCurrencyAmount(form.currency, lineTaxAmount)}
+                                        </Typography>
                                       </Stack>
                                       <Divider />
-                                      <Stack direction="row" justifyContent="space-between" spacing={2}>
-                                        <Typography variant="subtitle1" fontWeight={800}>Total</Typography>
-                                        <Typography variant="subtitle1" fontWeight={800}>{formatCurrencyAmount(form.currency, lineTotal)}</Typography>
+                                      <Stack
+                                        direction="row"
+                                        justifyContent="space-between"
+                                        spacing={2}
+                                      >
+                                        <Typography variant="subtitle1" fontWeight={800}>
+                                          Total
+                                        </Typography>
+                                        <Typography variant="subtitle1" fontWeight={800}>
+                                          {formatCurrencyAmount(form.currency, lineTotal)}
+                                        </Typography>
                                       </Stack>
                                     </Stack>
                                   </Box>

@@ -48,6 +48,7 @@ export function useBankDepositsApi() {
     const body = {
       date: payload.date,
       bank_account_name: payload.bankAccount ?? payload.bank_account_name ?? '',
+      bank_account: payload.bank_account ? Number(payload.bank_account) : undefined,
       source: payload.source ?? '',
       deposit_method: payload.depositMethod ?? payload.deposit_method ?? '',
       deposit_slip_ref: payload.depositSlipRef ?? payload.deposit_slip_ref ?? '',
@@ -70,6 +71,7 @@ export function useBankDepositsApi() {
     const body = {
       date: payload.date,
       bank_account_name: payload.bankAccount ?? payload.bank_account_name ?? '',
+      bank_account: payload.bank_account ? Number(payload.bank_account) : undefined,
       source: payload.source ?? '',
       deposit_method: payload.depositMethod ?? payload.deposit_method ?? '',
       deposit_slip_ref: payload.depositSlipRef ?? payload.deposit_slip_ref ?? '',

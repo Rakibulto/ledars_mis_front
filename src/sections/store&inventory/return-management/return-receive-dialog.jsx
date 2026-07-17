@@ -1,38 +1,38 @@
-﻿'use client';
+'use client';
 
-import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
+import { useMemo, useState } from 'react';
 
+import { alpha, useTheme } from '@mui/material/styles';
 import {
-  Alert,
   Box,
-  Button,
-  ButtonGroup,
   Chip,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-  Divider,
-  IconButton,
-  InputAdornment,
+  Alert,
   Paper,
   Stack,
   Table,
+  Button,
+  Dialog,
+  Tooltip,
+  TableRow,
   TableBody,
   TableCell,
-  TableContainer,
   TableHead,
-  TableRow,
   TextField,
-  Tooltip,
+  IconButton,
   Typography,
+  ButtonGroup,
+  DialogTitle,
+  DialogActions,
+  DialogContent,
+  InputAdornment,
+  TableContainer,
 } from '@mui/material';
-import { alpha, useTheme } from '@mui/material/styles';
 
-import { endpoints } from 'src/utils/axios';
+import axiosInstance, { endpoints } from 'src/utils/axios';
+
 import { extractErrorMessage } from 'src/actions/ledars-hook';
-import axiosInstance from 'src/utils/axios';
+
 import { Iconify } from 'src/components/iconify';
 
 const EP = endpoints.storeInventory;
@@ -93,9 +93,9 @@ export default function ReturnReceiveDialog({ open, returnDoc, onClose, onSucces
 
   // Summary totals
   const totals = useMemo(() => {
-    let totalReturn = 0,
-      totalGood = 0,
-      totalDamaged = 0;
+    let totalReturn = 0;
+    let totalGood = 0;
+    let totalDamaged = 0;
     lines.forEach((l) => {
       const q = quantities[l.id] || {};
       totalReturn += Number(l.return_quantity || 0);

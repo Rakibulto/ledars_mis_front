@@ -16,6 +16,7 @@ import { useGetRequest } from 'src/actions/ledars-hook';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { Card, CardBody, CardHeader } from '../../components/ui/card';
+import { DatePicker } from '../../components/ui/date-picker';
 
 function formatBDT(amount) {
   const num = Number(amount) || 0;
@@ -82,7 +83,6 @@ export function CreateWorkOrder() {
       ? awardsData
       : [];
 
-
   const { register, getValues, setValue, watch, control } = useForm({
     defaultValues: {
       title: '',
@@ -99,12 +99,21 @@ export function CreateWorkOrder() {
       vendorAddress: '',
       deliveryLocation: 'Ledars NGO\nHouse 8, Road 136, Gulshan-1\nDhaka-1212, Bangladesh',
       deliveryDeadline: '',
-      acceptanceDeadline: '',
       paymentTerms: '30 days after GRN',
       warrantyPeriod: '12 months',
       notes: '',
       tcTemplate: 'standard',
-      items: [{ id: '1', description: '', specification: '', quantity: 1, unitPrice: 0, total: 0 }],
+      items: [
+        {
+          id: '1',
+          description: '',
+          specification: '',
+          quantity: 1,
+          unitPrice: 0,
+          total: 0,
+          source: 'manual',
+        },
+      ],
       customTerms: tcTemplates.standard.map((t) => ({ value: t })),
     },
   });
@@ -150,7 +159,7 @@ export function CreateWorkOrder() {
     );
     setValue('csNumber', award.csNumber || '');
     setValue('rfqNumber', award.rfqNumber || '');
-    setValue('requisitionNumber', '');
+    setValue('requisitionNumber', award.requisitionNumber || '');
     // Map items: use award.items[].name as Item Name (stored in description for backend compatibility)
     if (award.items?.length > 0) {
       replaceItems(
@@ -161,6 +170,7 @@ export function CreateWorkOrder() {
           quantity: Number(item.quantity ?? item.qty) || 1,
           unitPrice: Number(item.unitPrice ?? item.unit_price) || 0,
           total: Number(item.total ?? item.total_price) || 0,
+          source: 'wo',
         }))
       );
       setItemsAutoPopulated(true);
@@ -207,6 +217,7 @@ export function CreateWorkOrder() {
       quantity: 1,
       unitPrice: 0,
       total: 0,
+      source: 'manual',
     });
   };
 
@@ -244,7 +255,6 @@ export function CreateWorkOrder() {
         category: values.category,
         order_date: new Date().toISOString().split('T')[0],
         delivery_date: values.deliveryDeadline,
-        acceptance_deadline: values.acceptanceDeadline || undefined,
         delivery_address: values.deliveryLocation,
         payment_terms: values.paymentTerms,
         warranty_period: values.warrantyPeriod,
@@ -396,8 +406,9 @@ export function CreateWorkOrder() {
                     type="text"
                     value={formData.title}
                     onChange={(e) => handleInputChange('title', e.target.value)}
-                    placeholder="e.g., IT Equipment & Computer Hardware â€” Dhaka Head Office"
-                    className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                    disabled={!!selectedAwardId}
+                    placeholder="e.g., IT Equipment & Computer Hardware — Dhaka Head Office"
+                    className={`w-full px-3 py-2 border border-input rounded-lg ${selectedAwardId ? 'bg-muted/50 text-muted-foreground cursor-not-allowed' : 'focus:outline-none focus:ring-2 focus:ring-primary'}`}
                   />
                 </div>
                 <div>
@@ -408,8 +419,9 @@ export function CreateWorkOrder() {
                     type="text"
                     value={formData.category}
                     onChange={(e) => handleInputChange('category', e.target.value)}
+                    disabled={!!selectedAwardId}
                     placeholder="e.g., IT Equipment"
-                    className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                    className={`w-full px-3 py-2 border border-input rounded-lg ${selectedAwardId ? 'bg-muted/50 text-muted-foreground cursor-not-allowed' : 'focus:outline-none focus:ring-2 focus:ring-primary'}`}
                   />
                 </div>
                 <div>
@@ -431,8 +443,9 @@ export function CreateWorkOrder() {
                     type="text"
                     value={formData.csNumber}
                     onChange={(e) => handleInputChange('csNumber', e.target.value)}
+                    disabled={!!selectedAwardId}
                     placeholder="e.g., CS-2026-001"
-                    className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                    className={`w-full px-3 py-2 border border-input rounded-lg ${selectedAwardId ? 'bg-muted/50 text-muted-foreground cursor-not-allowed' : 'focus:outline-none focus:ring-2 focus:ring-primary'}`}
                   />
                 </div>
                 <div>
@@ -442,6 +455,7 @@ export function CreateWorkOrder() {
                   <input
                     type="text"
                     value={formData.requisitionNumber}
+                    disabled={!!selectedAwardId}
                     onChange={(e) => handleInputChange('requisitionNumber', e.target.value)}
                     placeholder="e.g., MRF-2026-015"
                     className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
@@ -455,8 +469,9 @@ export function CreateWorkOrder() {
                     type="text"
                     value={formData.rfqNumber}
                     onChange={(e) => handleInputChange('rfqNumber', e.target.value)}
+                    disabled={!!selectedAwardId}
                     placeholder="e.g., RFQ-2026-015"
-                    className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                    className={`w-full px-3 py-2 border border-input rounded-lg ${selectedAwardId ? 'bg-muted/50 text-muted-foreground cursor-not-allowed' : 'focus:outline-none focus:ring-2 focus:ring-primary'}`}
                   />
                 </div>
               </div>
@@ -523,7 +538,7 @@ export function CreateWorkOrder() {
                       </span>
                     </div>
                     <span className="text-xs text-muted-foreground">
-                      Quantities &amp; prices are editable
+                      Auto-populated from award — fields locked
                     </span>
                   </div>
                 )}
@@ -535,7 +550,13 @@ export function CreateWorkOrder() {
                         <button
                           type="button"
                           onClick={() => removeItem(item.id)}
-                          className="text-error hover:bg-error/10 p-1 rounded"
+                          disabled={item.source === 'wo'}
+                          title={
+                            item.source === 'wo'
+                              ? 'Auto-populated items cannot be removed'
+                              : 'Remove item'
+                          }
+                          className={`p-1 rounded ${item.source === 'wo' ? 'text-muted-foreground opacity-40 cursor-not-allowed' : 'text-error hover:bg-error/10'}`}
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -550,8 +571,9 @@ export function CreateWorkOrder() {
                           type="text"
                           value={item.description}
                           onChange={(e) => handleItemChange(item.id, 'description', e.target.value)}
+                          disabled={item.source === 'wo'}
                           placeholder="Item name"
-                          className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                          className={`w-full px-3 py-2 border border-input rounded-lg ${item.source === 'wo' ? 'bg-muted/50 text-muted-foreground cursor-not-allowed' : 'focus:outline-none focus:ring-2 focus:ring-primary'}`}
                         />
                       </div>
                       <div className="col-span-full">
@@ -563,9 +585,10 @@ export function CreateWorkOrder() {
                           onChange={(e) =>
                             handleItemChange(item.id, 'specification', e.target.value)
                           }
+                          disabled={item.source === 'wo'}
                           placeholder="Technical specifications"
                           rows={2}
-                          className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+                          className={`w-full px-3 py-2 border border-input rounded-lg resize-none ${item.source === 'wo' ? 'bg-muted/50 text-muted-foreground cursor-not-allowed' : 'focus:outline-none focus:ring-2 focus:ring-primary'}`}
                         />
                       </div>
                       <div>
@@ -578,8 +601,9 @@ export function CreateWorkOrder() {
                           onChange={(e) =>
                             handleItemChange(item.id, 'quantity', parseInt(e.target.value) || 0)
                           }
+                          disabled={item.source === 'wo'}
                           min="1"
-                          className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                          className={`w-full px-3 py-2 border border-input rounded-lg ${item.source === 'wo' ? 'bg-muted/50 text-muted-foreground cursor-not-allowed' : 'focus:outline-none focus:ring-2 focus:ring-primary'}`}
                         />
                       </div>
                       <div>
@@ -592,9 +616,10 @@ export function CreateWorkOrder() {
                           onChange={(e) =>
                             handleItemChange(item.id, 'unitPrice', parseFloat(e.target.value) || 0)
                           }
+                          disabled={item.source === 'wo'}
                           min="0"
                           step="0.01"
-                          className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                          className={`w-full px-3 py-2 border border-input rounded-lg ${item.source === 'wo' ? 'bg-muted/50 text-muted-foreground cursor-not-allowed' : 'focus:outline-none focus:ring-2 focus:ring-primary'}`}
                         />
                       </div>
                       <div className="col-span-full">
@@ -640,22 +665,10 @@ export function CreateWorkOrder() {
                   <label className="block text-sm font-medium text-foreground mb-2">
                     Delivery Deadline *
                   </label>
-                  <input
-                    type="date"
+                  <DatePicker
                     value={formData.deliveryDeadline}
-                    onChange={(e) => handleInputChange('deliveryDeadline', e.target.value)}
-                    className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">
-                    Acceptance Deadline
-                  </label>
-                  <input
-                    type="date"
-                    value={formData.acceptanceDeadline}
-                    onChange={(e) => handleInputChange('acceptanceDeadline', e.target.value)}
-                    className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                    onChange={(date) => handleInputChange('deliveryDeadline', date)}
+                    placeholder="Select delivery deadline"
                   />
                 </div>
               </div>

@@ -1,5 +1,5 @@
-import ExpenseCreate from '../../_components/expense-create';
+import { CreateAdvanceView } from '../advances/create-advance-view';
 
 export default function Page() {
-  return <ExpenseCreate />;
+  return <CreateAdvanceView />;
 }

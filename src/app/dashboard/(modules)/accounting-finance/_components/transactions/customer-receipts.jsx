@@ -2,6 +2,7 @@
 
 import { toast } from 'sonner';
 import { useMemo, useState } from 'react';
+import useSWR from 'swr';
 
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
@@ -12,7 +13,6 @@ import Stack from '@mui/material/Stack';
 import Table from '@mui/material/Table';
 import Button from '@mui/material/Button';
 import Dialog from '@mui/material/Dialog';
-import Divider from '@mui/material/Divider';
 import Tooltip from '@mui/material/Tooltip';
 import MenuItem from '@mui/material/MenuItem';
 import TableRow from '@mui/material/TableRow';
@@ -32,6 +32,7 @@ import TableContainer from '@mui/material/TableContainer';
 
 import { paths } from 'src/routes/paths';
 import { RouterLink } from 'src/routes/components';
+import axiosInstance, { fetcher, endpoints } from 'src/utils/axios';
 
 import { Iconify } from 'src/components/iconify';
 
@@ -55,19 +56,14 @@ const EMPTY_RECEIPT = {
   customer_id: '',
   date: '2026-03-29',
   method: 'Bank transfer',
-  bankAccount: 'Collections Clearing',
+  bankAccount: '',
+  bank_account: '',
   amount: '',
   reference: '',
   collectionOwner: '',
   remittanceAdvice: '',
   notes: '',
 };
-
-const RECEIPT_BANK_ACCOUNTS = [
-  'Collections Clearing',
-  'Operating Bank Account',
-  'Mobile Collection Wallet',
-];
 
 function formatAllocationLabel(value) {
   return value.replace(/_/g, ' ');
@@ -77,6 +73,12 @@ export default function CustomerReceipts() {
   const { activeCurrency } = useCurrency();
   const api = useCustomerReceiptsApi();
   const { receipts, customers, getCustomerById } = api;
+
+  const { data: rawAccounts } = useSWR(endpoints.accounting.accounts, fetcher);
+  const accounts = useMemo(() => {
+    const list = Array.isArray(rawAccounts) ? rawAccounts : rawAccounts?.results ?? [];
+    return list.filter((a) => a.is_active !== false);
+  }, [rawAccounts]);
 
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('all');
@@ -695,12 +697,18 @@ export default function CustomerReceipts() {
                   fullWidth
                   size="small"
                   label="Receiving account"
-                  value={draftReceipt.bankAccount}
-                  onChange={(event) => updateDraft('bankAccount', event.target.value)}
+                  value={draftReceipt.bank_account}
+                  onChange={(event) => {
+                    const selectedId = event.target.value;
+                    const selected = accounts.find((a) => String(a.id) === String(selectedId));
+                    updateDraft('bank_account', selectedId);
+                    updateDraft('bankAccount', selected ? `${selected.code} - ${selected.name}` : '');
+                  }}
                 >
-                  {RECEIPT_BANK_ACCOUNTS.map((account) => (
-                    <MenuItem key={account} value={account}>
-                      {account}
+                  <MenuItem value="">Select receiving account</MenuItem>
+                  {accounts.map((a) => (
+                    <MenuItem key={a.id} value={a.id}>
+                      {a.code} — {a.name}
                     </MenuItem>
                   ))}
                 </TextField>

@@ -110,17 +110,29 @@ export default function JournalEntries() {
   const { data: rawCostCenters } = useSWR(endpoints.accounting.cost_centers, fetcher);
 
   const fiscalPeriods = useMemo(() => {
-    const list = Array.isArray(rawFiscalPeriods) ? rawFiscalPeriods : Array.isArray(rawFiscalPeriods?.results) ? rawFiscalPeriods.results : [];
+    const list = Array.isArray(rawFiscalPeriods)
+      ? rawFiscalPeriods
+      : Array.isArray(rawFiscalPeriods?.results)
+        ? rawFiscalPeriods.results
+        : [];
     return list;
   }, [rawFiscalPeriods]);
 
   const analyticAccounts = useMemo(() => {
-    const list = Array.isArray(rawAnalyticAccounts) ? rawAnalyticAccounts : Array.isArray(rawAnalyticAccounts?.results) ? rawAnalyticAccounts.results : [];
+    const list = Array.isArray(rawAnalyticAccounts)
+      ? rawAnalyticAccounts
+      : Array.isArray(rawAnalyticAccounts?.results)
+        ? rawAnalyticAccounts.results
+        : [];
     return list;
   }, [rawAnalyticAccounts]);
 
   const costCenters = useMemo(() => {
-    const list = Array.isArray(rawCostCenters) ? rawCostCenters : Array.isArray(rawCostCenters?.results) ? rawCostCenters.results : [];
+    const list = Array.isArray(rawCostCenters)
+      ? rawCostCenters
+      : Array.isArray(rawCostCenters?.results)
+        ? rawCostCenters.results
+        : [];
     return list;
   }, [rawCostCenters]);
 
@@ -766,9 +778,23 @@ export default function JournalEntries() {
                           <Typography variant="body2" fontWeight={600}>
                             {entry.narration}
                           </Typography>
-                          <Typography variant="caption" color="text.secondary">
-                            {entry.attachmentCount} attachments · reviewer {entry.reviewer}
-                          </Typography>
+                          
+                          {(entry.lines || []).length > 0 && (
+                            <Box sx={{ mt: 0.75 }}>
+                              
+                              {(entry.lines || []).map((line, idx) => (
+                                <Typography key={idx} variant="caption" color="text.secondary" sx={{ display: 'block', lineHeight: 1.4 }}>
+                                  {line.account_code || ''}-{line.account_name || line.description || ''}
+                                  {Number(line.debit || 0) > 0 && (
+                                    <span style={{ fontWeight: 700, color: '#16a34a', marginLeft: 4 }}>DR</span>
+                                  )}
+                                  {Number(line.credit || 0) > 0 && (
+                                    <span style={{ fontWeight: 700, color: '#2563eb', marginLeft: 4 }}>CR</span>
+                                  )}
+                                </Typography>
+                              ))}
+                            </Box>
+                          )}
                         </TableCell>
                         <TableCell>
                           <Chip
@@ -1103,15 +1129,15 @@ export default function JournalEntries() {
           <TableContainer>
             <Table size="small">
               <TableHead>
-                  <TableRow>
-                    <TableCell>Description</TableCell>
-                    <TableCell colSpan={2}>Account</TableCell>
-                    <TableCell>Analytic Acct</TableCell>
-                    <TableCell>Cost Center</TableCell>
-                    <TableCell>Tax</TableCell>
-                    <TableCell align="right">Debit</TableCell>
-                    <TableCell align="right">Credit</TableCell>
-                  </TableRow>
+                <TableRow>
+                  <TableCell>Description</TableCell>
+                  <TableCell colSpan={2}>Account</TableCell>
+                  <TableCell>Analytic Acct</TableCell>
+                  <TableCell>Cost Center</TableCell>
+                  <TableCell>Tax</TableCell>
+                  <TableCell align="right">Debit</TableCell>
+                  <TableCell align="right">Credit</TableCell>
+                </TableRow>
               </TableHead>
               <TableBody>
                 {wizardState.lines.map((line, index) => (

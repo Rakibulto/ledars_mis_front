@@ -14,10 +14,10 @@ import Button from '@mui/material/Button';
 import Dialog from '@mui/material/Dialog';
 import Tooltip from '@mui/material/Tooltip';
 import TableRow from '@mui/material/TableRow';
+import MenuItem from '@mui/material/MenuItem';
 import TableBody from '@mui/material/TableBody';
 import TableCell from '@mui/material/TableCell';
 import TableHead from '@mui/material/TableHead';
-import MenuItem from '@mui/material/MenuItem';
 import TextField from '@mui/material/TextField';
 import LockIcon from '@mui/icons-material/Lock';
 import IconButton from '@mui/material/IconButton';
@@ -400,7 +400,9 @@ export default function FiscalYear() {
                 InputLabelProps={{ shrink: true }}
                 value={form.end_date}
                 inputProps={{ min: form.start_date || undefined }}
-                error={Boolean(form.start_date && form.end_date && form.end_date <= form.start_date)}
+                error={Boolean(
+                  form.start_date && form.end_date && form.end_date <= form.start_date
+                )}
                 helperText={
                   form.start_date && form.end_date && form.end_date <= form.start_date
                     ? 'End date must be after start date'

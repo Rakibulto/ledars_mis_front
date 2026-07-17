@@ -3,20 +3,12 @@
 import dayjs from 'dayjs';
 
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
-import {
-  Box,
-  Grid,
-  Stack,
-  Button,
-  Divider,
-  TextField,
-  Typography,
-} from '@mui/material';
+import { Box, Grid, Stack, Button, Divider, TextField, Typography } from '@mui/material';
 
 import { ConfirmDialog } from 'src/components/custom-dialog';
 
 import GinApprovalSummary from './gin-approval-summary';
-import { formatCurrency, formatDate } from './gin-decision-utils';
+import { formatDate, formatCurrency } from './gin-decision-utils';
 
 function ApprovalDetailField({ label, value }) {
   return (

@@ -174,7 +174,7 @@ export default function DueInvoices() {
               )
             }
             disabled={pendingAction !== null}
-          > 
+          >
             Export Excel
           </Button>
           <Button
