@@ -12,7 +12,7 @@ const nextConfig = withPWA({
 })({
   productionBrowserSourceMaps: false,
   trailingSlash: true,
-  allowedDevOrigins: ['localhost', '127.0.0.1'],
+  allowedDevOrigins: ['localhost', '127.0.0.1', '10.44.94.254'],
   env: {
     BUILD_STATIC_EXPORT: isStaticExport,
   },

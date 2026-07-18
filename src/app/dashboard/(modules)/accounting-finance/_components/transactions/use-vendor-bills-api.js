@@ -61,7 +61,8 @@ export function enrichBillDetail(raw) {
   });
 
   const total = Number(raw.total_amount) || Number(raw.total) || linesSubtotal;
-  const balanceRaw = Number(raw.amount_due) ?? Number(raw.balance_due) ?? (linesSubtotal - resolvedPaid);
+  const balanceRaw =
+    Number(raw.amount_due) ?? Number(raw.balance_due) ?? linesSubtotal - resolvedPaid;
   // Cap balance_due to 0 — never show negative (overpayment case)
   const balanceDue = raw.status === 'paid' ? 0 : Math.max(0, balanceRaw);
 
@@ -101,6 +102,10 @@ export function enrichBillDetail(raw) {
     linkedJournals: raw.journal_entry ? [`JE-${raw.journal_entry}`] : [],
     chatter,
     vendor_detail: raw.vendor_detail ?? null,
+    // Raw file URLs (relative to the media root) for the attached invoice and
+    // mushuk/tax documents. Resolved to absolute URLs in the detail UI.
+    invoiceFile: raw.invoice_file || null,
+    mushukFile: raw.mushuk_file || null,
   };
 }
 
@@ -129,11 +134,10 @@ export function useVendorBillsApi() {
     return list;
   }, [rawVendors]);
 
-  const vendorsById = useMemo(() => {
-    const map = {};
-    for (const v of vendors) map[v.id] = v;
-    return map;
-  }, [vendors]);
+  const vendorsById = useMemo(
+    () => vendors.reduce((acc, v) => ({ ...acc, [v.id]: v }), {}),
+    [vendors]
+  );
 
   // ── Bills ─────────────────────────────────────────────────────────────────────
 
@@ -180,6 +184,23 @@ export function useVendorBillsApi() {
     const taxRate = Number(payload.taxRate || 0);
     const total = subtotal + (subtotal * taxRate) / 100;
     const firstDesc = lines.find((l) => l.description.trim())?.description || 'Draft bill line';
+
+    const mappedLines = (payload.lines ?? []).map((l) => {
+      const lineSubtotal = (Number(l.quantity) || 1) * (Number(l.unit_price) || 0);
+      const lineTaxAmount = (lineSubtotal * taxRate) / 100;
+      return {
+        description: l.description,
+        quantity: Number(l.quantity) || 1,
+        unit_price: Number(l.unit_price) || 0,
+        account: l.account ? Number(l.account) : undefined,
+        analytic_account: l.analytic_account ? Number(l.analytic_account) : undefined,
+        cost_center: l.cost_center ? Number(l.cost_center) : undefined,
+        tax_amount: lineTaxAmount || 0,
+      };
+    });
+
+    const hasFiles = Boolean(payload.invoiceFile || payload.mushukFile);
+
     const body = {
       vendor: payload.supplier_id,
       bill_date: payload.date,
@@ -188,6 +209,7 @@ export function useVendorBillsApi() {
       goods_receipt_ref: payload.goodsReceiptRef ?? '',
       approval_route: payload.approvalRoute ?? '',
       payment_proposal: payload.paymentProposal ?? '',
+      match_status: payload.match_status ?? 'Awaiting receipt',
       notes: firstDesc,
       total_amount: total,
       description: firstDesc,
@@ -196,21 +218,34 @@ export function useVendorBillsApi() {
       cost_center: payload.cost_center ? Number(payload.cost_center) : undefined,
       currency: payload.currency ? Number(payload.currency) : undefined,
       fiscal_period: payload.fiscal_period ? Number(payload.fiscal_period) : undefined,
-      lines: (payload.lines ?? []).map((l) => {
-        const lineSubtotal = (Number(l.quantity) || 1) * (Number(l.unit_price) || 0);
-        const lineTaxAmount = (lineSubtotal * taxRate) / 100;
-        return {
-          description: l.description,
-          quantity: Number(l.quantity) || 1,
-          unit_price: Number(l.unit_price) || 0,
-          account: l.account ? Number(l.account) : undefined,
-          analytic_account: l.analytic_account ? Number(l.analytic_account) : undefined,
-          cost_center: l.cost_center ? Number(l.cost_center) : undefined,
-          tax_amount: lineTaxAmount || 0,
-        };
-      }),
+      payment_account: payload.payment_account ? Number(payload.payment_account) : undefined,
+      work_order: payload.workOrder ? Number(payload.workOrder) : undefined,
+      grns: (payload.grnSelections ?? []).map((id) => Number(id)).filter(Boolean),
+      source_bank_account: payload.bankAccountId ? Number(payload.bankAccountId) : undefined,
+      source_cheque: payload.chequeId ? Number(payload.chequeId) : undefined,
+      lines: mappedLines,
     };
-    const { data } = await axiosInstance.post(endpoints.accounting.bill_create_draft, body);
+
+    let data;
+    if (hasFiles) {
+      const formData = new FormData();
+      Object.entries(body).forEach(([key, value]) => {
+        if (value === undefined || value === null || value === '') return;
+        if (key === 'lines' || key === 'grns') {
+          formData.append(key, JSON.stringify(value));
+          return;
+        }
+        formData.append(key, value);
+      });
+      if (payload.invoiceFile) formData.append('invoice_file', payload.invoiceFile);
+      if (payload.mushukFile) formData.append('mushuk_file', payload.mushukFile);
+      ({ data } = await axiosInstance.post(endpoints.accounting.bill_create_draft, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      }));
+    } else {
+      ({ data } = await axiosInstance.post(endpoints.accounting.bill_create_draft, body));
+    }
+
     await mutate(billsUrl);
     return data;
   }

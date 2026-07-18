@@ -1,10 +1,21 @@
+import { CONFIG } from 'src/config-global';
+import { DashboardLayout } from 'src/layouts/dashboard';
 import { CurrencyProvider } from 'src/app/dashboard/(modules)/accounting-finance/_components/currency-context';
 
-/**
- * Lean layout for standalone new-tab forms.
- * No dashboard sidebar, no AuthGuard, no last-visited-path redirect —
- * just the CurrencyProvider so form components have access to active currency.
- */
-export default function StandaloneFormsLayout({ children }) {
-  return <CurrencyProvider>{children}</CurrencyProvider>;
+import { AuthGuard } from 'src/auth/guard';
+
+// ----------------------------------------------------------------------
+
+export default function Layout({ children }) {
+  if (CONFIG.auth.skip) {
+    return <DashboardLayout>{children}</DashboardLayout>;
+  }
+
+  return (
+    <CurrencyProvider>
+      <AuthGuard>
+        <DashboardLayout>{children}</DashboardLayout>
+      </AuthGuard>
+    </CurrencyProvider>
+  );
 }

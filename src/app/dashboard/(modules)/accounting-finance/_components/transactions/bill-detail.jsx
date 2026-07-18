@@ -2,18 +2,22 @@
 
 import { toast } from 'sonner';
 import useSWR, { mutate } from 'swr';
-import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useMemo, useState, useEffect } from 'react';
 
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
 import Chip from '@mui/material/Chip';
 import Grid from '@mui/material/Grid';
 import Alert from '@mui/material/Alert';
+import Badge from '@mui/material/Badge';
+import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
 import Table from '@mui/material/Table';
 import Dialog from '@mui/material/Dialog';
+import Drawer from '@mui/material/Drawer';
 import Button from '@mui/material/Button';
+import Tooltip from '@mui/material/Tooltip';
 import Divider from '@mui/material/Divider';
 import TableRow from '@mui/material/TableRow';
 import TableBody from '@mui/material/TableBody';
@@ -21,16 +25,19 @@ import TableCell from '@mui/material/TableCell';
 import TableHead from '@mui/material/TableHead';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
+import IconButton from '@mui/material/IconButton';
 import DialogTitle from '@mui/material/DialogTitle';
 import CardContent from '@mui/material/CardContent';
 import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
 import TableContainer from '@mui/material/TableContainer';
+import CircularProgress from '@mui/material/CircularProgress';
 
 import { paths } from 'src/routes/paths';
 
 import axiosInstance, { fetcher, endpoints } from 'src/utils/axios';
 
+import { CONFIG } from 'src/config-global';
 import PdfPrintLayout from 'src/app/dashboard/(modules)/accounting-finance/_components/shared/pdf-print-layout';
 
 import { Iconify } from 'src/components/iconify';
@@ -129,6 +136,283 @@ const BILL_STATUS_ACTIONS = {
   cancelled: [],
 };
 
+const toList = (response) => {
+  if (Array.isArray(response)) return response;
+  if (Array.isArray(response?.results)) return response.results;
+  if (Array.isArray(response?.payment)) return response.payment;
+  return [];
+};
+
+const resolveFileUrl = (file) => {
+  if (!file) return null;
+  if (file.startsWith('http://') || file.startsWith('https://')) return file;
+  return `${CONFIG.serverUrl}${file}`;
+};
+
+const getFileExt = (file) => (file || '').split('.').pop()?.toLowerCase() || '';
+
+function BillFilesCard({ invoiceFile, mushukFile }) {
+  const files = [];
+  if (invoiceFile) {
+    files.push({
+      key: 'invoice',
+      label: 'Vendor invoice',
+      url: resolveFileUrl(invoiceFile),
+      name: invoiceFile.split('/').pop(),
+    });
+  }
+  if (mushukFile) {
+    files.push({
+      key: 'mushuk',
+      label: 'Mushuk / tax document',
+      url: resolveFileUrl(mushukFile),
+      name: mushukFile.split('/').pop(),
+    });
+  }
+
+  if (files.length === 0) {
+    return (
+      <Alert severity="info" variant="outlined">
+        No invoice or supporting documents attached to this bill.
+      </Alert>
+    );
+  }
+
+  return (
+    <Stack spacing={1.25}>
+      {files.map((file) => (
+        <Box
+          key={file.key}
+          sx={{
+            p: 1.5,
+            borderRadius: 2,
+            bgcolor: 'background.neutral',
+            border: '1px solid',
+            borderColor: 'divider',
+          }}
+        >
+          <Stack direction="row" spacing={1.5} alignItems="center">
+            <Iconify
+              icon={getFileExt(file.name) === 'pdf' ? 'solar:file-text-bold' : 'solar:file-bold'}
+              width={22}
+              color="primary.main"
+            />
+            <Box sx={{ minWidth: 0, flex: 1 }}>
+              <Typography variant="body2" fontWeight={700} noWrap>
+                {file.label}
+              </Typography>
+              <Typography variant="caption" color="text.secondary" noWrap display="block">
+                {file.name}
+              </Typography>
+            </Box>
+            <Stack direction="row" spacing={0.5}>
+              <Tooltip title="Preview">
+                <IconButton
+                  size="small"
+                  component="a"
+                  href={file.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <Iconify icon="solar:eye-bold" width={18} />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="Download">
+                <IconButton
+                  size="small"
+                  component="a"
+                  href={file.url}
+                  download
+                  rel="noopener noreferrer"
+                >
+                  <Iconify icon="solar:download-bold" width={18} />
+                </IconButton>
+              </Tooltip>
+            </Stack>
+          </Stack>
+        </Box>
+      ))}
+    </Stack>
+  );
+}
+
+const DetailRow = ({ label, value }) => (
+  <Stack direction="row" justifyContent="space-between" spacing={1} sx={{ py: 0.5 }}>
+    <Typography variant="caption" color="text.secondary" sx={{ flexShrink: 0 }}>
+      {label}
+    </Typography>
+    <Typography
+      variant="body2"
+      fontWeight={600}
+      sx={{ textAlign: 'right', wordBreak: 'break-word' }}
+    >
+      {value || '—'}
+    </Typography>
+  </Stack>
+);
+
+function DetailSection({ title, icon, children }) {
+  return (
+    <Box sx={{ mb: 2.5 }}>
+      <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
+        {icon ? <Iconify icon={icon} width={18} color="primary.main" /> : null}
+        <Typography variant="subtitle2" fontWeight={700}>
+          {title}
+        </Typography>
+      </Stack>
+      <Divider sx={{ mb: 1 }} />
+      {children}
+    </Box>
+  );
+}
+
+function WorkOrderDetail({ workOrder, loading }) {
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', py: 3 }}>
+        <CircularProgress size={24} />
+      </Box>
+    );
+  }
+  if (!workOrder) {
+    return (
+      <Alert severity="info" variant="outlined">
+        No work order linked to this bill.
+      </Alert>
+    );
+  }
+
+  const items = Array.isArray(workOrder.items) ? workOrder.items : [];
+
+  return (
+    <Box>
+      <DetailSection title="Work order" icon="solar:document-bold">
+        <DetailRow label="WO number" value={workOrder.workOrderNumber || workOrder.wo_number} />
+        <DetailRow label="Title" value={workOrder.title} />
+        <DetailRow label="Status" value={workOrder.status} />
+        <DetailRow label="Approval" value={workOrder.approvalStatus} />
+        <DetailRow label="Vendor" value={workOrder.vendor?.name} />
+        <DetailRow label="Category" value={workOrder.category} />
+        <DetailRow
+          label="Total amount"
+          value={workOrder.totalAmount ? formatCurrency(workOrder.totalAmount) : ''}
+        />
+        <DetailRow label="Order date" value={workOrder.orderDate} />
+        <DetailRow label="Delivery deadline" value={workOrder.deliveryDeadline} />
+        <DetailRow label="Payment terms" value={workOrder.paymentTerms} />
+        <DetailRow label="Tax rate" value={workOrder.taxRate ? `${workOrder.taxRate}%` : ''} />
+        <DetailRow label="Project" value={workOrder.project?.title || workOrder.project?.name} />
+      </DetailSection>
+
+      {items.length > 0 ? (
+        <DetailSection title="Items" icon="solar:box-bold">
+          <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2 }}>
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell>Item</TableCell>
+                  <TableCell align="right">Qty</TableCell>
+                  <TableCell align="right">Unit price</TableCell>
+                  <TableCell align="right">Total</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {items.map((item, index) => (
+                  <TableRow key={item.id || index}>
+                    <TableCell sx={{ maxWidth: 160 }}>{item.name || item.description}</TableCell>
+                    <TableCell align="right">{item.quantity}</TableCell>
+                    <TableCell align="right">
+                      {formatCurrency(Number(item.unitPrice || 0))}
+                    </TableCell>
+                    <TableCell align="right">{formatCurrency(Number(item.total || 0))}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </DetailSection>
+      ) : null}
+    </Box>
+  );
+}
+
+function GrnDetail({ grns, loading }) {
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', py: 3 }}>
+        <CircularProgress size={24} />
+      </Box>
+    );
+  }
+  if (!grns || grns.length === 0) {
+    return (
+      <Alert severity="info" variant="outlined">
+        No GRNs linked to this bill.
+      </Alert>
+    );
+  }
+
+  return (
+    <Stack spacing={2.5}>
+      {grns.map((grn) => {
+        const items = Array.isArray(grn.grn_items) ? grn.grn_items : [];
+        return (
+          <Box key={grn.id}>
+            <DetailSection title={`GRN ${grn.grn_number}`} icon="solar:box-bold">
+              <DetailRow label="Supplier" value={grn.supplier_name} />
+              <DetailRow label="WO number" value={grn.wo_number || grn.work_order_number} />
+              <DetailRow label="Receipt date" value={grn.receipt_date || grn.received_date} />
+              <DetailRow label="Invoice no." value={grn.invoice_number} />
+              <DetailRow
+                label="Total received"
+                value={grn.total_received_value ? formatCurrency(grn.total_received_value) : ''}
+              />
+              <DetailRow label="Status" value={grn.status} />
+              <DetailRow label="Received by" value={grn.received_by_name} />
+              <DetailRow label="Location" value={grn.receive_location_info?.name} />
+            </DetailSection>
+
+            {items.length > 0 ? (
+              <DetailSection title="Received items" icon="solar:box-minimalistic-bold">
+                <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2 }}>
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Item</TableCell>
+                        <TableCell align="right">Recv.</TableCell>
+                        <TableCell align="right">Acc.</TableCell>
+                        <TableCell align="right">Unit</TableCell>
+                        <TableCell align="right">Value</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {items.map((item, index) => (
+                        <TableRow key={item.id || index}>
+                          <TableCell sx={{ maxWidth: 140 }}>
+                            {item.item_name || item.remarks}
+                          </TableCell>
+                          <TableCell align="right">{item.received_quantity}</TableCell>
+                          <TableCell align="right">{item.accepted_quantity}</TableCell>
+                          <TableCell align="right">
+                            {formatCurrency(Number(item.unit_price || 0))}
+                          </TableCell>
+                          <TableCell align="right">
+                            {formatCurrency(Number(item.total_value || 0))}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              </DetailSection>
+            ) : null}
+          </Box>
+        );
+      })}
+    </Stack>
+  );
+}
+
 export default function BillDetail({ id }) {
   const router = useRouter();
   const detailUrl = endpoints.accounting.bill_by_id(id);
@@ -147,6 +431,31 @@ export default function BillDetail({ id }) {
   const [statusConfirmation, setStatusConfirmation] = useState(null);
   const [payDialogOpen, setPayDialogOpen] = useState(false);
   const [payAmount, setPayAmount] = useState('');
+  const [detailsOpen, setDetailsOpen] = useState(false);
+
+  // Optional procurement details sidebar. Only fetched when the drawer is open
+  // so we don't waste requests on the detail view.
+  const { data: rawWorkOrderDetail, isLoading: workOrderDetailLoading } = useSWR(
+    bill?.work_order && detailsOpen
+      ? endpoints.procurement_management.work_order_by_id(bill.work_order)
+      : null,
+    fetcher
+  );
+  const { data: rawGrnDetails, isLoading: grnDetailsLoading } = useSWR(
+    bill?.grn_ids?.length && detailsOpen
+      ? `${endpoints.procurement_management.grns}?id__in=${bill.grn_ids.join(',')}`
+      : null,
+    fetcher
+  );
+
+  const workOrderDetail = useMemo(() => {
+    const list = toList(rawWorkOrderDetail);
+    return list[0] || rawWorkOrderDetail || null;
+  }, [rawWorkOrderDetail]);
+
+  const grnDetails = useMemo(() => toList(rawGrnDetails), [rawGrnDetails]);
+
+  const linkedDetailCount = (bill?.work_order ? 1 : 0) + (bill?.grn_ids?.length || 0);
 
   // Sync enriched API data into local state whenever the server responds.
   useEffect(() => {
@@ -178,7 +487,7 @@ export default function BillDetail({ id }) {
     return () => {
       cancelled = true;
     };
-  }, [bill?.supplier_id]);
+  }, [bill?.supplier_id, bill?.vendor_detail]);
 
   if (!bill) {
     return <Alert severity="error">Vendor bill not found.</Alert>;
@@ -837,6 +1146,24 @@ export default function BillDetail({ id }) {
           >
             {pendingAction === 'Export JSON' ? 'Export JSON...' : 'Export JSON'}
           </Button>
+          <Button
+            variant={detailsOpen ? 'contained' : 'outlined'}
+            color="inherit"
+            size="small"
+            startIcon={
+              <Badge
+                color="primary"
+                badgeContent={linkedDetailCount}
+                overlap="circular"
+                sx={{ mr: linkedDetailCount ? 1 : 0 }}
+              >
+                <Iconify icon="solar:sidebar-minimal-bold" />
+              </Badge>
+            }
+            onClick={() => setDetailsOpen((open) => !open)}
+          >
+            Details
+          </Button>
           <Button variant="text" onClick={() => router.back()}>
             Back
           </Button>
@@ -853,6 +1180,15 @@ export default function BillDetail({ id }) {
       <Grid container spacing={3}>
         <Grid size={{ xs: 12, lg: 8 }}>
           <Stack spacing={3}>
+            <Card sx={{ borderRadius: 3 }}>
+              <CardContent>
+                <Typography variant="h6" fontWeight={700} sx={{ mb: 2 }}>
+                  Attached Files
+                </Typography>
+                <BillFilesCard invoiceFile={bill.invoiceFile} mushukFile={bill.mushukFile} />
+              </CardContent>
+            </Card>
+
             <Card sx={{ borderRadius: 3 }}>
               <CardContent>
                 <Grid container spacing={2}>
@@ -1030,25 +1366,25 @@ export default function BillDetail({ id }) {
                   </Typography>
                 ) : (
                   <Stack spacing={1.25}>
-                  {bill.chatter.map((item) => (
-                    <Box
-                      key={item.id}
-                      sx={{ p: 1.5, borderRadius: 2, bgcolor: 'background.neutral' }}
-                    >
-                      <Stack direction="row" justifyContent="space-between" spacing={1}>
-                        <Typography variant="body2" fontWeight={700}>
-                          {item.author}
+                    {bill.chatter.map((item) => (
+                      <Box
+                        key={item.id}
+                        sx={{ p: 1.5, borderRadius: 2, bgcolor: 'background.neutral' }}
+                      >
+                        <Stack direction="row" justifyContent="space-between" spacing={1}>
+                          <Typography variant="body2" fontWeight={700}>
+                            {item.author}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            {item.time}
+                          </Typography>
+                        </Stack>
+                        <Typography variant="body2" sx={{ mt: 0.75 }}>
+                          {item.message}
                         </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {item.time}
-                        </Typography>
-                      </Stack>
-                      <Typography variant="body2" sx={{ mt: 0.75 }}>
-                        {item.message}
-                      </Typography>
-                    </Box>
-                  ))}
-                </Stack>
+                      </Box>
+                    ))}
+                  </Stack>
                 )}
               </CardContent>
             </Card>
@@ -1122,7 +1458,12 @@ export default function BillDetail({ id }) {
                           borderColor: item.debit > 0 ? 'success.light' : 'info.light',
                         }}
                       >
-                        <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 0.5 }}>
+                        <Stack
+                          direction="row"
+                          justifyContent="space-between"
+                          alignItems="center"
+                          sx={{ mb: 0.5 }}
+                        >
                           <Chip
                             label={item.type}
                             size="small"
@@ -1193,6 +1534,39 @@ export default function BillDetail({ id }) {
           </Button>
         </DialogActions>
       </Dialog>
+
+      <Drawer
+        anchor="right"
+        open={detailsOpen}
+        onClose={() => setDetailsOpen(false)}
+        PaperProps={{ sx: { width: { xs: '100%', sm: 420 } } }}
+      >
+        <Stack
+          direction="row"
+          justifyContent="space-between"
+          alignItems="center"
+          sx={{ p: 2, borderBottom: '1px solid', borderColor: 'divider' }}
+        >
+          <Typography variant="h6" fontWeight={800}>
+            Procurement details
+          </Typography>
+          <IconButton onClick={() => setDetailsOpen(false)} size="small">
+            <Iconify icon="solar:close-circle-bold" width={20} />
+          </IconButton>
+        </Stack>
+        <Box sx={{ p: 2, overflowY: 'auto' }}>
+          <WorkOrderDetail
+            workOrder={workOrderDetail}
+            loading={workOrderDetailLoading && Boolean(bill?.work_order)}
+          />
+          <DetailSection title="Goods received notes" icon="solar:box-bold">
+            <GrnDetail
+              grns={grnDetails}
+              loading={grnDetailsLoading && (bill?.grn_ids?.length || 0) > 0}
+            />
+          </DetailSection>
+        </Box>
+      </Drawer>
     </Box>
   );
 }
