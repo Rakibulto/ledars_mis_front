@@ -1043,6 +1043,7 @@ export const paths = {
         special: `${ROOTS.DASHBOARD}/settings/leave/special-leave-policies`,
       },
       modulePermissions: `${ROOTS.DASHBOARD}/module-permissions`,
+      permissionGroups: `${ROOTS.DASHBOARD}/settings/permission-groups`,
     },
     attendance: {
       root: `${ROOTS.DASHBOARD}/attendance`,

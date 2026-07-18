@@ -10,7 +10,10 @@ export const metadata = { title: `Daily Attendance | Dashboard - ${CONFIG.appNam
 
 export default function Page() {
   return (
-    <PermissionBasedGuard requiredPermission={['view_attendance']} allowSupervisor>
+    <PermissionBasedGuard
+      requiredPermission={['view_attendance', 'view_attendancedata']}
+      allowSupervisor
+    >
       <DailyAttendanceView />
     </PermissionBasedGuard>
   );

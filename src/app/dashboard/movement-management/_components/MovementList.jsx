@@ -23,6 +23,7 @@ import Typography from '@mui/material/Typography';
 import Pagination from '@mui/material/Pagination';
 import InputAdornment from '@mui/material/InputAdornment';
 
+import { paths } from 'src/routes/paths';
 import { useBoolean } from 'src/hooks/use-boolean';
 
 import axiosInstance, { endpoints } from 'src/utils/axios';
@@ -34,6 +35,8 @@ import DeleteConfirmDialog from 'src/app/dashboard/movement-management/_componen
 
 import { toast } from 'src/components/snackbar';
 import { Iconify } from 'src/components/iconify';
+
+import { useAuthContext } from 'src/auth/hooks';
 
 const SUMMARY_CARDS = [
   {
@@ -87,12 +90,27 @@ const PAGE_SIZE = 10;
 
 export default function MovementList() {
   const router = useRouter();
+  const { user } = useAuthContext();
   const confirm = useBoolean();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [deleteId, setDeleteId] = useState(null);
   const [summary, setSummary] = useState({ total: 0, draft: 0, submitted: 0, approved: 0 });
+
+  const canAddMovement = user?.is_superuser || user?.user_permissions_list?.some((p) => p.codename === 'add_movementmanagement');
+  const canChangeMovement = user?.is_superuser || user?.user_permissions_list?.some((p) => p.codename === 'change_movementmanagement');
+  const canDeleteMovement = user?.is_superuser || user?.user_permissions_list?.some((p) => p.codename === 'delete_movementmanagement');
+
+  useEffect(() => {
+    if (!user) return;
+    const canView =
+      user?.is_superuser ||
+      user?.user_permissions_list?.some((p) => p.codename === 'view_movementmanagement');
+    if (!canView) {
+      router.replace(paths.page403);
+    }
+  }, [user, router]);
 
   const loadSummary = useCallback(async () => {
     try {
@@ -180,13 +198,15 @@ export default function MovementList() {
     <DashboardContent>
       <Stack direction="row" alignItems="center" justifyContent="space-between" mb={3}>
         <Typography variant="h4">Movement Management</Typography>
-        <Button
-          variant="contained"
-          startIcon={<Iconify icon="solar:add-circle-bold-duotone" />}
-          onClick={() => router.push('/dashboard/movement-management/create')}
-        >
-          Create Movement
-        </Button>
+        {canAddMovement && (
+          <Button
+            variant="contained"
+            startIcon={<Iconify icon="solar:add-circle-bold-duotone" />}
+            onClick={() => router.push('/dashboard/movement-management/create')}
+          >
+            Create Movement
+          </Button>
+        )}
       </Stack>
 
       {/* ── Summary Cards ── */}
@@ -350,7 +370,7 @@ export default function MovementList() {
                             <Iconify icon="solar:eye-bold" width={18} />
                           </IconButton>
                         </Tooltip>
-                        {row.status !== 'approved' && (
+                        {canChangeMovement && row.status !== 'approved' && (
                           <Tooltip title="Edit">
                             <IconButton
                               size="small"
@@ -365,7 +385,7 @@ export default function MovementList() {
                             </IconButton>
                           </Tooltip>
                         )}
-                        {row.status === 'draft' && (
+                        {canDeleteMovement && row.status === 'draft' && (
                           <Tooltip title="Delete">
                             <IconButton
                               size="small"

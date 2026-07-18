@@ -211,6 +211,11 @@ export function useNavData() {
     [user?.user_permissions_list, user?.is_superuser]
   );
 
+  const hasAnyPermission = useCallback(
+    (...codenames) => codenames.some((codename) => hasPermission(codename)),
+    [hasPermission]
+  );
+
   const canShowWebLogin =
     user?.role === 'Employee' || user?.role === 'Supervisor' ? !!employee?.allow_web_login : true;
 
@@ -341,615 +346,826 @@ export function useNavData() {
       // ============================================================
       // Movement Management
       // ============================================================
-      {
-        items: [
+      ...(hasPermission('view_movementmanagement')
+        ? [
           {
-            title: 'Movement Management',
-            icon: ICONS.movement,
-            children: [
+            items: [
               {
-                title: 'Movement List',
-                path: paths.dashboard.crm.movementManagement.list,
-                icon: ICONS.menuItem,
-              },
-              ...(hasPermission('add_lead')
-                ? [
+                title: 'Movement Management',
+                icon: ICONS.movement,
+                children: [
                   {
-                    title: 'Create Movement',
-                    path: paths.dashboard.crm.movementManagement.create,
-                    icon: ICONS.formAutomation,
+                    title: 'Movement List',
+                    path: paths.dashboard.crm.movementManagement.list,
+                    icon: ICONS.menuItem,
                   },
-                ]
-                : []),
+                  ...(hasPermission('add_movementmanagement')
+                    ? [
+                      {
+                        title: 'Create Movement',
+                        path: paths.dashboard.crm.movementManagement.create,
+                        icon: ICONS.formAutomation,
+                      },
+                    ]
+                    : []),
+                ],
+              },
             ],
           },
-        ],
-      },
+        ]
+        : []),
 
       // ============================================================
       // Procurement Management
       // ============================================================
-      {
-        items: [
+      ...(hasAnyPermission(
+        'view_materialrequisition',
+        'view_rfq',
+        'view_vendorquotation',
+        'view_comparativestatement',
+        'view_award',
+        'view_workorder',
+        'view_directpurchase',
+        'view_goodsreceiptnote',
+        'view_warehouse',
+        'view_paymentrequisition',
+        'view_treasuryprocessing',
+        'view_vendorverification',
+        'view_vendorcategory',
+        'view_procurementnotification',
+        'view_approvalmatrix',
+        'view_usermanagement'
+      )
+        ? [
           {
-            title: 'Procurement Management',
-            icon: ICONS.procurement,
-            children: [
+            items: [
               {
-                title: 'Dashboard',
-                path: paths.dashboard.procurement.dashboard,
-                icon: ICONS.dashboard,
-              },
-              {
-                title: 'Material Requisitions',
-                path: paths.dashboard.procurement.requisitions.root,
-                icon: ICONS.requisition,
+                title: 'Procurement Management',
+                icon: ICONS.procurement,
                 children: [
-                  {
-                    title: 'Requisition List',
-                    path: paths.dashboard.procurement.requisitions.list,
-                    icon: ICONS.requisition,
-                  },
-                  {
-                    title: 'Create Requisition',
-                    path: paths.dashboard.procurement.requisitions.create,
-                    icon: ICONS.formAutomation,
-                  },
-                  {
-                    title: 'Workflow Approval',
-                    path: paths.dashboard.procurement.requisitions.workflowApproval,
-                    icon: ICONS.approval,
-                  },
-                ],
-              },
-              {
-                title: 'RFQ Management',
-                path: paths.dashboard.procurement.rfq.root,
-                icon: ICONS.rfq,
-                children: [
-                  {
-                    title: 'RFQ List',
-                    path: paths.dashboard.procurement.rfq.list,
-                    icon: ICONS.rfq,
-                  },
-                  {
-                    title: 'Create RFQ',
-                    path: paths.dashboard.procurement.rfq.create,
-                    icon: ICONS.formAutomation,
-                  },
-                  {
-                    title: 'Vendor Distribution',
-                    path: paths.dashboard.procurement.rfq.distribution,
-                    icon: ICONS.vendors,
-                  },
-                  {
-                    title: 'Submission Monitoring',
-                    path: paths.dashboard.procurement.rfq.monitoring,
-                    icon: ICONS.analytics,
-                  },
-                ],
-              },
-              {
-                title: 'Quotations',
-                path: paths.dashboard.procurement.quotations.root,
-                icon: ICONS.quotation,
-                children: [
-                  // { title: 'Quotation Dashboard', path: paths.dashboard.procurement.quotations.root, icon: ICONS.dashboard },
-                  {
-                    title: 'Opening & Evaluation',
-                    path: paths.dashboard.procurement.quotations.list,
-                    icon: ICONS.menuItem,
-                  },
-                  {
-                    title: 'Direct Evaluation',
-                    path: paths.dashboard.procurement.quotations.directEvaluation,
-                    icon: ICONS.rfq,
-                  },
-                  {
-                    title: 'Manual Submit Quotation',
-                    path: paths.dashboard.procurement.quotations.manualSubmitQuotation,
-                    icon: ICONS.quotation,
-                  },
-                ],
-              },
-              {
-                title: 'Comparative Statements',
-                path: paths.dashboard.procurement.comparative.root,
-                icon: ICONS.comparison,
-                children: [
-                  {
-                    title: 'CS List',
-                    path: paths.dashboard.procurement.comparative.list,
-                    icon: ICONS.comparison,
-                  },
-                  {
-                    title: 'Pending Approvals',
-                    path: paths.dashboard.procurement.comparative.pending,
-                    icon: ICONS.approval,
-                  },
-                ],
-              },
-              {
-                title: 'Awards',
-                path: paths.dashboard.procurement.awards.root,
-                icon: ICONS.award,
-                children: [
-                  {
-                    title: 'Award Summary',
-                    path: paths.dashboard.procurement.awards.summary,
-                    icon: ICONS.award,
-                  },
-                  // { title: 'Notifications', path: paths.dashboard.procurement.awards.summary, icon: ICONS.notifications },
-                  {
-                    title: 'Award History',
-                    path: paths.dashboard.procurement.awards.history,
-                    icon: ICONS.reports,
-                  },
-                ],
-              },
-              {
-                title: 'Work Orders',
-                path: paths.dashboard.procurement.workOrders.root,
-                icon: ICONS.workOrder,
-                children: [
-                  {
-                    title: 'WO List',
-                    path: paths.dashboard.procurement.workOrders.list,
-                    icon: ICONS.workOrder,
-                  },
-                  {
-                    title: 'Create WO',
-                    path: paths.dashboard.procurement.workOrders.create,
-                    icon: ICONS.formAutomation,
-                  },
-                  {
-                    title: 'Pending Approvals',
-                    path: paths.dashboard.procurement.workOrders.pendingApprovals,
-                    icon: ICONS.approval,
-                  },
-                ],
-              },
-              {
-                title: 'Direct Purchase',
-                path: paths.dashboard.procurement.directPurchase.root,
-                icon: ICONS.payment,
-                children: [
-                  {
-                    title: 'DP List',
-                    path: paths.dashboard.procurement.directPurchase.list,
-                    icon: ICONS.menuItem,
-                  },
-                  {
-                    title: 'Create DP',
-                    path: paths.dashboard.procurement.directPurchase.create,
-                    icon: ICONS.formAutomation,
-                  },
-                ],
-              },
-              {
-                title: 'Goods Receive Notes',
-                path: paths.dashboard.procurement.grn.root,
-                icon: ICONS.grn,
-                children: [
-                  {
-                    title: 'GRN List',
-                    path: paths.dashboard.procurement.grn.list,
-                    icon: ICONS.grn,
-                  },
-                  {
-                    title: 'Create GRN',
-                    path: paths.dashboard.procurement.grn.create,
-                    icon: ICONS.formAutomation,
-                  },
-                  {
-                    title: 'Pending Verification',
-                    path: paths.dashboard.procurement.grn.pendingVerification,
-                    icon: ICONS.approval,
-                  },
-                ],
-              },
-              {
-                title: 'Inventory',
-                path: paths.dashboard.procurement.inventory.root,
-                icon: ICONS.inventory,
-                children: [
-                  {
-                    title: 'Dashboard',
-                    path: paths.dashboard.procurement.inventory.dashboard,
-                    icon: ICONS.dashboard,
-                  },
-                  {
-                    title: 'All Items',
-                    path: `${paths.dashboard.procurement.inventory.items}?type=all`,
-                    icon: ICONS.inventory,
-                  },
-                  {
-                    title: 'Fixed Assets',
-                    path: `${paths.dashboard.procurement.inventory.items}?type=asset`,
-                    icon: ICONS.inventory,
-                  },
-                  {
-                    title: 'Consumables',
-                    path: `${paths.dashboard.procurement.inventory.items}?type=consumable`,
-                    icon: ICONS.inventory,
-                  },
-                  // { title: 'Stock Movement', path: paths.dashboard.procurement.inventory.movement, icon: ICONS.inventory },
-                  // { title: 'Issue/Transfer', path: paths.dashboard.procurement.inventory.issue, icon: ICONS.delivery },
-                  // { title: 'Warehouses', path: paths.dashboard.procurement.inventory.warehouses, icon: ICONS.inventory },
-                  // { title: 'Inter-Warehouse Transfer', path: paths.dashboard.procurement.inventory.interWarehouseTransfer, icon: ICONS.inventory },
-                  // { title: 'Material Requisition', path: paths.dashboard.procurement.inventory.materialRequisition, icon: ICONS.requisition },
-                  // { title: 'Material Release', path: paths.dashboard.procurement.inventory.materialRelease, icon: ICONS.delivery },
-                  // { title: 'Inventory Reports', path: paths.dashboard.procurement.inventory.reports, icon: ICONS.reports },
-                ],
-              },
-              {
-                title: 'Payment Requisitions',
-                path: paths.dashboard.procurement.paymentRequisitions.root,
-                icon: ICONS.payment,
-                children: [
-                  {
-                    title: 'PRF List',
-                    path: paths.dashboard.procurement.paymentRequisitions.listApproved,
-                    icon: ICONS.payment,
-                  },
-                  {
-                    title: 'Create PRF',
-                    path: paths.dashboard.procurement.paymentRequisitions.create,
-                    icon: ICONS.formAutomation,
-                  },
-                  {
-                    title: 'Pending Approvals',
-                    path: paths.dashboard.procurement.paymentRequisitions.pendingApprovals,
-                    icon: ICONS.approval,
-                  },
-                  {
-                    title: 'Payment Schedule',
-                    path: paths.dashboard.procurement.paymentRequisitions.paymentSchedule,
-                    icon: ICONS.calendar,
-                  },
-                ],
-              },
-              {
-                title: 'Treasury & Finance',
-                path: paths.dashboard.procurement.treasury.root,
-                icon: ICONS.treasury,
-                children: [
-                  {
-                    title: 'Finance Review Queue',
-                    path: paths.dashboard.procurement.treasury.financeReview,
-                    icon: ICONS.accounting,
-                  },
-                  {
-                    title: 'Payment Status',
-                    path: paths.dashboard.procurement.treasury.timeline,
-                    icon: ICONS.shift,
-                  },
-                  // { title: 'Payment Analytics', path: paths.dashboard.procurement.treasury.analytics, icon: ICONS.analytics },
-                  // { title: 'Bank Reconciliation', path: paths.dashboard.procurement.treasury.bankReconciliation, icon: ICONS.approval },
-                ],
-              },
-              {
-                title: 'Vendors',
-                path: paths.dashboard.procurement.vendors.root,
-                icon: ICONS.vendors,
-                children: [
-                  {
-                    title: 'Vendor Register',
-                    path: paths.dashboard.procurement.vendors.create,
-                    icon: ICONS.vendors,
-                  },
-                  {
-                    title: 'Vendor List',
-                    path: paths.dashboard.procurement.vendors.list,
-                    icon: ICONS.vendors,
-                  },
-                  // { title: 'Vendor Onboarding', path: paths.dashboard.procurement.vendors.onboarding, icon: ICONS.formAutomation },
-                  {
-                    title: 'Vendor Verification',
-                    path: paths.dashboard.procurement.vendors.verification,
-                    icon: ICONS.approval,
-                  },
-                  {
-                    title: 'Category Mapping',
-                    path: paths.dashboard.procurement.vendors.categoryMapping,
-                    icon: ICONS.categories,
-                  },
-                  // { title: 'Performance Tracking', path: paths.dashboard.procurement.vendors.performance, icon: ICONS.analytics },
-                  {
-                    title: 'Vendor Enlistment',
-                    path: paths.dashboard.procurement.vendors.enlistment,
-                    icon: ICONS.formAutomation,
-                  },
-                  {
-                    title: 'Vendor Blacklist',
-                    path: paths.dashboard.procurement.vendors.blacklist,
-                    icon: ICONS.lock,
-                  },
-                ],
-              },
-              // { title: 'Contract Management', path: paths.dashboard.procurement.contracts.root, icon: ICONS.documents, children: [
-              //   { title: 'Contract List', path: paths.dashboard.procurement.contracts.list, icon: ICONS.documents },
-              //   { title: 'Create Contract', path: paths.dashboard.procurement.contracts.create, icon: ICONS.formAutomation },
-              // ]},
-              // { title: 'Document Repository', path: paths.dashboard.procurement.documents.root, icon: ICONS.documents, children: [
-              //   { title: 'All Documents', path: paths.dashboard.procurement.documents.repository, icon: ICONS.documents },
-              //   { title: 'Categories', path: paths.dashboard.procurement.documents.categories, icon: ICONS.categories },
-              //   { title: 'Access Control', path: paths.dashboard.procurement.documents.accessControl, icon: ICONS.lock },
-              // ]},
-              // { title: 'Audit & Compliance', path: paths.dashboard.procurement.audit.root, icon: ICONS.approval, children: [
-              //   { title: 'Audit Trail', path: paths.dashboard.procurement.audit.log, icon: ICONS.reports },
-              //   { title: 'Compliance Dashboard', path: paths.dashboard.procurement.audit.compliance, icon: ICONS.approval },
-              //   { title: 'Export & Reports', path: paths.dashboard.procurement.audit.export, icon: ICONS.external },
-              // ]},
-              // { title: 'Budget Management', path: paths.dashboard.procurement.budget.root, icon: ICONS.accounting, children: [
-              //   { title: 'Budget Planning', path: paths.dashboard.procurement.budget.planning, icon: ICONS.accounting },
-              //   { title: 'Utilization Report', path: paths.dashboard.procurement.budget.utilization, icon: ICONS.analytics },
-              //   { title: 'Budget Transfer', path: paths.dashboard.procurement.budget.transfer, icon: ICONS.external },
-              // ]},
-              {
-                title: 'Reports',
-                path: paths.dashboard.procurement.reports.root,
-                icon: ICONS.reports,
-                children: [
-                  {
-                    title: 'Requisition Report',
-                    path: paths.dashboard.procurement.reports.requisitions,
-                    icon: ICONS.reports,
-                  },
-                  {
-                    title: 'RFQ Report',
-                    path: paths.dashboard.procurement.reports.rfq,
-                    icon: ICONS.reports,
-                  },
-                  {
-                    title: 'Vendor Participation',
-                    path: paths.dashboard.procurement.reports.vendorParticipation,
-                    icon: ICONS.reports,
-                  },
-                  {
-                    title: 'Vendor Awards',
-                    path: paths.dashboard.procurement.reports.vendorAwards,
-                    icon: ICONS.reports,
-                  },
-                  {
-                    title: 'Work Order Report',
-                    path: paths.dashboard.procurement.reports.workOrders,
-                    icon: ICONS.reports,
-                  },
-                  {
-                    title: 'Inventory Received',
-                    path: paths.dashboard.procurement.reports.inventoryReceived,
-                    icon: ICONS.reports,
-                  },
-                  {
-                    title: 'Fixed Asset Register',
-                    path: paths.dashboard.procurement.reports.fixedAssets,
-                    icon: ICONS.reports,
-                  },
-                  {
-                    title: 'Consumable Stock',
-                    path: paths.dashboard.procurement.reports.consumables,
-                    icon: ICONS.reports,
-                  },
-                  {
-                    title: 'Payment Status',
-                    path: paths.dashboard.procurement.reports.payments,
-                    icon: ICONS.reports,
-                  },
-                  {
-                    title: 'Budget vs Procurement',
-                    path: paths.dashboard.procurement.reports.budget,
-                    icon: ICONS.reports,
-                  },
-                  {
-                    title: 'CS Summary',
-                    path: paths.dashboard.procurement.reports.comparativeStatements,
-                    icon: ICONS.reports,
-                  },
-                  {
-                    title: 'Audit Logs',
-                    path: paths.dashboard.procurement.reports.auditLogs,
-                    icon: ICONS.reports,
-                  },
-                  {
-                    title: 'Project Procurement Report',
-                    path: paths.dashboard.procurement.reports.projectProcurement,
-                    icon: ICONS.reports,
-                  },
-                ],
-              },
-              {
-                title: 'Notifications',
-                path: paths.dashboard.procurement.notifications,
-                icon: ICONS.notifications,
-              },
-              {
-                title: 'Settings',
-                path: paths.dashboard.procurement.settings.root,
-                icon: ICONS.settings,
-                children: [
-                  {
-                    title: 'User Management',
-                    path: paths.dashboard.procurement.settings.users,
-                    icon: ICONS.user,
-                  },
-                  {
-                    title: 'Roles & Permissions',
-                    path: paths.dashboard.procurement.settings.roles,
-                    icon: ICONS.lock,
-                  },
-                  {
-                    title: 'Approval Matrix',
-                    path: paths.dashboard.procurement.settings.approvalMatrix,
-                    icon: ICONS.approval,
-                  },
-                  {
-                    title: 'Budget Codes',
-                    path: paths.dashboard.procurement.settings.budgetCodes,
-                    icon: ICONS.accounting,
-                  },
-                  {
-                    title: 'Account Categories',
-                    path: paths.dashboard.procurement.settings.accountCategories,
-                    icon: ICONS.categories,
-                  },
-                  {
-                    title: 'Account Codes',
-                    path: paths.dashboard.procurement.settings.accountCodes,
-                    icon: ICONS.accounting,
-                  },
-                  {
-                    title: 'Category Setup',
-                    path: paths.dashboard.procurement.settings.categories,
-                    icon: ICONS.categories,
-                  },
-                  {
-                    title: 'Item Master',
-                    path: paths.dashboard.procurement.settings.items,
-                    icon: ICONS.inventory,
-                  },
-                  {
-                    title: 'Email Templates',
-                    path: paths.dashboard.procurement.settings.emailTemplates,
-                    icon: ICONS.mail,
-                  },
-                  {
-                    title: 'Notification Settings',
-                    path: paths.dashboard.procurement.settings.notifications,
-                    icon: ICONS.notifications,
-                  },
-                  {
-                    title: 'Office Management',
-                    path: paths.dashboard.procurement.settings.offices,
-                    icon: ICONS.branch,
-                  },
-                  {
-                    title: 'Authority Delegation',
-                    path: paths.dashboard.procurement.settings.delegation,
-                    icon: ICONS.approval,
-                  },
-                  {
-                    title: 'Escalation Rules',
-                    path: paths.dashboard.procurement.settings.escalation,
-                    icon: ICONS.notifications,
-                  },
-                  {
-                    title: 'Fiscal Year',
-                    path: paths.dashboard.procurement.settings.fiscalYear,
-                    icon: ICONS.calendar,
-                  },
-                  {
-                    title: 'Currency & Rates',
-                    path: paths.dashboard.procurement.settings.currency,
-                    icon: ICONS.accounting,
-                  },
-                  {
-                    title: 'System Logs',
-                    path: paths.dashboard.procurement.settings.systemLogs,
-                    icon: ICONS.reports,
-                  },
-                  {
-                    title: 'Backup & Recovery',
-                    path: paths.dashboard.procurement.settings.backup,
-                    icon: ICONS.settings,
-                  },
+                  ...(hasAnyPermission(
+                    'view_materialrequisition',
+                    'view_rfq',
+                    'view_vendorquotation',
+                    'view_workorder',
+                    'view_paymentrequisition'
+                  )
+                    ? [
+                      {
+                        title: 'Dashboard',
+                        path: paths.dashboard.procurement.dashboard,
+                        icon: ICONS.dashboard,
+                      },
+                    ]
+                    : []),
+                  ...(hasPermission('view_materialrequisition')
+                    ? [
+                      {
+                        title: 'Material Requisitions',
+                        path: paths.dashboard.procurement.requisitions.root,
+                        icon: ICONS.requisition,
+                        children: [
+                          {
+                            title: 'Requisition List',
+                            path: paths.dashboard.procurement.requisitions.list,
+                            icon: ICONS.requisition,
+                          },
+                          ...(hasPermission('add_materialrequisition')
+                            ? [
+                              {
+                                title: 'Create Requisition',
+                                path: paths.dashboard.procurement.requisitions.create,
+                                icon: ICONS.formAutomation,
+                              },
+                            ]
+                            : []),
+                          {
+                            title: 'Workflow Approval',
+                            path: paths.dashboard.procurement.requisitions.workflowApproval,
+                            icon: ICONS.approval,
+                          },
+                        ],
+                      },
+                    ]
+                    : []),
+                  ...(hasPermission('view_rfq')
+                    ? [
+                      {
+                        title: 'RFQ Management',
+                        path: paths.dashboard.procurement.rfq.root,
+                        icon: ICONS.rfq,
+                        children: [
+                          {
+                            title: 'RFQ List',
+                            path: paths.dashboard.procurement.rfq.list,
+                            icon: ICONS.rfq,
+                          },
+                          ...(hasPermission('add_rfq')
+                            ? [
+                              {
+                                title: 'Create RFQ',
+                                path: paths.dashboard.procurement.rfq.create,
+                                icon: ICONS.formAutomation,
+                              },
+                            ]
+                            : []),
+                          {
+                            title: 'Vendor Distribution',
+                            path: paths.dashboard.procurement.rfq.distribution,
+                            icon: ICONS.vendors,
+                          },
+                          {
+                            title: 'Submission Monitoring',
+                            path: paths.dashboard.procurement.rfq.monitoring,
+                            icon: ICONS.analytics,
+                          },
+                        ],
+                      },
+                    ]
+                    : []),
+                  ...(hasPermission('view_vendorquotation')
+                    ? [
+                      {
+                        title: 'Quotations',
+                        path: paths.dashboard.procurement.quotations.root,
+                        icon: ICONS.quotation,
+                        children: [
+                          {
+                            title: 'Opening & Evaluation',
+                            path: paths.dashboard.procurement.quotations.list,
+                            icon: ICONS.menuItem,
+                          },
+                          {
+                            title: 'Direct Evaluation',
+                            path: paths.dashboard.procurement.quotations.directEvaluation,
+                            icon: ICONS.rfq,
+                          },
+                          ...(hasPermission('add_vendorquotation')
+                            ? [
+                              {
+                                title: 'Manual Submit Quotation',
+                                path: paths.dashboard.procurement.quotations.manualSubmitQuotation,
+                                icon: ICONS.quotation,
+                              },
+                            ]
+                            : []),
+                        ],
+                      },
+                    ]
+                    : []),
+                  ...(hasPermission('view_comparativestatement')
+                    ? [
+                      {
+                        title: 'Comparative Statements',
+                        path: paths.dashboard.procurement.comparative.root,
+                        icon: ICONS.comparison,
+                        children: [
+                          {
+                            title: 'CS List',
+                            path: paths.dashboard.procurement.comparative.list,
+                            icon: ICONS.comparison,
+                          },
+                          {
+                            title: 'Pending Approvals',
+                            path: paths.dashboard.procurement.comparative.pending,
+                            icon: ICONS.approval,
+                          },
+                        ],
+                      },
+                    ]
+                    : []),
+                  ...(hasPermission('view_award')
+                    ? [
+                      {
+                        title: 'Awards',
+                        path: paths.dashboard.procurement.awards.root,
+                        icon: ICONS.award,
+                        children: [
+                          {
+                            title: 'Award Summary',
+                            path: paths.dashboard.procurement.awards.summary,
+                            icon: ICONS.award,
+                          },
+                          {
+                            title: 'Award History',
+                            path: paths.dashboard.procurement.awards.history,
+                            icon: ICONS.reports,
+                          },
+                        ],
+                      },
+                    ]
+                    : []),
+                  ...(hasPermission('view_workorder')
+                    ? [
+                      {
+                        title: 'Work Orders',
+                        path: paths.dashboard.procurement.workOrders.root,
+                        icon: ICONS.workOrder,
+                        children: [
+                          {
+                            title: 'WO List',
+                            path: paths.dashboard.procurement.workOrders.list,
+                            icon: ICONS.workOrder,
+                          },
+                          ...(hasPermission('add_workorder')
+                            ? [
+                              {
+                                title: 'Create WO',
+                                path: paths.dashboard.procurement.workOrders.create,
+                                icon: ICONS.formAutomation,
+                              },
+                            ]
+                            : []),
+                          {
+                            title: 'Pending Approvals',
+                            path: paths.dashboard.procurement.workOrders.pendingApprovals,
+                            icon: ICONS.approval,
+                          },
+                        ],
+                      },
+                    ]
+                    : []),
+                  ...(hasPermission('view_directpurchase')
+                    ? [
+                      {
+                        title: 'Direct Purchase',
+                        path: paths.dashboard.procurement.directPurchase.root,
+                        icon: ICONS.payment,
+                        children: [
+                          {
+                            title: 'DP List',
+                            path: paths.dashboard.procurement.directPurchase.list,
+                            icon: ICONS.menuItem,
+                          },
+                          ...(hasPermission('add_directpurchase')
+                            ? [
+                              {
+                                title: 'Create DP',
+                                path: paths.dashboard.procurement.directPurchase.create,
+                                icon: ICONS.formAutomation,
+                              },
+                            ]
+                            : []),
+                        ],
+                      },
+                    ]
+                    : []),
+                  ...(hasPermission('view_goodsreceiptnote')
+                    ? [
+                      {
+                        title: 'Goods Receive Notes',
+                        path: paths.dashboard.procurement.grn.root,
+                        icon: ICONS.grn,
+                        children: [
+                          {
+                            title: 'GRN List',
+                            path: paths.dashboard.procurement.grn.list,
+                            icon: ICONS.grn,
+                          },
+                          ...(hasPermission('add_goodsreceiptnote')
+                            ? [
+                              {
+                                title: 'Create GRN',
+                                path: paths.dashboard.procurement.grn.create,
+                                icon: ICONS.formAutomation,
+                              },
+                            ]
+                            : []),
+                          {
+                            title: 'Pending Verification',
+                            path: paths.dashboard.procurement.grn.pendingVerification,
+                            icon: ICONS.approval,
+                          },
+                        ],
+                      },
+                    ]
+                    : []),
+                  ...(hasPermission('view_warehouse')
+                    ? [
+                      {
+                        title: 'Inventory',
+                        path: paths.dashboard.procurement.inventory.root,
+                        icon: ICONS.inventory,
+                        children: [
+                          {
+                            title: 'Dashboard',
+                            path: paths.dashboard.procurement.inventory.dashboard,
+                            icon: ICONS.dashboard,
+                          },
+                          {
+                            title: 'All Items',
+                            path: `${paths.dashboard.procurement.inventory.items}?type=all`,
+                            icon: ICONS.inventory,
+                          },
+                          {
+                            title: 'Fixed Assets',
+                            path: `${paths.dashboard.procurement.inventory.items}?type=asset`,
+                            icon: ICONS.inventory,
+                          },
+                          {
+                            title: 'Consumables',
+                            path: `${paths.dashboard.procurement.inventory.items}?type=consumable`,
+                            icon: ICONS.inventory,
+                          },
+                        ],
+                      },
+                    ]
+                    : []),
+                  ...(hasPermission('view_paymentrequisition')
+                    ? [
+                      {
+                        title: 'Payment Requisitions',
+                        path: paths.dashboard.procurement.paymentRequisitions.root,
+                        icon: ICONS.payment,
+                        children: [
+                          {
+                            title: 'PRF List',
+                            path: paths.dashboard.procurement.paymentRequisitions.listApproved,
+                            icon: ICONS.payment,
+                          },
+                          ...(hasPermission('add_paymentrequisition')
+                            ? [
+                              {
+                                title: 'Create PRF',
+                                path: paths.dashboard.procurement.paymentRequisitions.create,
+                                icon: ICONS.formAutomation,
+                              },
+                            ]
+                            : []),
+                          {
+                            title: 'Pending Approvals',
+                            path: paths.dashboard.procurement.paymentRequisitions.pendingApprovals,
+                            icon: ICONS.approval,
+                          },
+                          {
+                            title: 'Payment Schedule',
+                            path: paths.dashboard.procurement.paymentRequisitions.paymentSchedule,
+                            icon: ICONS.calendar,
+                          },
+                        ],
+                      },
+                    ]
+                    : []),
+                  ...(hasPermission('view_treasuryprocessing')
+                    ? [
+                      {
+                        title: 'Treasury & Finance',
+                        path: paths.dashboard.procurement.treasury.root,
+                        icon: ICONS.treasury,
+                        children: [
+                          {
+                            title: 'Finance Review Queue',
+                            path: paths.dashboard.procurement.treasury.financeReview,
+                            icon: ICONS.accounting,
+                          },
+                          {
+                            title: 'Payment Status',
+                            path: paths.dashboard.procurement.treasury.timeline,
+                            icon: ICONS.shift,
+                          },
+                        ],
+                      },
+                    ]
+                    : []),
+                  ...(hasAnyPermission('view_vendorverification', 'view_vendorcategory', 'view_vendorcategorymapping')
+                    ? [
+                      {
+                        title: 'Vendors',
+                        path: paths.dashboard.procurement.vendors.root,
+                        icon: ICONS.vendors,
+                        children: [
+                          ...(hasPermission('add_vendorverification')
+                            ? [
+                              {
+                                title: 'Vendor Register',
+                                path: paths.dashboard.procurement.vendors.create,
+                                icon: ICONS.vendors,
+                              },
+                            ]
+                            : []),
+                          ...(hasAnyPermission('view_vendorverification', 'view_vendorcategory')
+                            ? [
+                              {
+                                title: 'Vendor List',
+                                path: paths.dashboard.procurement.vendors.list,
+                                icon: ICONS.vendors,
+                              },
+                            ]
+                            : []),
+                          ...(hasPermission('view_vendorverification')
+                            ? [
+                              {
+                                title: 'Vendor Verification',
+                                path: paths.dashboard.procurement.vendors.verification,
+                                icon: ICONS.approval,
+                              },
+                            ]
+                            : []),
+                          ...(hasPermission('view_vendorcategorymapping')
+                            ? [
+                              {
+                                title: 'Category Mapping',
+                                path: paths.dashboard.procurement.vendors.categoryMapping,
+                                icon: ICONS.categories,
+                              },
+                            ]
+                            : []),
+                          ...(hasPermission('view_vendorverification')
+                            ? [
+                              {
+                                title: 'Vendor Enlistment',
+                                path: paths.dashboard.procurement.vendors.enlistment,
+                                icon: ICONS.formAutomation,
+                              },
+                              {
+                                title: 'Vendor Blacklist',
+                                path: paths.dashboard.procurement.vendors.blacklist,
+                                icon: ICONS.lock,
+                              },
+                            ]
+                            : []),
+                        ],
+                      },
+                    ]
+                    : []),
+                  ...(hasAnyPermission(
+                    'view_materialrequisition',
+                    'view_rfq',
+                    'view_workorder',
+                    'view_award',
+                    'view_comparativestatement',
+                    'view_paymentrequisition',
+                    'view_procurementnotification'
+                  )
+                    ? [
+                      {
+                        title: 'Reports',
+                        path: paths.dashboard.procurement.reports.root,
+                        icon: ICONS.reports,
+                        children: [
+                          {
+                            title: 'Requisition Report',
+                            path: paths.dashboard.procurement.reports.requisitions,
+                            icon: ICONS.reports,
+                          },
+                          {
+                            title: 'RFQ Report',
+                            path: paths.dashboard.procurement.reports.rfq,
+                            icon: ICONS.reports,
+                          },
+                          {
+                            title: 'Vendor Participation',
+                            path: paths.dashboard.procurement.reports.vendorParticipation,
+                            icon: ICONS.reports,
+                          },
+                          {
+                            title: 'Vendor Awards',
+                            path: paths.dashboard.procurement.reports.vendorAwards,
+                            icon: ICONS.reports,
+                          },
+                          {
+                            title: 'Work Order Report',
+                            path: paths.dashboard.procurement.reports.workOrders,
+                            icon: ICONS.reports,
+                          },
+                          {
+                            title: 'Inventory Received',
+                            path: paths.dashboard.procurement.reports.inventoryReceived,
+                            icon: ICONS.reports,
+                          },
+                          {
+                            title: 'Fixed Asset Register',
+                            path: paths.dashboard.procurement.reports.fixedAssets,
+                            icon: ICONS.reports,
+                          },
+                          {
+                            title: 'Consumable Stock',
+                            path: paths.dashboard.procurement.reports.consumables,
+                            icon: ICONS.reports,
+                          },
+                          {
+                            title: 'Payment Status',
+                            path: paths.dashboard.procurement.reports.payments,
+                            icon: ICONS.reports,
+                          },
+                          {
+                            title: 'Budget vs Procurement',
+                            path: paths.dashboard.procurement.reports.budget,
+                            icon: ICONS.reports,
+                          },
+                          {
+                            title: 'CS Summary',
+                            path: paths.dashboard.procurement.reports.comparativeStatements,
+                            icon: ICONS.reports,
+                          },
+                          {
+                            title: 'Audit Logs',
+                            path: paths.dashboard.procurement.reports.auditLogs,
+                            icon: ICONS.reports,
+                          },
+                          {
+                            title: 'Project Procurement Report',
+                            path: paths.dashboard.procurement.reports.projectProcurement,
+                            icon: ICONS.reports,
+                          },
+                        ],
+                      },
+                    ]
+                    : []),
+                  ...(hasPermission('view_procurementnotification')
+                    ? [
+                      {
+                        title: 'Notifications',
+                        path: paths.dashboard.procurement.notifications,
+                        icon: ICONS.notifications,
+                      },
+                    ]
+                    : []),
+                  ...(hasAnyPermission(
+                    'view_usermanagement',
+                    'view_procurementrole',
+                    'view_approvalmatrix',
+                    'view_budget',
+                    'view_account',
+                    'view_accountcategory',
+                    'view_emailtemplate',
+                    'view_notificationsetting',
+                    'view_officemanagement',
+                    'view_fiscalyear',
+                    'view_currency'
+                  )
+                    ? [
+                      {
+                        title: 'Settings',
+                        path: paths.dashboard.procurement.settings.root,
+                        icon: ICONS.settings,
+                        children: [
+                          ...(hasPermission('view_usermanagement')
+                            ? [
+                              {
+                                title: 'User Management',
+                                path: paths.dashboard.procurement.settings.users,
+                                icon: ICONS.user,
+                              },
+                            ]
+                            : []),
+                          ...(hasPermission('view_procurementrole')
+                            ? [
+                              {
+                                title: 'Roles & Permissions',
+                                path: paths.dashboard.procurement.settings.roles,
+                                icon: ICONS.lock,
+                              },
+                            ]
+                            : []),
+                          ...(hasPermission('view_approvalmatrix')
+                            ? [
+                              {
+                                title: 'Approval Matrix',
+                                path: paths.dashboard.procurement.settings.approvalMatrix,
+                                icon: ICONS.approval,
+                              },
+                            ]
+                            : []),
+                          ...(hasPermission('view_budget')
+                            ? [
+                              {
+                                title: 'Budget Codes',
+                                path: paths.dashboard.procurement.settings.budgetCodes,
+                                icon: ICONS.accounting,
+                              },
+                            ]
+                            : []),
+                          ...(hasPermission('view_accountcategory')
+                            ? [
+                              {
+                                title: 'Account Categories',
+                                path: paths.dashboard.procurement.settings.accountCategories,
+                                icon: ICONS.categories,
+                              },
+                            ]
+                            : []),
+                          ...(hasPermission('view_account')
+                            ? [
+                              {
+                                title: 'Account Codes',
+                                path: paths.dashboard.procurement.settings.accountCodes,
+                                icon: ICONS.accounting,
+                              },
+                            ]
+                            : []),
+                          {
+                            title: 'Category Setup',
+                            path: paths.dashboard.procurement.settings.categories,
+                            icon: ICONS.categories,
+                          },
+                          {
+                            title: 'Item Master',
+                            path: paths.dashboard.procurement.settings.items,
+                            icon: ICONS.inventory,
+                          },
+                          ...(hasPermission('view_emailtemplate')
+                            ? [
+                              {
+                                title: 'Email Templates',
+                                path: paths.dashboard.procurement.settings.emailTemplates,
+                                icon: ICONS.mail,
+                              },
+                            ]
+                            : []),
+                          ...(hasPermission('view_notificationsetting')
+                            ? [
+                              {
+                                title: 'Notification Settings',
+                                path: paths.dashboard.procurement.settings.notifications,
+                                icon: ICONS.notifications,
+                              },
+                            ]
+                            : []),
+                          ...(hasPermission('view_officemanagement')
+                            ? [
+                              {
+                                title: 'Office Management',
+                                path: paths.dashboard.procurement.settings.offices,
+                                icon: ICONS.branch,
+                              },
+                            ]
+                            : []),
+                          {
+                            title: 'Authority Delegation',
+                            path: paths.dashboard.procurement.settings.delegation,
+                            icon: ICONS.approval,
+                          },
+                          {
+                            title: 'Escalation Rules',
+                            path: paths.dashboard.procurement.settings.escalation,
+                            icon: ICONS.notifications,
+                          },
+                          ...(hasPermission('view_fiscalyear')
+                            ? [
+                              {
+                                title: 'Fiscal Year',
+                                path: paths.dashboard.procurement.settings.fiscalYear,
+                                icon: ICONS.calendar,
+                              },
+                            ]
+                            : []),
+                          ...(hasPermission('view_currency')
+                            ? [
+                              {
+                                title: 'Currency & Rates',
+                                path: paths.dashboard.procurement.settings.currency,
+                                icon: ICONS.accounting,
+                              },
+                            ]
+                            : []),
+                          {
+                            title: 'System Logs',
+                            path: paths.dashboard.procurement.settings.systemLogs,
+                            icon: ICONS.reports,
+                          },
+                          {
+                            title: 'Backup & Recovery',
+                            path: paths.dashboard.procurement.settings.backup,
+                            icon: ICONS.settings,
+                          },
+                        ],
+                      },
+                    ]
+                    : []),
                 ],
               },
             ],
           },
-        ],
-      },
+        ]
+        : []),
 
       // ============================================================
       // Project Managements
       // ============================================================
-      {
-        items: [
+      ...(hasAnyPermission(
+        'view_projectmanagementproject',
+        'view_projectmanagementplanworkitem',
+        'view_projectmanagementexpense',
+        'view_advance'
+      )
+        ? [
           {
-            title: 'Project Managements',
-            icon: ICONS.project,
-            children: [
+            items: [
               {
-                title: 'Overview',
-                path: paths.dashboard.projectManagements.root,
-                icon: ICONS.dashboard,
-              },
-              {
-                title: 'Dashboard',
-                path: paths.dashboard.projectManagements.dashboard,
-                icon: ICONS.analytics,
-              },
-              {
-                title: 'Projects',
-                path: paths.dashboard.projectManagements.projects.root,
-                icon: ICONS.projects,
+                title: 'Project Managements',
+                icon: ICONS.project,
                 children: [
-                  {
-                    title: 'All Projects',
-                    path: paths.dashboard.projectManagements.projects.allProjects,
-                    icon: ICONS.menuItem,
-                    activeMatch: [
-                      { pattern: '^/dashboard/project-managements/projects/[^/]+/?$' },
-                      { pattern: '^/dashboard/project-managements/projects/[^/]+/edit/?$' },
-                    ],
-                  },
-                  {
-                    title: 'Create New Project',
-                    path: paths.dashboard.projectManagements.projects.create,
-                    icon: ICONS.formAutomation,
-                  },
-                  {
-                    title: 'Report',
-                    path: paths.dashboard.projectManagements.projects.report,
-                    icon: ICONS.reports,
-                  },
-                ],
-              },
-              {
-                title: 'Task Management',
-                path: paths.dashboard.projectManagements.taskManagement.root,
-                icon: ICONS.menuItem,
-                children: [
-                  {
-                    title: 'All Tasks',
-                    path: paths.dashboard.projectManagements.taskManagement.allTasks,
-                    icon: ICONS.menuItem,
-                    activeMatch: [
+                  ...(hasPermission('view_projectmanagementproject')
+                    ? [
                       {
-                        pattern:
-                          '^/dashboard/project-managements/task-management/all-tasks/[^/]+/[^/]+/?$',
+                        title: 'Overview',
+                        path: paths.dashboard.projectManagements.root,
+                        icon: ICONS.dashboard,
                       },
-                    ],
-                  },
+                      {
+                        title: 'Dashboard',
+                        path: paths.dashboard.projectManagements.dashboard,
+                        icon: ICONS.analytics,
+                      },
+                      {
+                        title: 'Projects',
+                        path: paths.dashboard.projectManagements.projects.root,
+                        icon: ICONS.projects,
+                        children: [
+                          {
+                            title: 'All Projects',
+                            path: paths.dashboard.projectManagements.projects.allProjects,
+                            icon: ICONS.menuItem,
+                            activeMatch: [
+                              { pattern: '^/dashboard/project-managements/projects/[^/]+/?$' },
+                              { pattern: '^/dashboard/project-managements/projects/[^/]+/edit/?$' },
+                            ],
+                          },
+                          ...(hasPermission('add_projectmanagementproject')
+                            ? [
+                              {
+                                title: 'Create New Project',
+                                path: paths.dashboard.projectManagements.projects.create,
+                                icon: ICONS.formAutomation,
+                              },
+                            ]
+                            : []),
+                          {
+                            title: 'Report',
+                            path: paths.dashboard.projectManagements.projects.report,
+                            icon: ICONS.reports,
+                          },
+                        ],
+                      },
+                    ]
+                    : []),
+                  ...(hasPermission('view_projectmanagementplanworkitem')
+                    ? [
+                      {
+                        title: 'Task Management',
+                        path: paths.dashboard.projectManagements.taskManagement.root,
+                        icon: ICONS.menuItem,
+                        children: [
+                          {
+                            title: 'All Tasks',
+                            path: paths.dashboard.projectManagements.taskManagement.allTasks,
+                            icon: ICONS.menuItem,
+                            activeMatch: [
+                              {
+                                pattern:
+                                  '^/dashboard/project-managements/task-management/all-tasks/[^/]+/[^/]+/?$',
+                              },
+                            ],
+                          },
+                        ],
+                      },
+                    ]
+                    : []),
+                  ...(hasAnyPermission('view_projectmanagementexpense', 'view_advance')
+                    ? [
+                      {
+                        title: 'Expense Management',
+                        path: paths.dashboard.projectManagements.expenses.root,
+                        icon: ICONS.reports,
+                        children: [
+                          ...(hasPermission('view_projectmanagementexpense')
+                            ? [
+                              {
+                                title: 'Expenses',
+                                path: paths.dashboard.projectManagements.expenses.root,
+                                icon: ICONS.menuItem,
+                              },
+                              ...(hasPermission('add_projectmanagementexpense')
+                                ? [
+                                  {
+                                    title: 'Create Expense',
+                                    path: paths.dashboard.projectManagements.expenses.create,
+                                    icon: ICONS.formAutomation,
+                                  },
+                                ]
+                                : []),
+                            ]
+                            : []),
+                          ...(hasPermission('view_advance')
+                            ? [
+                              {
+                                title: 'Advance Receivables',
+                                path: paths.dashboard.projectManagements.expenses.advances.root,
+                                icon: ICONS.payment,
+                              },
+                            ]
+                            : []),
+                        ],
+                      },
+                    ]
+                    : []),
                 ],
               },
-              {
-                title: 'Expense Management',
-                path: paths.dashboard.projectManagements.expenses.root,
-                icon: ICONS.reports,
-                children: [
-                  {
-                    title: 'Expenses',
-                    path: paths.dashboard.projectManagements.expenses.root,
-                    icon: ICONS.menuItem,
-                  },
-                  {
-                    title: 'Create Expense',
-                    path: paths.dashboard.projectManagements.expenses.create,
-                    icon: ICONS.formAutomation,
-                  },
-                  {
-                    title: 'Advance Receivables',
-                    path: paths.dashboard.projectManagements.expenses.advances.root,
-                    icon: ICONS.payment,
-                  },
-                ],
-              },
-              // { title: 'Donor Management', path: paths.dashboard.projects.donors.root, icon: ICONS.vendors },
             ],
           },
-        ],
-      },
+        ]
+        : []),
 
       // ============================================================
       // Accounting & Finance
@@ -1736,42 +1952,78 @@ export function useNavData() {
         ]
 
       },
-      {
-        // subheader: 'Ledars Management',
-        items: [
+
+      // ============================================================
+      // Ledars Management
+      // ============================================================
+      ...(hasPermission('view_donor')
+        ? [
           {
-            title: 'Ledars Management',
-            icon: ICONS.ledars,
-            children: [
+            items: [
               {
-                title: 'Donor Management',
-                path: paths.dashboard.projects.donors.root,
-                icon: ICONS.vendors,
+                title: 'Ledars Management',
+                icon: ICONS.ledars,
+                children: [
+                  {
+                    title: 'Donor Management',
+                    path: paths.dashboard.projects.donors.root,
+                    icon: ICONS.vendors,
+                  },
+                ],
               },
-              // {
-              //   title: 'Print Template',
-              //   path: paths.dashboard.ledarsManagement.templates,
-              //   icon: ICONS.documents,
-              // },
             ],
           },
-        ],
-      },
+        ]
+        : []),
 
       // ============================================================
       // HRM
       // ============================================================
-      {
-        items: [
+      ...(hasAnyPermission(
+        'view_employee',
+        'view_attendancedata',
+        'view_attendance',
+        'view_attendanceadjustmentrequest',
+        'view_attendanceadjustmentapproval',
+        'view_holiday',
+        'view_leaverequest',
+        'view_leaveapproval',
+        'view_payroll',
+        'add_payroll',
+        'view_finalsettlement',
+        'view_department',
+        'view_designation',
+        'view_branch',
+        'view_grade',
+        'view_shift',
+        'view_role',
+        'add_attendancedata'
+      ) ||
+        user?.role === 'Employee' ||
+        user?.role === 'Supervisor'
+        ? [
           {
-            title: 'HRM',
-            icon: ICONS.hrm,
-            children: [
+            items: [
               {
-                title: 'Dashboard',
-                path: paths.dashboard.hrm,
-                icon: ICONS.dashboard,
-              },
+                title: 'HRM',
+                icon: ICONS.hrm,
+                children: [
+              ...(hasAnyPermission(
+                'view_employee',
+                'view_attendancedata',
+                'view_leaverequest',
+                'view_payroll',
+                'view_finalsettlement',
+                'view_holiday'
+              ) || user?.is_superuser
+                ? [
+                  {
+                    title: 'Dashboard',
+                    path: paths.dashboard.hrm,
+                    icon: ICONS.dashboard,
+                  },
+                ]
+                : []),
               ...((user?.role === 'Employee' || user?.role === 'Supervisor') &&
                 !hasPermission('view_employee')
                 ? [
@@ -1938,7 +2190,7 @@ export function useNavData() {
                 path: paths.dashboard.attendance.root,
                 icon: ICONS.calendar,
                 children: [
-                  ...(hasPermission('view_attendance')
+                  ...(hasAnyPermission('view_attendance', 'view_attendancedata')
                     ? [
                       {
                         title: 'List',
@@ -1975,7 +2227,7 @@ export function useNavData() {
                       },
                     ]
                     : []),
-                  ...(user?.role === 'Supervisor' || hasPermission('view_attendance')
+                  ...(user?.role === 'Supervisor' || hasAnyPermission('view_attendance', 'view_attendancedata')
                     ? [
                       {
                         title: 'Daily Attendance',
@@ -2098,142 +2350,234 @@ export function useNavData() {
                   },
                 ]
                 : []),
-              {
-                title: 'Final Settlement',
-                path: paths.dashboard.finalSettlement.root,
-                icon: ICONS.payment,
-                children: [
+              ...(hasPermission('view_finalsettlement')
+                ? [
                   {
-                    title: 'Settlement List',
-                    path: paths.dashboard.finalSettlement.list,
-                    icon: ICONS.menuItem,
+                    title: 'Final Settlement',
+                    path: paths.dashboard.finalSettlement.root,
+                    icon: ICONS.payment,
+                    children: [
+                      {
+                        title: 'Settlement List',
+                        path: paths.dashboard.finalSettlement.list,
+                        icon: ICONS.menuItem,
+                      },
+                      ...(hasPermission('add_finalsettlement')
+                        ? [
+                          {
+                            title: 'Create Settlement',
+                            path: paths.dashboard.finalSettlement.create,
+                            icon: ICONS.formAutomation,
+                          },
+                        ]
+                        : []),
+                    ],
                   },
-                  {
-                    title: 'Create Settlement',
-                    path: paths.dashboard.finalSettlement.create,
-                    icon: ICONS.formAutomation,
-                  },
-                ],
-              },
+                ]
+                : []),
             ],
           },
         ],
       },
+        ]
+        : []),
 
       // ============================================================
       // Beneficiaries
       // ============================================================
-      {
-        items: [
+      ...(hasAnyPermission(
+        'view_beneficiary',
+        'view_vulnerabilityassessment',
+        'view_targetingcriteria',
+        'view_needsassessment',
+        'view_eligibilityscreening',
+        'view_householdprofiling',
+        'view_householdsurvey',
+        'view_complaintsfeedback',
+        'view_satisfactionsurvey',
+        'view_grievanceredressal',
+        'view_donorreport',
+        'view_attendancetracker',
+        'view_coveragearea',
+        'view_beneficiarysetting'
+      )
+        ? [
           {
-            title: 'Beneficiaries',
-            icon: ICONS.beneficiaries,
-            children: [
+            items: [
+              {
+                title: 'Beneficiaries',
+                icon: ICONS.beneficiaries,
+                children: [
               {
                 title: 'Dashboard',
                 path: paths.dashboard.beneficiaries.dashboard,
                 icon: ICONS.dashboard,
               },
-              {
-                title: 'Registration & Database',
-                path: paths.dashboard.beneficiaries.database,
-                icon: ICONS.beneficiaries,
-                children: [
+              ...(hasPermission('view_beneficiary')
+                ? [
                   {
-                    title: 'Beneficiary Database',
+                    title: 'Registration & Database',
                     path: paths.dashboard.beneficiaries.database,
                     icon: ICONS.beneficiaries,
                     children: [
                       {
-                        title: 'All Beneficiaries',
+                        title: 'Beneficiary Database',
                         path: paths.dashboard.beneficiaries.database,
                         icon: ICONS.beneficiaries,
+                        children: [
+                          {
+                            title: 'All Beneficiaries',
+                            path: paths.dashboard.beneficiaries.database,
+                            icon: ICONS.beneficiaries,
+                          },
+                          ...(hasPermission('add_beneficiary')
+                            ? [
+                              {
+                                title: 'Add Beneficiary',
+                                path: paths.dashboard.beneficiaries.add_database,
+                                icon: ICONS.formAutomation,
+                              },
+                            ]
+                            : []),
+                        ],
                       },
                       {
-                        title: 'Add Beneficiary',
-                        path: paths.dashboard.beneficiaries.add_database,
-                        icon: ICONS.formAutomation,
+                        title: 'ID Card Generation',
+                        path: paths.dashboard.beneficiaries.id_card_generation,
+                        icon: ICONS.account,
+                      },
+                      {
+                        title: 'Import / Export',
+                        path: paths.dashboard.beneficiaries.beneficiary_import,
+                        icon: ICONS.external,
                       },
                     ],
                   },
+                ]
+                : []),
+              ...(hasAnyPermission(
+                'view_vulnerabilityassessment',
+                'view_targetingcriteria',
+                'view_needsassessment',
+                'view_eligibilityscreening'
+              )
+                ? [
                   {
-                    title: 'ID Card Generation',
-                    path: paths.dashboard.beneficiaries.id_card_generation,
-                    icon: ICONS.account,
-                  },
-                  {
-                    title: 'Import / Export',
-                    path: paths.dashboard.beneficiaries.beneficiary_import,
-                    icon: ICONS.external,
-                  },
-                ],
-              },
-              {
-                title: 'Assessment & Targeting',
-                path: paths.dashboard.beneficiaries.vulnerability_assessment,
-                icon: ICONS.approval,
-                children: [
-                  {
-                    title: 'Vulnerability Assessment',
+                    title: 'Assessment & Targeting',
                     path: paths.dashboard.beneficiaries.vulnerability_assessment,
                     icon: ICONS.approval,
+                    children: [
+                      ...(hasPermission('view_vulnerabilityassessment')
+                        ? [
+                          {
+                            title: 'Vulnerability Assessment',
+                            path: paths.dashboard.beneficiaries.vulnerability_assessment,
+                            icon: ICONS.approval,
+                          },
+                        ]
+                        : []),
+                      ...(hasPermission('view_targetingcriteria')
+                        ? [
+                          {
+                            title: 'Targeting Criteria',
+                            path: paths.dashboard.beneficiaries.targeting_criteria,
+                            icon: ICONS.settings,
+                          },
+                        ]
+                        : []),
+                      ...(hasPermission('view_needsassessment')
+                        ? [
+                          {
+                            title: 'Needs Assessment',
+                            path: paths.dashboard.beneficiaries.needs_assessment,
+                            icon: ICONS.requisition,
+                          },
+                        ]
+                        : []),
+                      ...(hasPermission('view_eligibilityscreening')
+                        ? [
+                          {
+                            title: 'Eligibility Screening',
+                            path: paths.dashboard.beneficiaries.eligibility_screening,
+                            icon: ICONS.approval,
+                          },
+                        ]
+                        : []),
+                    ],
                   },
+                ]
+                : []),
+              ...(hasAnyPermission('view_householdprofiling', 'view_householdsurvey')
+                ? [
                   {
-                    title: 'Targeting Criteria',
-                    path: paths.dashboard.beneficiaries.targeting_criteria,
-                    icon: ICONS.settings,
-                  },
-                  {
-                    title: 'Needs Assessment',
-                    path: paths.dashboard.beneficiaries.needs_assessment,
-                    icon: ICONS.requisition,
-                  },
-                  {
-                    title: 'Eligibility Screening',
-                    path: paths.dashboard.beneficiaries.eligibility_screening,
-                    icon: ICONS.approval,
-                  },
-                ],
-              },
-              {
-                title: 'Household Management',
-                path: paths.dashboard.beneficiaries.household_profiling,
-                icon: ICONS.department,
-                children: [
-                  {
-                    title: 'Household Profiling',
+                    title: 'Household Management',
                     path: paths.dashboard.beneficiaries.household_profiling,
                     icon: ICONS.department,
+                    children: [
+                      ...(hasPermission('view_householdprofiling')
+                        ? [
+                          {
+                            title: 'Household Profiling',
+                            path: paths.dashboard.beneficiaries.household_profiling,
+                            icon: ICONS.department,
+                          },
+                        ]
+                        : []),
+                      ...(hasPermission('view_householdsurvey')
+                        ? [
+                          {
+                            title: 'Household Surveys',
+                            path: paths.dashboard.beneficiaries.household_surveys,
+                            icon: ICONS.documents,
+                          },
+                        ]
+                        : []),
+                    ],
                   },
+                ]
+                : []),
+              ...(hasAnyPermission(
+                'view_complaintsfeedback',
+                'view_satisfactionsurvey',
+                'view_grievanceredressal'
+              )
+                ? [
                   {
-                    title: 'Household Surveys',
-                    path: paths.dashboard.beneficiaries.household_surveys,
-                    icon: ICONS.documents,
-                  },
-                ],
-              },
-              {
-                title: 'Accountability',
-                path: paths.dashboard.beneficiaries.complaints_feedback,
-                icon: ICONS.notifications,
-                children: [
-                  {
-                    title: 'Complaints & Feedback',
+                    title: 'Accountability',
                     path: paths.dashboard.beneficiaries.complaints_feedback,
                     icon: ICONS.notifications,
+                    children: [
+                      ...(hasPermission('view_complaintsfeedback')
+                        ? [
+                          {
+                            title: 'Complaints & Feedback',
+                            path: paths.dashboard.beneficiaries.complaints_feedback,
+                            icon: ICONS.notifications,
+                          },
+                        ]
+                        : []),
+                      ...(hasPermission('view_satisfactionsurvey')
+                        ? [
+                          {
+                            title: 'Satisfaction Surveys',
+                            path: paths.dashboard.beneficiaries.satisfaction_surveys,
+                            icon: ICONS.documents,
+                          },
+                        ]
+                        : []),
+                      ...(hasPermission('view_grievanceredressal')
+                        ? [
+                          {
+                            title: 'Grievance Redressal',
+                            path: paths.dashboard.beneficiaries.grievance_redressal,
+                            icon: ICONS.approval,
+                          },
+                        ]
+                        : []),
+                    ],
                   },
-                  {
-                    title: 'Satisfaction Surveys',
-                    path: paths.dashboard.beneficiaries.satisfaction_surveys,
-                    icon: ICONS.documents,
-                  },
-                  {
-                    title: 'Grievance Redressal',
-                    path: paths.dashboard.beneficiaries.grievance_redressal,
-                    icon: ICONS.approval,
-                  },
-                ],
-              },
+                ]
+                : []),
               {
                 title: 'Reports & Analytics',
                 path: paths.dashboard.beneficiaries.beneficiary_analytics,
@@ -2249,337 +2593,419 @@ export function useNavData() {
                     path: paths.dashboard.beneficiaries.demographic_report,
                     icon: ICONS.reports,
                   },
-                  {
-                    title: 'Coverage Map',
-                    path: paths.dashboard.beneficiaries.coverage_map,
-                    icon: ICONS.branch,
-                  },
-                  {
-                    title: 'Donor Report',
-                    path: paths.dashboard.beneficiaries.donor_report,
-                    icon: ICONS.documents,
-                  },
-                  {
-                    title: 'Attendance Tracker',
-                    path: paths.dashboard.beneficiaries.attendance_tracker,
-                    icon: ICONS.calendar,
-                  },
+                  ...(hasPermission('view_coveragearea')
+                    ? [
+                      {
+                        title: 'Coverage Map',
+                        path: paths.dashboard.beneficiaries.coverage_map,
+                        icon: ICONS.branch,
+                      },
+                    ]
+                    : []),
+                  ...(hasPermission('view_donorreport')
+                    ? [
+                      {
+                        title: 'Donor Report',
+                        path: paths.dashboard.beneficiaries.donor_report,
+                        icon: ICONS.documents,
+                      },
+                    ]
+                    : []),
+                  ...(hasPermission('view_attendancetracker')
+                    ? [
+                      {
+                        title: 'Attendance Tracker',
+                        path: paths.dashboard.beneficiaries.attendance_tracker,
+                        icon: ICONS.calendar,
+                      },
+                    ]
+                    : []),
                 ],
               },
-              {
-                title: 'Settings',
-                path: paths.dashboard.beneficiaries.beneficiary_settings,
-                icon: ICONS.settings,
-              },
+              ...(hasPermission('view_beneficiarysetting')
+                ? [
+                  {
+                    title: 'Settings',
+                    path: paths.dashboard.beneficiaries.beneficiary_settings,
+                    icon: ICONS.settings,
+                  },
+                ]
+                : []),
             ],
           },
         ],
       },
+        ]
+        : []),
 
       // ============================================================
       // Store & Inventory
       // ============================================================
-      {
-        items: [
+      ...(hasAnyPermission(
+        'view_item',
+        'view_category',
+        'view_unitofmeasure',
+        'view_gin',
+        'view_stocktransfer',
+        'view_stockadjustment',
+        'view_scraprecord',
+        'view_returnrecord',
+        'view_locationstock',
+        'view_stockmove',
+        'view_warehouse',
+        'view_storagelocation',
+        'view_qualitycheck',
+        'view_qualityalert',
+        'view_qualitycontrolpoint',
+        'view_inventorysettings'
+      )
+        ? [
           {
-            title: 'Store & Inventory',
-            icon: ICONS.store,
-            children: [
+            items: [
               {
-                title: 'Dashboard',
-                path: paths.dashboard.storeInventory.dashboard,
-                icon: ICONS.dashboard,
-              },
-              {
-                title: 'Products',
-                path: paths.dashboard.storeInventory.itemMaster,
-                icon: ICONS.inventory,
+                title: 'Store & Inventory',
+                icon: ICONS.store,
                 children: [
                   {
-                    title: 'Item Master',
-                    path: paths.dashboard.storeInventory.itemMaster,
-                    icon: ICONS.inventory,
-                    children: [
+                    title: 'Dashboard',
+                    path: paths.dashboard.storeInventory.dashboard,
+                    icon: ICONS.dashboard,
+                  },
+                  ...(hasAnyPermission('view_item', 'view_category', 'view_unitofmeasure')
+                    ? [
                       {
-                        title: 'All Items',
+                        title: 'Products',
                         path: paths.dashboard.storeInventory.itemMaster,
                         icon: ICONS.inventory,
+                        children: [
+                          ...(hasPermission('view_item')
+                            ? [
+                              {
+                                title: 'Item Master',
+                                path: paths.dashboard.storeInventory.itemMaster,
+                                icon: ICONS.inventory,
+                                children: [
+                                  {
+                                    title: 'All Items',
+                                    path: paths.dashboard.storeInventory.itemMaster,
+                                    icon: ICONS.inventory,
+                                  },
+                                  ...(hasPermission('add_item')
+                                    ? [
+                                      {
+                                        title: 'Add Item',
+                                        path: paths.dashboard.storeInventory.add_item,
+                                        icon: ICONS.formAutomation,
+                                      },
+                                    ]
+                                    : []),
+                                  ...(hasPermission('view_category')
+                                    ? [
+                                      {
+                                        title: 'Category List',
+                                        path: paths.dashboard.storeInventory.add_category,
+                                        icon: ICONS.categories,
+                                      },
+                                    ]
+                                    : []),
+                                ],
+                              },
+                            ]
+                            : []),
+                          ...(hasPermission('view_unitofmeasure')
+                            ? [
+                              {
+                                title: 'Units of Measure',
+                                path: paths.dashboard.storeInventory.unitsOfMeasure,
+                                icon: ICONS.menuItem,
+                              },
+                            ]
+                            : []),
+                        ],
                       },
+                    ]
+                    : []),
+                  ...(hasAnyPermission(
+                    'view_gin',
+                    'view_stocktransfer',
+                    'view_stockadjustment',
+                    'view_scraprecord',
+                    'view_returnrecord'
+                  )
+                    ? [
                       {
-                        title: 'Add Item',
-                        path: paths.dashboard.storeInventory.add_item,
-                        icon: ICONS.formAutomation,
+                        title: 'Operations',
+                        path: paths.dashboard.storeInventory.goodsReceiptNote,
+                        icon: ICONS.requisition,
+                        children: [
+                          ...(hasPermission('view_gin')
+                            ? [
+                              {
+                                title: 'Goods Issue Note',
+                                path: paths.dashboard.storeInventory.goods_issue_note,
+                                icon: ICONS.delivery,
+                                children: [
+                                  {
+                                    title: 'GIN List',
+                                    path: paths.dashboard.storeInventory.goods_issue_note,
+                                    icon: ICONS.menuItem,
+                                  },
+                                  ...(hasPermission('add_gin')
+                                    ? [
+                                      {
+                                        title: 'Create GIN',
+                                        path: paths.dashboard.storeInventory.goods_issue_note_create,
+                                        icon: ICONS.formAutomation,
+                                      },
+                                    ]
+                                    : []),
+                                ],
+                              },
+                            ]
+                            : []),
+                          ...(hasPermission('view_stocktransfer')
+                            ? [
+                              {
+                                title: 'Internal Transfers',
+                                path: paths.dashboard.storeInventory.stock_transfer,
+                                icon: ICONS.delivery,
+                              },
+                            ]
+                            : []),
+                          ...(hasPermission('view_stockadjustment')
+                            ? [
+                              {
+                                title: 'Stock Adjustment',
+                                path: paths.dashboard.storeInventory.stock_adjustment,
+                                icon: ICONS.inventory,
+                                children: [
+                                  {
+                                    title: 'Adjustment List',
+                                    path: paths.dashboard.storeInventory.stock_adjustment,
+                                    icon: ICONS.menuItem,
+                                  },
+                                  ...(hasPermission('add_stockadjustment')
+                                    ? [
+                                      {
+                                        title: 'Create Adjustment',
+                                        path: paths.dashboard.storeInventory.stock_adjustment_create,
+                                        icon: ICONS.formAutomation,
+                                      },
+                                    ]
+                                    : []),
+                                ],
+                              },
+                            ]
+                            : []),
+                          ...(hasPermission('view_scraprecord')
+                            ? [
+                              {
+                                title: 'Scrap Management',
+                                path: paths.dashboard.storeInventory.scrapManagement,
+                                icon: ICONS.menuItem,
+                                children: [
+                                  {
+                                    title: 'Scrap List',
+                                    path: paths.dashboard.storeInventory.scrapManagement,
+                                    icon: ICONS.menuItem,
+                                  },
+                                  ...(hasPermission('add_scraprecord')
+                                    ? [
+                                      {
+                                        title: 'Create Scrap',
+                                        path: paths.dashboard.storeInventory.scrapManagement_create,
+                                        icon: ICONS.formAutomation,
+                                      },
+                                    ]
+                                    : []),
+                                ],
+                              },
+                            ]
+                            : []),
+                          ...(hasPermission('view_returnrecord')
+                            ? [
+                              {
+                                title: 'Return Management',
+                                path: paths.dashboard.storeInventory.returnManagement,
+                                icon: ICONS.menuItem,
+                                children: [
+                                  {
+                                    title: 'Return List',
+                                    path: paths.dashboard.storeInventory.returnManagement,
+                                    icon: ICONS.menuItem,
+                                  },
+                                  ...(hasPermission('add_returnrecord')
+                                    ? [
+                                      {
+                                        title: 'Create Return',
+                                        path: paths.dashboard.storeInventory.returnManagement_create,
+                                        icon: ICONS.menuItem,
+                                      },
+                                    ]
+                                    : []),
+                                  {
+                                    title: 'Return History',
+                                    path: paths.dashboard.storeInventory.returnManagement_history,
+                                    icon: ICONS.menuItem,
+                                  },
+                                ],
+                              },
+                            ]
+                            : []),
+                        ],
                       },
+                    ]
+                    : []),
+                  ...(hasAnyPermission('view_locationstock', 'view_stockmove')
+                    ? [
                       {
-                        title: 'Category List',
-                        path: paths.dashboard.storeInventory.add_category,
-                        icon: ICONS.categories,
+                        title: 'Inventory Log',
+                        path: paths.dashboard.storeInventory.inventoryLog,
+                        icon: ICONS.inventory,
+                        children: [
+                          ...(hasPermission('view_locationstock')
+                            ? [
+                              {
+                                title: 'Inventory List',
+                                path: paths.dashboard.storeInventory.inventoryLogList,
+                                icon: ICONS.menuItem,
+                              },
+                            ]
+                            : []),
+                          {
+                            title: 'Analytics',
+                            path: paths.dashboard.storeInventory.inventoryLogAnalytics,
+                            icon: ICONS.analytics,
+                          },
+                          ...(hasPermission('view_stockmove')
+                            ? [
+                              {
+                                title: 'History',
+                                path: paths.dashboard.storeInventory.inventoryLogHistory,
+                                icon: ICONS.shift,
+                              },
+                            ]
+                            : []),
+                        ],
                       },
-                    ],
-                  },
-                  // { title: 'Product Variants', path: paths.dashboard.storeInventory.productVariants, icon: ICONS.categories },
-                  {
-                    title: 'Units of Measure',
-                    path: paths.dashboard.storeInventory.unitsOfMeasure,
-                    icon: ICONS.menuItem,
-                  },
-                  // { title: 'Packaging Types', path: paths.dashboard.storeInventory.packagingTypes, icon: ICONS.delivery },
-                  // { title: 'Product Templates', path: paths.dashboard.storeInventory.productTemplates, icon: ICONS.documents },
-                  // { title: 'Kitting / BOM', path: paths.dashboard.storeInventory.kittingBom, icon: ICONS.requisition },
-                  // { title: 'Reorder Rules', path: paths.dashboard.storeInventory.reorderRules, icon: ICONS.settings },
-                ],
-              },
-              {
-                title: 'Operations',
-                path: paths.dashboard.storeInventory.goodsReceiptNote,
-                icon: ICONS.requisition,
-                children: [
-                  // { title: 'Goods Receipt Note', path: paths.dashboard.storeInventory.goodsReceiptNote, icon: ICONS.grn },
-                  {
-                    title: 'Goods Issue Note',
-                    path: paths.dashboard.storeInventory.goods_issue_note,
-                    icon: ICONS.delivery,
-                    children: [
+                    ]
+                    : []),
+                  ...(hasAnyPermission('view_warehouse', 'view_storagelocation')
+                    ? [
                       {
-                        title: 'GIN List',
-                        path: paths.dashboard.storeInventory.goods_issue_note,
-                        icon: ICONS.menuItem,
+                        title: 'Warehouse & Locations',
+                        path: paths.dashboard.storeInventory.warehouses,
+                        icon: ICONS.department,
+                        children: [
+                          {
+                            title: 'Office Locations',
+                            path: paths.dashboard.storeInventory.officeLocations,
+                            icon: ICONS.branch,
+                          },
+                          ...(hasPermission('view_warehouse')
+                            ? [
+                              {
+                                title: 'Warehouses',
+                                path: paths.dashboard.storeInventory.warehouses,
+                                icon: ICONS.department,
+                              },
+                            ]
+                            : []),
+                        ],
                       },
+                    ]
+                    : []),
+                  ...(hasAnyPermission(
+                    'view_qualitycheck',
+                    'view_qualityalert',
+                    'view_qualitycontrolpoint'
+                  )
+                    ? [
                       {
-                        title: 'Create GIN',
-                        path: paths.dashboard.storeInventory.goods_issue_note_create,
-                        icon: ICONS.formAutomation,
+                        title: 'Quality Control',
+                        path: paths.dashboard.storeInventory.qualityChecks,
+                        icon: ICONS.approval,
+                        children: [
+                          ...(hasPermission('view_qualitycheck')
+                            ? [
+                              {
+                                title: 'Quality Checks',
+                                path: paths.dashboard.storeInventory.qualityChecks,
+                                icon: ICONS.approval,
+                              },
+                            ]
+                            : []),
+                          ...(hasPermission('view_qualityalert')
+                            ? [
+                              {
+                                title: 'Quality Alerts',
+                                path: paths.dashboard.storeInventory.qualityAlerts,
+                                icon: ICONS.notifications,
+                              },
+                            ]
+                            : []),
+                          ...(hasPermission('view_qualitycontrolpoint')
+                            ? [
+                              {
+                                title: 'Control Points',
+                                path: paths.dashboard.storeInventory.qualityControlPoints,
+                                icon: ICONS.settings,
+                              },
+                            ]
+                            : []),
+                        ],
                       },
-                    ],
-                  },
+                    ]
+                    : []),
                   {
-                    title: 'Internal Transfers',
-                    path: paths.dashboard.storeInventory.stock_transfer,
-                    icon: ICONS.delivery,
-                  },
-                  {
-                    title: 'Stock Adjustment',
-                    path: paths.dashboard.storeInventory.stock_adjustment,
-                    icon: ICONS.inventory,
-                    children: [
-                      {
-                        title: 'Adjustment List',
-                        path: paths.dashboard.storeInventory.stock_adjustment,
-                        icon: ICONS.menuItem,
-                      },
-                      {
-                        title: 'Create Adjustment',
-                        path: paths.dashboard.storeInventory.stock_adjustment_create,
-                        icon: ICONS.formAutomation,
-                      },
-                    ],
-                  },
-                  // { title: 'Location Stock Ledger', path: paths.dashboard.storeInventory.location_stocks, icon: ICONS.inventory },
-                  // { title: 'Cycle Counting', path: paths.dashboard.storeInventory.cycleCounting, icon: ICONS.analytics },
-                  // { title: 'Returns', path: paths.dashboard.storeInventory.returns, icon: ICONS.menuItem },
-                  // { title: 'Batch Transfers', path: paths.dashboard.storeInventory.batchTransfers, icon: ICONS.requisition },
-                  {
-                    title: 'Scrap Management',
-                    path: paths.dashboard.storeInventory.scrapManagement,
-                    icon: ICONS.menuItem,
-                    children: [
-                      {
-                        title: 'Scrap List',
-                        path: paths.dashboard.storeInventory.scrapManagement,
-                        icon: ICONS.menuItem,
-                      },
-                      {
-                        title: 'Create Scrap',
-                        path: paths.dashboard.storeInventory.scrapManagement_create,
-                        icon: ICONS.formAutomation,
-                      },
-                    ],
-                  },
-                  {
-                    title: 'Return Management',
-                    path: paths.dashboard.storeInventory.returnManagement,
-                    icon: ICONS.menuItem,
-                    children: [
-                      {
-                        title: 'Return List',
-                        path: paths.dashboard.storeInventory.returnManagement,
-                        icon: ICONS.menuItem,
-                      },
-                      {
-                        title: 'Create Return',
-                        path: paths.dashboard.storeInventory.returnManagement_create,
-                        icon: ICONS.menuItem,
-                      },
-                      {
-                        title: 'Return History',
-                        path: paths.dashboard.storeInventory.returnManagement_history,
-                        icon: ICONS.menuItem,
-                      },
-                    ],
-                  },
-                  // { title: 'Backorders', path: paths.dashboard.storeInventory.backorders, icon: ICONS.documents },
-                  // { title: 'Replenishment', path: paths.dashboard.storeInventory.replenishment, icon: ICONS.formAutomation },
-                  // { title: 'Dropshipping', path: paths.dashboard.storeInventory.dropshipping, icon: ICONS.delivery },
-                  // { title: 'Cross-Docking', path: paths.dashboard.storeInventory.crossDocking, icon: ICONS.delivery },
-                  // { title: 'Inventory Log', path: paths.dashboard.storeInventory.operationInventoryLog, icon: ICONS.inventory, children: [{ title: 'History', path: paths.dashboard.storeInventory.operationInventoryLogHistory, icon: ICONS.shift }] },
-                ],
-              },
-              {
-                title: 'Inventory Log',
-                path: paths.dashboard.storeInventory.inventoryLog,
-                icon: ICONS.inventory,
-                children: [
-                  {
-                    title: 'Inventory List',
-                    path: paths.dashboard.storeInventory.inventoryLogList,
-                    icon: ICONS.menuItem,
-                  },
-                  {
-                    title: 'Analytics',
-                    path: paths.dashboard.storeInventory.inventoryLogAnalytics,
-                    icon: ICONS.analytics,
-                  },
-                  {
-                    title: 'History',
-                    path: paths.dashboard.storeInventory.inventoryLogHistory,
-                    icon: ICONS.shift,
-                  },
-                ],
-              },
-              {
-                title: 'Warehouse & Locations',
-                path: paths.dashboard.storeInventory.warehouses,
-                icon: ICONS.department,
-                children: [
-                  {
-                    title: 'Office Locations',
-                    path: paths.dashboard.storeInventory.officeLocations,
-                    icon: ICONS.branch,
-                  },
-                  {
-                    title: 'Warehouses',
-                    path: paths.dashboard.storeInventory.warehouses,
-                    icon: ICONS.department,
-                  },
-                  // { title: 'Storage Locations', path: paths.dashboard.storeInventory.storageLocations, icon: ICONS.branch },
-                  // { title: 'Putaway Rules', path: paths.dashboard.storeInventory.putawayRules, icon: ICONS.settings },
-                  // { title: 'Removal Strategies', path: paths.dashboard.storeInventory.removalStrategies, icon: ICONS.menuItem },
-                  // { title: 'Routes & Rules', path: paths.dashboard.storeInventory.routesAndRules, icon: ICONS.requisition },
-                  // { title: 'Operation Types', path: paths.dashboard.storeInventory.operationTypes, icon: ICONS.categories },
-                ],
-              },
-              // { title: 'Lots & Traceability', path: paths.dashboard.storeInventory.lotSerialNumbers, icon: ICONS.documents, children: [
-              //   { title: 'Lots / Serial Numbers', path: paths.dashboard.storeInventory.lotSerialNumbers, icon: ICONS.documents },
-              //   { title: 'Expiry Date Tracking', path: paths.dashboard.storeInventory.expiryDateTracking, icon: ICONS.calendar },
-              //   { title: 'Move History', path: paths.dashboard.storeInventory.moveHistory, icon: ICONS.shift },
-              //   { title: 'Lot Traceability', path: paths.dashboard.storeInventory.lotTraceability, icon: ICONS.analytics },
-              //   { title: 'Product Recalls', path: paths.dashboard.storeInventory.productRecalls, icon: ICONS.notifications },
-              // ]},
-              {
-                title: 'Quality Control',
-                path: paths.dashboard.storeInventory.qualityChecks,
-                icon: ICONS.approval,
-                children: [
-                  {
-                    title: 'Quality Checks',
-                    path: paths.dashboard.storeInventory.qualityChecks,
-                    icon: ICONS.approval,
-                  },
-                  {
-                    title: 'Quality Alerts',
-                    path: paths.dashboard.storeInventory.qualityAlerts,
-                    icon: ICONS.notifications,
-                  },
-                  {
-                    title: 'Control Points',
-                    path: paths.dashboard.storeInventory.qualityControlPoints,
-                    icon: ICONS.settings,
-                  },
-                  // { title: 'Quality Teams', path: paths.dashboard.storeInventory.qualityTeams, icon: ICONS.beneficiaries },
-                  // { title: 'QC Templates', path: paths.dashboard.storeInventory.qcTemplates, icon: ICONS.documents },
-                ],
-              },
-              // { title: 'Valuation & Costing', path: paths.dashboard.storeInventory.inventoryValuation, icon: ICONS.accounting, children: [
-              //   { title: 'Inventory Valuation', path: paths.dashboard.storeInventory.inventoryValuation, icon: ICONS.accounting },
-              //   { title: 'Landed Costs', path: paths.dashboard.storeInventory.landedCosts, icon: ICONS.payment },
-              //   { title: 'Valuation Methods', path: paths.dashboard.storeInventory.valuationMethods, icon: ICONS.settings },
-              //   { title: 'Valuation Layers', path: paths.dashboard.storeInventory.stockValuationLayers, icon: ICONS.analytics },
-              // ]},
-              {
-                title: 'Barcode & Scanning',
-                path: paths.dashboard.storeInventory.barcodeScanning,
-                icon: ICONS.menuItem,
-                children: [
-                  {
-                    title: 'Barcode Scanning',
+                    title: 'Barcode & Scanning',
                     path: paths.dashboard.storeInventory.barcodeScanning,
                     icon: ICONS.menuItem,
+                    children: [
+                      {
+                        title: 'Barcode Scanning',
+                        path: paths.dashboard.storeInventory.barcodeScanning,
+                        icon: ICONS.menuItem,
+                      },
+                      {
+                        title: 'Label Printing',
+                        path: paths.dashboard.storeInventory.labelPrinting,
+                        icon: ICONS.documents,
+                      },
+                    ],
                   },
-                  {
-                    title: 'Label Printing',
-                    path: paths.dashboard.storeInventory.labelPrinting,
-                    icon: ICONS.documents,
-                  },
-                  // { title: 'Mobile Warehouse', path: paths.dashboard.storeInventory.mobileWarehouse, icon: ICONS.external },
-                ],
-              },
-              // { title: 'Reports & Analytics', path: paths.dashboard.storeInventory.stock_reports, icon: ICONS.reports, children: [
-              //   { title: 'Inventory Log', path: paths.dashboard.storeInventory.inventoryLog, icon: ICONS.inventory, children: [{ title: 'Inventory List', path: paths.dashboard.storeInventory.inventoryLogList, icon: ICONS.menuItem }, { title: 'Analytics', path: paths.dashboard.storeInventory.inventoryLogAnalytics, icon: ICONS.analytics }, { title: 'History', path: paths.dashboard.storeInventory.inventoryLogHistory, icon: ICONS.shift }] },
-              //   { title: 'Stock Reports', path: paths.dashboard.storeInventory.stock_reports, icon: ICONS.reports },
-              //   { title: 'Forecasted Stock', path: paths.dashboard.storeInventory.forecastedStock, icon: ICONS.analytics },
-              //   { title: 'Stock Aging Report', path: paths.dashboard.storeInventory.stockAgingReport, icon: ICONS.calendar },
-              //   { title: 'ABC Analysis', path: paths.dashboard.storeInventory.abcAnalysis, icon: ICONS.analytics },
-              //   { title: 'Consumption Report', path: paths.dashboard.storeInventory.consumptionReport, icon: ICONS.reports },
-              //   { title: 'Wastage Report', path: paths.dashboard.storeInventory.wastageReport, icon: ICONS.reports },
-              //   { title: 'Turnover Analysis', path: paths.dashboard.storeInventory.turnoverAnalysis, icon: ICONS.analytics },
-              //   { title: 'Landed Cost Report', path: paths.dashboard.storeInventory.landedCostReport, icon: ICONS.accounting },
-              // ]},
-              // { title: 'NGO Operations', path: paths.dashboard.storeInventory.donorFundedInventory, icon: ICONS.projects, children: [
-              //   { title: 'Donor-Funded Inventory', path: paths.dashboard.storeInventory.donorFundedInventory, icon: ICONS.projects },
-              //   { title: 'Field Distribution', path: paths.dashboard.storeInventory.fieldDistribution, icon: ICONS.delivery },
-              //   { title: 'Humanitarian Kitting', path: paths.dashboard.storeInventory.humanitarianKitting, icon: ICONS.requisition },
-              //   { title: 'Emergency Reserves', path: paths.dashboard.storeInventory.emergencyReserves, icon: ICONS.notifications },
-              //   { title: 'Pipeline Tracking', path: paths.dashboard.storeInventory.pipelineTracking, icon: ICONS.shift },
-              //   { title: 'Commodity Tracking', path: paths.dashboard.storeInventory.commodityTracking, icon: ICONS.inventory },
-              //   { title: 'Waybill Management', path: paths.dashboard.storeInventory.waybillManagement, icon: ICONS.documents },
-              //   { title: 'Disposal Management', path: paths.dashboard.storeInventory.disposalManagement, icon: ICONS.menuItem },
-              //   { title: 'Loss & Damage Claims', path: paths.dashboard.storeInventory.lossDamageClaims, icon: ICONS.reports },
-              //   { title: 'Beneficiary Distribution', path: paths.dashboard.storeInventory.beneficiaryDistribution, icon: ICONS.beneficiaries },
-              //   { title: 'Field Warehouse', path: paths.dashboard.storeInventory.fieldWarehouse, icon: ICONS.department },
-              //   { title: 'Customs & Import', path: paths.dashboard.storeInventory.customsImportTracking, icon: ICONS.external },
-              //   { title: 'Vehicle Dispatch', path: paths.dashboard.storeInventory.vehicleDispatch, icon: ICONS.delivery },
-              // ]},
-              // { title: 'Approvals', path: paths.dashboard.storeInventory.approvals, icon: ICONS.approval },
-              {
-                title: 'Settings',
-                path: paths.dashboard.storeInventory.warehouseSettings,
-                icon: ICONS.settings,
-                children: [
-                  {
-                    title: 'Warehouse Settings',
-                    path: paths.dashboard.storeInventory.warehouseSettings,
-                    icon: ICONS.settings,
-                  },
-                  {
-                    title: 'Office Settings',
-                    path: paths.dashboard.storeInventory.officeSettings,
-                    icon: ICONS.settings,
-                  },
-                  // { title: 'Approval Matrix', path: paths.dashboard.storeInventory.inventoryApprovalMatrix, icon: ICONS.approval },
-                  {
-                    title: 'Approval Workflow',
-                    path: paths.dashboard.storeInventory.approvalWorkflow,
-                    icon: ICONS.approval,
-                  },
-                  // { title: 'Shipping Methods', path: paths.dashboard.storeInventory.shippingMethods, icon: ICONS.delivery },
-                  // { title: 'Package Types', path: paths.dashboard.storeInventory.packageTypes, icon: ICONS.categories },
-                  // { title: 'Inventory Settings', path: paths.dashboard.storeInventory.inventorySettings, icon: ICONS.settings },
+                  ...(hasPermission('view_inventorysettings') || user?.is_superuser
+                    ? [
+                      {
+                        title: 'Settings',
+                        path: paths.dashboard.storeInventory.warehouseSettings,
+                        icon: ICONS.settings,
+                        children: [
+                          {
+                            title: 'Warehouse Settings',
+                            path: paths.dashboard.storeInventory.warehouseSettings,
+                            icon: ICONS.settings,
+                          },
+                          {
+                            title: 'Office Settings',
+                            path: paths.dashboard.storeInventory.officeSettings,
+                            icon: ICONS.settings,
+                          },
+                          {
+                            title: 'Approval Workflow',
+                            path: paths.dashboard.storeInventory.approvalWorkflow,
+                            icon: ICONS.approval,
+                          },
+                        ],
+                      },
+                    ]
+                    : []),
                 ],
               },
             ],
           },
-        ],
-      },
+        ]
+        : []),
 
       // ============================================================
       // Settings (Superuser only)
@@ -2593,6 +3019,11 @@ export function useNavData() {
                 icon: ICONS.settings,
                 children: [
                   {
+                    title: 'Permission Groups',
+                    path: paths.dashboard.settings.permissionGroups,
+                    icon: ICONS.parameter,
+                  },
+                  {
                     title: 'Module Permissions',
                     path: paths.dashboard.settings.modulePermissions,
                     icon: ICONS.lock,
@@ -2604,7 +3035,7 @@ export function useNavData() {
         ]
         : []),
     ]);
-  }, [hasPermission, user?.role, user?.is_superuser, canShowWebLogin]);
+  }, [hasPermission, hasAnyPermission, user?.role, user?.is_superuser, canShowWebLogin]);
 
   return navData;
 }
