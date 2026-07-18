@@ -158,6 +158,7 @@ export const endpoints = {
     referral_summary: '/api/referrals/summary/',
     // Endpoints for Service Categories
     service_categories: '/api/service_categories/',
+    vulnerability_types: '/api/vulnerability_types/',
     // Endpoints for Complaints & Feedback sub module
     complaints_feedback: '/api/complaint_feedback/',
     complaints_feedback_summary: '/api/complaint_feedback/summary/',
@@ -229,6 +230,10 @@ export const endpoints = {
     projects: '/api/ngo-projects/',
     projectById: (id) => `/api/ngo-projects/${id}/`,
     exportProjectRoadmapExcel: (id) => `/api/ngo-projects/${id}/export-roadmap-excel/`,
+    units: '/api/ngo-project-units/',
+    unitById: (id) => `/api/ngo-project-units/${id}/`,
+    projectOverview: '/api/ngo-projects/overview/',
+    projectOptions: '/api/ngo-projects/options/',
     plans: '/api/ngo-project-plans/',
     planById: (id) => `/api/ngo-project-plans/${id}/`,
     approvePlan: (id) => `/api/ngo-project-plans/${id}/approve/`,

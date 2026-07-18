@@ -150,9 +150,17 @@ export default function AllProjects() {
 
   const projectTypeOptions = useMemo(
     () =>
-      Array.from(new Set(projects.map((project) => project.project_type).filter(Boolean))).sort(
-        (left, right) => left.localeCompare(right)
-      ),
+      Array.from(
+        new Set(
+          projects.flatMap((project) =>
+            Array.isArray(project.project_type)
+              ? project.project_type
+              : project.project_type
+                ? [project.project_type]
+                : []
+          )
+        )
+      ).sort((left, right) => left.localeCompare(right)),
     [projects]
   );
 
@@ -164,7 +172,12 @@ export default function AllProjects() {
           (statusFilter === 'pending' && ['Draft', 'Planning'].includes(project.derivedStatus)) ||
           project.derivedStatus === statusFilter;
         const matchesProject = projectFilter === 'all' || project.title === projectFilter;
-        const matchesType = typeFilter === 'all' || project.project_type === typeFilter;
+        const projectTypes = Array.isArray(project.project_type)
+          ? project.project_type
+          : project.project_type
+            ? [project.project_type]
+            : [];
+        const matchesType = typeFilter === 'all' || projectTypes.includes(typeFilter);
         const matchesDonor = donorFilter === 'all' || project.donorName === donorFilter;
 
         return matchesStatus && matchesProject && matchesType && matchesDonor;
@@ -684,16 +697,22 @@ export default function AllProjects() {
                           />
                         </Stack>
                         <Stack direction="row" spacing={0.6} flexWrap="wrap" useFlexGap>
-                          {project.project_type ? (
-                            <Chip label={project.project_type} size="small" variant="outlined" />
-                          ) : null}
-                          {project.implementation_type ? (
-                            <Chip
-                              label={project.implementation_type}
-                              size="small"
-                              variant="outlined"
-                            />
-                          ) : null}
+                          {(Array.isArray(project.project_type)
+                            ? project.project_type
+                            : project.project_type
+                              ? [project.project_type]
+                              : []
+                          ).map((type) => (
+                            <Chip key={type} label={type} size="small" variant="outlined" />
+                          ))}
+                          {(Array.isArray(project.implementation_type)
+                            ? project.implementation_type
+                            : project.implementation_type
+                              ? [project.implementation_type]
+                              : []
+                          ).map((type) => (
+                            <Chip key={type} label={type} size="small" variant="outlined" />
+                          ))}
                           {project.location ? (
                             <Chip label={project.location} size="small" variant="outlined" />
                           ) : null}

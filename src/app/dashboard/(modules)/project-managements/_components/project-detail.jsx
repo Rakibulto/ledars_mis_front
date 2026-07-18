@@ -1595,7 +1595,11 @@ export default function ProjectDetail({ projectId }) {
                       sx={{ bgcolor: alpha('#ffffff', 0.18), color: 'common.white' }}
                     />
                     <Chip
-                      label={project.project_type}
+                      label={
+                        Array.isArray(project.project_type)
+                          ? project.project_type.join(', ')
+                          : project.project_type
+                      }
                       size="small"
                       sx={{ bgcolor: alpha('#ffffff', 0.12), color: 'common.white' }}
                     />
@@ -1912,7 +1916,11 @@ export default function ProjectDetail({ projectId }) {
                   </Box>
                   <Stack direction="row" spacing={1} flexWrap="wrap">
                     <Chip
-                      label={project.implementation_type || 'Implementation'}
+                      label={
+                        Array.isArray(project.implementation_type)
+                          ? project.implementation_type.join(', ') || 'Implementation'
+                          : project.implementation_type || 'Implementation'
+                      }
                       variant="outlined"
                     />
                     <Chip label={project.sector || 'Sector'} variant="outlined" />
@@ -1937,7 +1945,14 @@ export default function ProjectDetail({ projectId }) {
                     <DetailItem label="End Date" value={formatDate(project.end_date)} />
                   </Grid>
                   <Grid size={{ xs: 12, md: 6, xl: 4 }}>
-                    <DetailItem label="Target Beneficiaries" value={project.target_beneficiaries} />
+                    <DetailItem
+                      label="Target Beneficiaries"
+                      value={
+                        Array.isArray(project.target_beneficiaries)
+                          ? project.target_beneficiaries.join(', ')
+                          : project.target_beneficiaries
+                      }
+                    />
                   </Grid>
                   <Grid size={{ xs: 12, md: 6, xl: 4 }}>
                     <DetailItem label="Reporting Frequency" value={project.reporting_frequency} />

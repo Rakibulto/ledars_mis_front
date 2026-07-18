@@ -61,6 +61,11 @@ export default function AddDatabaseForm() {
     `${endpoints.projects.projects}`
   );
 
+  // Fetch vulnerability types for dropdown
+  const { data: vulnerabilityTypesData, loading: vulnerabilityTypesLoading } = useGetRequest(
+    endpoints.beneficiaries.vulnerability_types
+  );
+
   const methods = useForm({
     defaultValues: {
       name: '',
@@ -164,18 +169,17 @@ export default function AddDatabaseForm() {
     { id: 'Completed', name: 'Completed' },
   ];
 
-  const vulnerabilityTypeOptions = [
-    { value: 'Extreme Poverty', label: 'Extreme Poverty' },
-    { value: 'Disability', label: 'Disability' },
-    { value: 'Elderly', label: 'Elderly' },
-    { value: 'Orphan', label: 'Orphan' },
-    { value: 'Widowed', label: 'Widowed' },
-    { value: 'Chronic Illness', label: 'Chronic Illness' },
-    { value: 'Gender-Based Violence', label: 'Gender-Based Violence' },
-    { value: 'Natural Disaster Affected', label: 'Natural Disaster Affected' },
-    { value: 'Landless', label: 'Landless' },
-    { value: 'Food Insecurity', label: 'Food Insecurity' },
-  ];
+  const vulnerabilityTypeOptions = (
+    Array.isArray(vulnerabilityTypesData)
+      ? vulnerabilityTypesData
+      : vulnerabilityTypesData?.results || []
+  )
+    .filter((item) => item?.status !== false)
+    .map((item) => ({
+      value: item.name,
+      label: item.name,
+      id: item.id,
+    }));
 
   const projectOptions = Array.isArray(projectsData)
     ? projectsData
@@ -650,6 +654,7 @@ export default function AddDatabaseForm() {
                             return (
                               <Autocomplete
                                 multiple
+                                loading={vulnerabilityTypesLoading}
                                 options={vulnerabilityTypeOptions}
                                 getOptionLabel={getAutocompleteLabel}
                                 value={selectedOptions}

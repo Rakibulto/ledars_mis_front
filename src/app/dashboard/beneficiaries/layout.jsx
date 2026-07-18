@@ -4,6 +4,7 @@ import { PermissionBasedGuard } from 'src/auth/guard';
 
 const BENEFICIARY_VIEW_PERMISSIONS = [
   'view_beneficiary',
+  'view_vulnerabilitytype',
   'view_vulnerabilityassessment',
   'view_targetingcriteria',
   'view_needsassessment',

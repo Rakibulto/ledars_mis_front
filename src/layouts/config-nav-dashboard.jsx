@@ -1082,6 +1082,11 @@ export function useNavData() {
                               { pattern: '^/dashboard/project-managements/projects/[^/]+/edit/?$' },
                             ],
                           },
+                          {
+                            title: 'Project Overview',
+                            path: paths.dashboard.projectManagements.projects.overview,
+                            icon: ICONS.analytics,
+                          },
                           ...(hasPermission('add_projectmanagementproject')
                             ? [
                               {
@@ -1095,6 +1100,11 @@ export function useNavData() {
                             title: 'Report',
                             path: paths.dashboard.projectManagements.projects.report,
                             icon: ICONS.reports,
+                          },
+                          {
+                            title: 'Project Unit',
+                            path: paths.dashboard.projectManagements.projects.units,
+                            icon: ICONS.menuItem,
                           },
                         ],
                       },
@@ -2387,6 +2397,7 @@ export function useNavData() {
       // ============================================================
       ...(hasAnyPermission(
         'view_beneficiary',
+        'view_vulnerabilitytype',
         'view_vulnerabilityassessment',
         'view_targetingcriteria',
         'view_needsassessment',
@@ -2450,6 +2461,11 @@ export function useNavData() {
                         title: 'Import / Export',
                         path: paths.dashboard.beneficiaries.beneficiary_import,
                         icon: ICONS.external,
+                      },
+                      {
+                        title: 'Vulnerability Types',
+                        path: paths.dashboard.beneficiaries.vulnerability_types,
+                        icon: ICONS.approval,
                       },
                     ],
                   },

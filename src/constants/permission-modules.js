@@ -95,6 +95,7 @@ export const PERMISSION_MODULES = [
         pages: [
           { model: 'projectmanagementproject', name: 'Projects' },
           { model: 'projectmanagementprojectplan', name: 'Project Plans' },
+          { model: 'projectmanagementunit', name: 'Project Units' },
         ],
       },
       {
@@ -209,7 +210,10 @@ export const PERMISSION_MODULES = [
     submodules: [
       {
         label: 'Registration & Database',
-        pages: [{ model: 'beneficiary', name: 'Beneficiaries' }],
+        pages: [
+          { model: 'beneficiary', name: 'Beneficiaries' },
+          { model: 'vulnerabilitytype', name: 'Vulnerability Types' },
+        ],
       },
       {
         label: 'Assessment & Targeting',

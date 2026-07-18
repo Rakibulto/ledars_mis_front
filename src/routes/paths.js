@@ -40,6 +40,7 @@ export const paths = {
       // Registration & Database
       database: `${ROOTS.DASHBOARD}/beneficiaries/database`,
       add_database: `${ROOTS.DASHBOARD}/beneficiaries/database/add-database`,
+      vulnerability_types: `${ROOTS.DASHBOARD}/beneficiaries/database/vulnerability-types`,
       bulk_registration: `${ROOTS.DASHBOARD}/beneficiaries/bulk-registration`,
       duplicate_management: `${ROOTS.DASHBOARD}/beneficiaries/duplicate-management`,
       id_card_generation: `${ROOTS.DASHBOARD}/beneficiaries/id-card-generation`,
@@ -1090,6 +1091,8 @@ export const paths = {
         detail: (id) => `${ROOTS.DASHBOARD}/project-managements/projects/${id}`,
         edit: (id) => `${ROOTS.DASHBOARD}/project-managements/projects/${id}/edit`,
         report: `${ROOTS.DASHBOARD}/project-managements/projects/report`,
+        units: `${ROOTS.DASHBOARD}/project-managements/projects/units`,
+        overview: `${ROOTS.DASHBOARD}/project-managements/projects/overview`,
       },
       taskManagement: {
         root: `${ROOTS.DASHBOARD}/project-managements/task-management`,
