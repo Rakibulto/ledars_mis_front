@@ -22,10 +22,11 @@ export function getAllItems({ data }) {
 
 export function applyFilter({ inputData, query }) {
   if (query) {
+    const normalizedQuery = query.toLowerCase();
     inputData = inputData.filter(
       (item) =>
-        item.title.toLowerCase().indexOf(query.toLowerCase()) !== -1 ||
-        item.path.toLowerCase().indexOf(query.toLowerCase()) !== -1
+        (item.title || '').toLowerCase().indexOf(normalizedQuery) !== -1 ||
+        (item.path || '').toLowerCase().indexOf(normalizedQuery) !== -1
     );
   }
 
