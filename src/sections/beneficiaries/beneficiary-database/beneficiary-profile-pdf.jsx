@@ -1,372 +1,210 @@
 import React from 'react';
 import { Page, Text, View, Document, StyleSheet } from '@react-pdf/renderer';
 
+import { formatList } from './beneficiary-profile-options';
+
 const styles = StyleSheet.create({
   page: {
-    padding: 30,
-    fontSize: 10,
+    padding: 28,
+    fontSize: 9,
     fontFamily: 'Helvetica',
   },
-
-  header: {
-    marginBottom: 20,
-    paddingBottom: 15,
+  orgHeader: {
+    textAlign: 'center',
+    marginBottom: 14,
+    paddingBottom: 10,
     borderBottom: '2px solid #059669',
   },
-
-  title: {
-    fontSize: 24,
+  orgName: {
+    fontSize: 16,
     fontWeight: 'bold',
     color: '#059669',
-    marginBottom: 5,
   },
-
-  subtitle: {
-    fontSize: 12,
-    color: '#6b7280',
+  orgAddress: {
+    fontSize: 10,
+    color: '#374151',
+    marginTop: 2,
   },
-
-  beneficiaryId: {
-    fontSize: 14,
-    color: '#059669',
+  orgTitle: {
+    fontSize: 11,
     fontWeight: 'bold',
-    marginTop: 10,
+    color: '#111827',
+    marginTop: 6,
   },
-
   section: {
-    marginBottom: 15,
+    marginBottom: 10,
   },
-
   sectionTitle: {
-    fontSize: 14,
+    fontSize: 11,
     fontWeight: 'bold',
     color: '#059669',
-    marginBottom: 10,
-    paddingBottom: 5,
+    marginBottom: 6,
+    paddingBottom: 3,
     borderBottom: '1px solid #e5e7eb',
   },
-
   row: {
     flexDirection: 'row',
-    marginBottom: 8,
+    marginBottom: 4,
   },
-
   label: {
-    width: '35%',
-    fontSize: 9,
+    width: '40%',
+    fontSize: 8,
     color: '#6b7280',
-    fontWeight: 'bold',
   },
-
   value: {
-    width: '65%',
-    fontSize: 10,
+    width: '60%',
+    fontSize: 9,
     color: '#1f2937',
   },
-
-  gridRow: {
-    flexDirection: 'row',
-    marginBottom: 8,
-  },
-
-  gridCol: {
-    width: '50%',
-  },
-
-  table: {
-    marginTop: 10,
-    border: '1px solid #e5e7eb',
-  },
-
-  tableRow: {
-    flexDirection: 'row',
-    borderBottom: '1px solid #e5e7eb',
-  },
-
-  tableHeader: {
-    backgroundColor: '#f3f4f6',
-    fontWeight: 'bold',
-  },
-
-  tableCell: {
-    padding: 8,
-    fontSize: 9,
-    borderRight: '1px solid #e5e7eb',
-  },
-
-  col1: { width: '5%' },
-  col2: { width: '30%' },
-  col3: { width: '20%' },
-  col4: { width: '15%' },
-  col5: { width: '15%' },
-  col6: { width: '15%' },
-
-  chipContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginTop: 5,
-  },
-
-  chip: {
-    backgroundColor: '#fee2e2',
-    color: '#991b1b',
-    padding: '4 8',
-    borderRadius: 4,
-    fontSize: 8,
-    marginRight: 5,
-    marginBottom: 5,
-  },
-
-  summaryBox: {
-    backgroundColor: '#f0fdf4',
-    padding: 15,
-    borderRadius: 8,
-    marginBottom: 15,
-    border: '1px solid #bbf7d0',
-  },
-
-  summaryRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 5,
-  },
-
-  summaryLabel: {
-    fontSize: 11,
-    color: '#166534',
-    fontWeight: 'bold',
-  },
-
-  summaryValue: {
-    fontSize: 11,
-    color: '#166534',
-  },
-
   footer: {
     position: 'absolute',
-    bottom: 30,
-    left: 30,
-    right: 30,
+    bottom: 20,
+    left: 28,
+    right: 28,
     textAlign: 'center',
-    fontSize: 8,
+    fontSize: 7,
     color: '#9ca3af',
     borderTop: '1px solid #e5e7eb',
-    paddingTop: 10,
-  },
-
-  noData: {
-    textAlign: 'center',
-    color: '#9ca3af',
-    fontSize: 9,
-    padding: 10,
+    paddingTop: 6,
   },
 });
 
-const BeneficiaryProfilePDF = ({ beneficiary, services }) => {
-  const totalServicesValue =
-    services?.reduce((sum, service) => sum + (parseFloat(service.value) || 0), 0) || 0;
+function Row({ label, value }) {
+  return (
+    <View style={styles.row}>
+      <Text style={styles.label}>{label}</Text>
+      <Text style={styles.value}>{formatList(value)}</Text>
+    </View>
+  );
+}
+
+function Section({ title, children }) {
+  return (
+    <View style={styles.section} wrap={false}>
+      <Text style={styles.sectionTitle}>{title}</Text>
+      {children}
+    </View>
+  );
+}
+
+const BeneficiaryProfilePDF = ({ beneficiary }) => {
+  const b = beneficiary || {};
+  const gps =
+    b.gps_latitude || b.gps_longitude
+      ? `${b.gps_latitude || '—'}, ${b.gps_longitude || '—'}`
+      : '—';
 
   return (
     <Document>
       <Page size="A4" style={styles.page}>
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.title}>Beneficiary Profile</Text>
-          <Text style={styles.subtitle}>Comprehensive Beneficiary Information Report</Text>
-          <Text style={styles.beneficiaryId}>ID: {beneficiary?.ben_code}</Text>
+        <View style={styles.orgHeader}>
+          <Text style={styles.orgName}>LEDARS</Text>
+          <Text style={styles.orgAddress}>Shyamnagar, Satkhira</Text>
+          <Text style={styles.orgTitle}>Beneficiary Profile Checklist of MIS</Text>
+          <Text style={{ marginTop: 6, fontSize: 10, color: '#059669' }}>
+            ID: {b.ben_code || '—'}
+          </Text>
         </View>
 
-        {/* Summary Box */}
-        <View style={styles.summaryBox}>
-          <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Total Services Received:</Text>
-            <Text style={styles.summaryValue}>{beneficiary?.total_services_received || 0}</Text>
-          </View>
-          <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Total Services Value:</Text>
-            <Text style={styles.summaryValue}>৳{totalServicesValue.toLocaleString()}</Text>
-          </View>
-          <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Status:</Text>
-            <Text style={styles.summaryValue}>{beneficiary?.status}</Text>
-          </View>
-        </View>
+        <Section title="A. Identification & System Information">
+          <Row label="Beneficiary Unique ID" value={b.ben_code} />
+          <Row label="Household ID" value={b.household_id || b.household_code} />
+          <Row label="Project Name" value={b.project_name || b.project_names} />
+          <Row label="Donor Name" value={b.donor_name || b.donor_names} />
+          <Row label="Enrollment Date" value={b.enrollment_date} />
+        </Section>
 
-        {/* Personal Information */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Personal Information</Text>
-          <View style={styles.gridRow}>
-            <View style={styles.gridCol}>
-              <View style={styles.row}>
-                <Text style={styles.label}>Full Name:</Text>
-                <Text style={styles.value}>{beneficiary?.name}</Text>
-              </View>
-              <View style={styles.row}>
-                <Text style={styles.label}>Father&apos;s Name:</Text>
-                <Text style={styles.value}>{beneficiary?.father_name}</Text>
-              </View>
-              <View style={styles.row}>
-                <Text style={styles.label}>Mother&apos;s Name:</Text>
-                <Text style={styles.value}>{beneficiary?.mother_name}</Text>
-              </View>
-              <View style={styles.row}>
-                <Text style={styles.label}>Date of Birth:</Text>
-                <Text style={styles.value}>
-                  {beneficiary?.date_of_birth} ({beneficiary?.age} years)
-                </Text>
-              </View>
-              <View style={styles.row}>
-                <Text style={styles.label}>Sex:</Text>
-                <Text style={styles.value}>{beneficiary?.sex}</Text>
-              </View>
-            </View>
-            <View style={styles.gridCol}>
-              <View style={styles.row}>
-                <Text style={styles.label}>Marital Status:</Text>
-                <Text style={styles.value}>{beneficiary?.marital_status}</Text>
-              </View>
-              <View style={styles.row}>
-                <Text style={styles.label}>Contact:</Text>
-                <Text style={styles.value}>{beneficiary?.contact}</Text>
-              </View>
-              <View style={styles.row}>
-                <Text style={styles.label}>Email:</Text>
-                <Text style={styles.value}>{beneficiary?.email || 'N/A'}</Text>
-              </View>
-              <View style={styles.row}>
-                <Text style={styles.label}>National ID:</Text>
-                <Text style={styles.value}>{beneficiary?.nid}</Text>
-              </View>
-              <View style={styles.row}>
-                <Text style={styles.label}>Registration Date:</Text>
-                <Text style={styles.value}>{beneficiary?.registration_date}</Text>
-              </View>
-            </View>
-          </View>
-        </View>
+        <Section title="B. Personal Information">
+          <Row label="Full Name" value={b.name} />
+          <Row label="Mother Name" value={b.mother_name} />
+          <Row label="Father Name" value={b.father_name} />
+          <Row label="Husband Name" value={b.husband_name} />
+          <Row label="Gender" value={b.sex} />
+          <Row label="Date of Birth" value={b.date_of_birth} />
+          <Row label="Age" value={b.age} />
+          <Row label="National ID / Birth Registration" value={b.nid} />
+          <Row label="Mobile Number" value={b.contact} />
+        </Section>
 
-        {/* Socio-Economic Information */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Socio-Economic Information</Text>
-          <View style={styles.gridRow}>
-            <View style={styles.gridCol}>
-              <View style={styles.row}>
-                <Text style={styles.label}>Education Level:</Text>
-                <Text style={styles.value}>{beneficiary?.education_level}</Text>
-              </View>
-              <View style={styles.row}>
-                <Text style={styles.label}>Occupation:</Text>
-                <Text style={styles.value}>{beneficiary?.occupation}</Text>
-              </View>
-            </View>
-            <View style={styles.gridCol}>
-              <View style={styles.row}>
-                <Text style={styles.label}>Household Size:</Text>
-                <Text style={styles.value}>{beneficiary?.household_size} members</Text>
-              </View>
-              <View style={styles.row}>
-                <Text style={styles.label}>Monthly Income:</Text>
-                <Text style={styles.value}>
-                  ৳{parseFloat(beneficiary?.monthly_income || 0).toLocaleString()}
-                </Text>
-              </View>
-            </View>
-          </View>
-        </View>
+        <Section title="C. Household & Demographic Information">
+          <Row label="Household Type" value={b.household_type} />
+          <Row label="Name of Household Head" value={b.household_head_name} />
+          <Row label="Relationship with HH Head" value={b.relationship_with_hh_head} />
+          <Row label="Household Size" value={b.household_size} />
+          <Row label="Number of Household Members" value={b.hh_members_total} />
+          <Row label="Male / Female / Transgender" value={`${b.hh_members_male ?? '—'} / ${b.hh_members_female ?? '—'} / ${b.hh_members_transgender ?? '—'}`} />
+          <Row label="Children / Elderly / PWD" value={`${b.hh_members_children ?? '—'} / ${b.hh_members_elderly ?? '—'} / ${b.hh_members_pwd ?? '—'}`} />
+        </Section>
 
-        {/* Location Information */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Location Information</Text>
-          <View style={styles.row}>
-            <Text style={styles.label}>Division:</Text>
-            <Text style={styles.value}>{beneficiary?.division}</Text>
-          </View>
-          <View style={styles.row}>
-            <Text style={styles.label}>District:</Text>
-            <Text style={styles.value}>{beneficiary?.district}</Text>
-          </View>
-          <View style={styles.row}>
-            <Text style={styles.label}>Upazila:</Text>
-            <Text style={styles.value}>{beneficiary?.upazila}</Text>
-          </View>
-          <View style={styles.row}>
-            <Text style={styles.label}>Union:</Text>
-            <Text style={styles.value}>{beneficiary?.union}</Text>
-          </View>
-          <View style={styles.row}>
-            <Text style={styles.label}>Village/Address:</Text>
-            <Text style={styles.value}>{beneficiary?.village || beneficiary?.address}</Text>
-          </View>
-        </View>
+        <Section title="D. Geographic & Location Details">
+          <Row label="District" value={b.district} />
+          <Row label="Upazila" value={b.upazila} />
+          <Row label="Union" value={b.union} />
+          <Row label="Village / Ward" value={b.village} />
+          <Row label="GPS Location" value={gps} />
+          <Row label="Coastal Risk Zone" value={b.coastal_risk_zones} />
+        </Section>
 
-        {/* Program Information */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Program Information</Text>
-          <View style={styles.row}>
-            <Text style={styles.label}>Project:</Text>
-            <Text style={styles.value}>{beneficiary?.project}</Text>
-          </View>
-          {beneficiary?.vulnerability_type && (
-            <View style={styles.row}>
-              <Text style={styles.label}>Vulnerability Type:</Text>
-              <View style={styles.chipContainer}>
-                {Array.isArray(beneficiary.vulnerability_type) ? (
-                  beneficiary.vulnerability_type.map((type, index) => (
-                    <Text key={index} style={styles.chip}>
-                      {type}
-                    </Text>
-                  ))
-                ) : (
-                  <Text style={styles.chip}>
-                    {beneficiary.vulnerability_type?.label || beneficiary.vulnerability_type}
-                  </Text>
-                )}
-              </View>
-            </View>
-          )}
-        </View>
+        <Section title="E. Socio-Economic Status">
+          <Row label="Main Income Source" value={b.main_income_sources} />
+          <Row label="Secondary Occupation" value={b.secondary_occupation} />
+          <Row label="Monthly Household Income (BDT)" value={b.monthly_income} />
+          <Row label="Land Ownership Status" value={b.land_ownership_status} />
+          <Row label="Housing Condition" value={b.housing_condition} />
+        </Section>
 
-        {/* Services Received History */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Services Received History</Text>
-          {services && services.length > 0 ? (
-            <View style={styles.table}>
-              {/* Table Header */}
-              <View style={[styles.tableRow, styles.tableHeader]}>
-                <Text style={[styles.tableCell, styles.col1]}>#</Text>
-                <Text style={[styles.tableCell, styles.col2]}>Service Name</Text>
-                <Text style={[styles.tableCell, styles.col3]}>Project</Text>
-                <Text style={[styles.tableCell, styles.col4]}>Date</Text>
-                <Text style={[styles.tableCell, styles.col5]}>Value (৳)</Text>
-                <Text style={[styles.tableCell, styles.col6]}>Status</Text>
-              </View>
+        <Section title="F. Education Profile">
+          <Row label="Education Level" value={b.education_level} />
+        </Section>
 
-              {/* Table Rows */}
-              {services.map((service, index) => (
-                <View key={service.id} style={styles.tableRow}>
-                  <Text style={[styles.tableCell, styles.col1]}>{index + 1}</Text>
-                  <Text style={[styles.tableCell, styles.col2]}>{service.name}</Text>
-                  <Text style={[styles.tableCell, styles.col3]}>
-                    {service.project_name || 'N/A'}
-                  </Text>
-                  <Text style={[styles.tableCell, styles.col4]}>{service.date}</Text>
-                  <Text style={[styles.tableCell, styles.col5]}>
-                    {parseFloat(service.value || 0).toLocaleString()}
-                  </Text>
-                  <Text style={[styles.tableCell, styles.col6]}>{service.status}</Text>
-                </View>
-              ))}
-            </View>
-          ) : (
-            <Text style={styles.noData}>No services recorded yet</Text>
-          )}
-        </View>
+        <Section title="G. Disability & Vulnerability Status">
+          <Row label="Person with Disability" value={b.person_with_disability} />
+          <Row label="Disability Type" value={b.disability_types} />
+          <Row label="Vulnerability Category" value={b.vulnerability_categories} />
+        </Section>
 
-        {/* Footer */}
+        <Section title="H. Health, WASH & Nutrition">
+          <Row label="Primary Drinking Water Source" value={b.drinking_water_sources} />
+          <Row label="Distance to Drinking Water (KM)" value={b.drinking_water_distance_km} />
+          <Row label="Sanitation Facility" value={b.sanitation_facility} />
+          <Row label="Common Health Problems" value={b.common_health_problems} />
+          <Row label="Others (Health)" value={b.common_health_problems_other} />
+          <Row label="Access to Health Services" value={b.access_to_health_services} />
+        </Section>
+
+        <Section title="I. Climate Change & Disaster Exposure">
+          <Row label="Loss & Damage Experienced" value={b.loss_and_damage} />
+          <Row label="Coping Strategy Used" value={b.coping_strategies} />
+        </Section>
+
+        <Section title="J. Program Participation & Group Membership">
+          <Row label="Member of Group" value={b.group_memberships} />
+          <Row label="Date of Joining Group" value={b.group_joining_date} />
+        </Section>
+
+        <Section title="K. Agricultural Information">
+          <Row label="Total agricultural land owned (Decimal)" value={b.agri_land_owned_decimal} />
+          <Row
+            label="Currently practiced adaptive agriculture"
+            value={b.currently_practiced_adaptive_agriculture}
+          />
+          <Row label="Total cultivated land (last season)" value={b.total_cultivated_land_last_season} />
+          <Row
+            label="Land under climate adaptive agriculture"
+            value={b.land_under_climate_adaptive_agriculture}
+          />
+          <Row label="Source of irrigation" value={b.irrigation_sources} />
+          <Row
+            label="Total Agricultural Income (Last 1 Year)"
+            value={b.total_agricultural_income_last_year}
+          />
+          <Row label="Adaptive agricultural practices" value={b.adaptive_agricultural_practices} />
+          <Row label="Climate Resilient Crop Varieties" value={b.climate_resilient_crop_varieties} />
+        </Section>
+
         <View style={styles.footer}>
           <Text>
-            Generated on {new Date().toLocaleDateString()} at {new Date().toLocaleTimeString()} |
-            Ledars NGO Management Information System
+            Generated on {new Date().toLocaleDateString()} | LEDARS MIS — Shyamnagar, Satkhira
           </Text>
         </View>
       </Page>

@@ -1045,6 +1045,7 @@ export function useProjectManagementsApi() {
   const projectsUrl = `${endpoints.projectManagements.projects}?ordering=-created_at`;
   const donorsUrl = `${endpoints.projectManagements.donors}?ordering=name`;
   const usersUrl = `${endpoints.auth.simpleUsers}?ordering=username`;
+  const currenciesUrl = `${endpoints.projectManagements.currencies}?status=active&ordering=code`;
 
   const {
     data: rawProjects,
@@ -1054,12 +1055,14 @@ export function useProjectManagementsApi() {
   } = useSWR(projectsUrl, fetcher);
   const { data: rawDonors, isLoading: donorsLoading } = useSWR(donorsUrl, fetcher);
   const { data: rawUsers, isLoading: usersLoading } = useSWR(usersUrl, fetcher);
+  const { data: rawCurrencies, isLoading: currenciesLoading } = useSWR(currenciesUrl, fetcher);
 
   const projects = useMemo(() => unwrapList(rawProjects).map(enrichProject), [rawProjects]);
   const tasks = useMemo(() => flattenProjectTasks(projects), [projects]);
   const overview = useMemo(() => buildProjectManagementOverview(projects), [projects]);
   const donors = useMemo(() => unwrapList(rawDonors), [rawDonors]);
   const users = useMemo(() => unwrapList(rawUsers), [rawUsers]);
+  const currencies = useMemo(() => unwrapList(rawCurrencies), [rawCurrencies]);
 
   async function createProject(payload) {
     const { data } = await axiosInstance.post(endpoints.projectManagements.projects, payload);
@@ -1091,7 +1094,8 @@ export function useProjectManagementsApi() {
     overview,
     donors,
     users,
-    isLoading: projectsLoading || donorsLoading || usersLoading,
+    currencies,
+    isLoading: projectsLoading || donorsLoading || usersLoading || currenciesLoading,
     isValidating,
     error,
     actions: {

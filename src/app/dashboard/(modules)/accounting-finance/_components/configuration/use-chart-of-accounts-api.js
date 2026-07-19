@@ -13,6 +13,7 @@ function enrichAccount(account, accountTypes, accountMap) {
   const type = accountTypes.find((t) => Number(t.id) === Number(account.account_type));
   const classification = account.classification || type?.classification || '';
   const balance = Number(account.current_balance || 0);
+  const isGlobal = account.is_global ?? account.ngo_project == null;
 
   return {
     ...account,
@@ -23,6 +24,8 @@ function enrichAccount(account, accountTypes, accountMap) {
     archived: account.is_deprecated ?? false,
     active: account.is_active !== false,
     is_contra: account.is_contra ?? false,
+    is_global: isGlobal,
+    liquidity_type: account.liquidity_type || type?.liquidity_type || '',
 
     // Derived display fields
     typeName: account.account_type_name || type?.name || 'Unassigned',
@@ -37,15 +40,17 @@ function enrichAccount(account, accountTypes, accountMap) {
 // ------------------------------------------------------------
 // The hook — drop-in for the accounts slice of the workspace
 // ------------------------------------------------------------
-export function useChartOfAccountsApi() {
-  const accountsUrl = endpoints.accounting.accounts;
+export function useChartOfAccountsApi({ ngoProjectId = null } = {}) {
+  const accountsUrl = ngoProjectId
+    ? `${endpoints.accounting.accounts}?page_size=500&ordering=code&ngo_project=${ngoProjectId}`
+    : `${endpoints.accounting.accounts}?page_size=500&ordering=code`;
   const typesUrl = endpoints.accounting.account_types;
 
   const {
     data: rawAccounts,
     isLoading: accountsLoading,
     error: accountsError,
-  } = useSWR(accountsUrl, fetcher);
+  } = useSWR(ngoProjectId === undefined ? null : accountsUrl, fetcher);
   const { data: rawTypes, isLoading: typesLoading } = useSWR(typesUrl, fetcher);
 
   // Flatten paginated (results[]) or plain-array responses
@@ -117,7 +122,8 @@ export function useChartOfAccountsApi() {
       description: payload.description || '',
     };
     if (payload.parent_id) body.parent = Number(payload.parent_id);
-    const response = await axiosInstance.post(accountsUrl, body);
+    if (ngoProjectId) body.ngo_project = Number(ngoProjectId);
+    const response = await axiosInstance.post(endpoints.accounting.accounts, body);
     await mutate(accountsUrl);
     return response.data;
   };
@@ -162,7 +168,8 @@ export function useChartOfAccountsApi() {
   };
 
   const seedChartOfAccounts = async () => {
-    const res = await axiosInstance.post(endpoints.accounting.account_seed);
+    const body = ngoProjectId ? { ngo_project: Number(ngoProjectId) } : {};
+    const res = await axiosInstance.post(endpoints.accounting.account_seed, body);
     await Promise.all([
       mutate(accountsUrl),
       mutate(typesUrl),

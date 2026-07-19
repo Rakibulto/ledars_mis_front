@@ -1,6 +1,5 @@
 'use client';
 
-import Link from 'next/link';
 import { toast } from 'sonner';
 import { useMemo, useState, useCallback } from 'react';
 
@@ -28,13 +27,19 @@ import DialogContent from '@mui/material/DialogContent';
 import InputAdornment from '@mui/material/InputAdornment';
 import TableContainer from '@mui/material/TableContainer';
 
+import Autocomplete from '@mui/material/Autocomplete';
 import { Iconify } from 'src/components/iconify';
 
 import { formatCurrency } from '../utils';
 import { useCurrency } from '../currency-context';
 import { useChartOfAccountsApi } from './use-chart-of-accounts-api';
 
-const BASE_PATH = '/dashboard/accounting-finance/configuration/chart-of-accounts';
+const DEFAULT_LEDGER_HREF = (account, childMap) => {
+  const childCodes = getDescendantCodes(account.id, childMap);
+  const allCodes = [account.code, ...childCodes];
+  const param = allCodes.length > 1 ? allCodes.join(',') : account.code;
+  return `/dashboard/accounting-finance/transactions/general-ledger-posting?accounts=${param}`;
+};
 
 const TYPE_COLORS = {
   asset: 'success',
@@ -57,11 +62,18 @@ const EMPTY_FORM = {
 };
 
 function buildFlatList(accounts) {
+  const byId = {};
   const childMap = {};
   const roots = [];
 
   accounts.forEach((acc) => {
-    if (acc.parent) {
+    byId[acc.id] = acc;
+  });
+
+  accounts.forEach((acc) => {
+    // Parent missing from this list (e.g. global bank/cash under a global header
+    // that is not returned with project CoA) → treat as a root so it still shows.
+    if (acc.parent && byId[acc.parent]) {
       if (!childMap[acc.parent]) childMap[acc.parent] = [];
       childMap[acc.parent].push(acc);
     } else {
@@ -72,6 +84,7 @@ function buildFlatList(accounts) {
   Object.values(childMap).forEach((children) =>
     children.sort((a, b) => String(a.code).localeCompare(String(b.code), undefined, { numeric: true }))
   );
+  roots.sort((a, b) => String(a.code).localeCompare(String(b.code), undefined, { numeric: true }));
 
   const flat = [];
   function walk(nodes, depth) {
@@ -104,9 +117,17 @@ function getDescendantCodes(accountId, childMap) {
   return codes;
 }
 
-export default function ChartOfAccounts() {
+export default function ChartOfAccounts({
+  embedded = false,
+  getLedgerHref = DEFAULT_LEDGER_HREF,
+  ngoProjectId = null,
+  requireProject = false,
+}) {
   useCurrency();
-  const workspace = useChartOfAccountsApi();
+  const projectReady = !requireProject || Boolean(ngoProjectId);
+  const workspace = useChartOfAccountsApi({
+    ngoProjectId: requireProject && !ngoProjectId ? undefined : ngoProjectId,
+  });
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -115,6 +136,11 @@ export default function ChartOfAccounts() {
   const [editTarget, setEditTarget] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [seeding, setSeeding] = useState(false);
+
+  const isLockedGlobal = useCallback(
+    (account) => Boolean(ngoProjectId || requireProject) && Boolean(account?.is_global),
+    [ngoProjectId, requireProject]
+  );
 
   const { flat: filtered, childMap } = useMemo(() => {
     let list = [...workspace.accounts].filter((account) => {
@@ -141,21 +167,28 @@ export default function ChartOfAccounts() {
     setOpen(true);
   }, []);
 
-  const handleOpenEditDialog = useCallback((account) => {
-    setEditTarget(account);
-    setForm({
-      code: account.code || '',
-      name: account.name || '',
-      type_id: account.classification || '',
-      parent_id: account.parent || '',
-      opening_balance: account.opening_balance ?? account.balance ?? 0,
-      description: account.description || '',
-      status: account.active ? 'active' : 'inactive',
-      is_contra: account.is_contra ?? false,
-      reconcile: account.reconcile ?? false,
-    });
-    setOpen(true);
-  }, []);
+  const handleOpenEditDialog = useCallback(
+    (account) => {
+      if (isLockedGlobal(account)) {
+        toast.error('Global bank/cash accounts are managed under Bank / Cash masters.');
+        return;
+      }
+      setEditTarget(account);
+      setForm({
+        code: account.code || '',
+        name: account.name || '',
+        type_id: account.classification || '',
+        parent_id: account.parent || '',
+        opening_balance: account.opening_balance ?? account.balance ?? 0,
+        description: account.description || '',
+        status: account.active ? 'active' : 'inactive',
+        is_contra: account.is_contra ?? false,
+        reconcile: account.reconcile ?? false,
+      });
+      setOpen(true);
+    },
+    [isLockedGlobal]
+  );
 
   const handleCloseDialog = useCallback(() => {
     setOpen(false);
@@ -183,16 +216,25 @@ export default function ChartOfAccounts() {
   };
 
   const handleDelete = async () => {
+    if (isLockedGlobal(deleteTarget)) {
+      toast.error('Global bank/cash accounts cannot be deleted from project CoA.');
+      setDeleteTarget(null);
+      return;
+    }
     try {
       await workspace.actions.deleteAccount(deleteTarget.id);
       toast.success('Account deleted');
       setDeleteTarget(null);
-    } catch {
-      toast.error('Failed to delete account');
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || 'Failed to delete account');
     }
   };
 
   const handleSeed = async () => {
+    if (!projectReady) {
+      toast.error('Select a project first.');
+      return;
+    }
     setSeeding(true);
     try {
       const result = await workspace.actions.seedChartOfAccounts();
@@ -206,22 +248,54 @@ export default function ChartOfAccounts() {
 
   const canSave = form.code.trim() && form.name.trim();
 
+  if (requireProject && !ngoProjectId) {
+    return (
+      <Card sx={{ p: 3 }}>
+        <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 1 }}>
+          Select a project
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
+          Each NGO project has its own Chart of Accounts. Choose a project in the bar above
+          to view or seed ledgers. Bank/Cash accounts stay global for all projects.
+        </Typography>
+      </Card>
+    );
+  }
+
   return (
-    <Box sx={{ p: 3 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Box>
-          <Typography variant="h4" fontWeight={700}>Account Register</Typography>
+    <Box sx={{ p: embedded ? 0 : 3 }}>
+      <Box
+        sx={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          mb: 3,
+          flexWrap: 'wrap',
+          gap: 1.5,
+        }}
+      >
+        {!embedded ? (
+          <Box>
+            <Typography variant="h4" fontWeight={700}>
+              Account Register
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Search, classify, and edit accounting accounts from one place.
+            </Typography>
+          </Box>
+        ) : (
           <Typography variant="body2" color="text.secondary">
-            Search, classify, and edit accounting accounts from one place.
+            Project CoA plus shared global bank/cash ledgers. Seed creates accounts for this
+            project only.
           </Typography>
-        </Box>
+        )}
         <Stack direction="row" spacing={1}>
           <Button
             variant="outlined"
             color="secondary"
             startIcon={seeding ? null : <Iconify icon="solar:magic-stick-bold-duotone" />}
             onClick={handleSeed}
-            disabled={seeding}
+            disabled={seeding || !projectReady}
           >
             {seeding ? 'Seeding...' : 'Seed'}
           </Button>
@@ -229,6 +303,7 @@ export default function ChartOfAccounts() {
             variant="contained"
             startIcon={<Iconify icon="solar:add-circle-bold" />}
             onClick={handleOpenCreateDialog}
+            disabled={!projectReady}
           >
             New Account
           </Button>
@@ -444,10 +519,7 @@ export default function ChartOfAccounts() {
                     '&:last-child .MuiTableCell-root': { borderBottom: 'none' },
                   }}
                   onClick={() => {
-                    const childCodes = getDescendantCodes(account.id, childMap);
-                    const allCodes = [account.code, ...childCodes];
-                    const param = allCodes.length > 1 ? allCodes.join(',') : account.code;
-                    window.location.href = `/dashboard/accounting-finance/transactions/general-ledger-posting?accounts=${param}`;
+                    window.location.href = getLedgerHref(account, childMap);
                   }}
                 >
                   <TableCell>
@@ -460,6 +532,9 @@ export default function ChartOfAccounts() {
                       <Typography variant="body2" fontWeight={account.depth === 0 ? 700 : 500} sx={{ pl: account.depth * 3 }}>
                         {account.name}
                       </Typography>
+                      {account.is_global && (ngoProjectId || requireProject) && (
+                        <Chip label="Global" size="small" color="info" variant="outlined" sx={{ height: 20, fontSize: 11 }} />
+                      )}
                       {account.is_contra && (
                         <Chip label="Contra" size="small" color="secondary" variant="outlined" sx={{ height: 20, fontSize: 11 }} />
                       )}
@@ -503,37 +578,40 @@ export default function ChartOfAccounts() {
                           size="small"
                           onClick={(event) => {
                             event.stopPropagation();
-                            const childCodes = getDescendantCodes(account.id, childMap);
-                            const allCodes = [account.code, ...childCodes];
-                            const param = allCodes.length > 1 ? allCodes.join(',') : account.code;
-                            window.location.href = `/dashboard/accounting-finance/transactions/general-ledger-posting?accounts=${param}`;
+                            window.location.href = getLedgerHref(account, childMap);
                           }}
                         >
                           <Iconify icon="solar:chart-bold" width={16} />
                         </IconButton>
                       </Tooltip>
-                      <Tooltip title="Edit">
-                        <IconButton
-                          size="small"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            handleOpenEditDialog(account);
-                          }}
-                        >
-                          <Iconify icon="solar:pen-bold" width={16} />
-                        </IconButton>
+                      <Tooltip title={isLockedGlobal(account) ? 'Global — edit via Bank / Cash' : 'Edit'}>
+                        <span>
+                          <IconButton
+                            size="small"
+                            disabled={isLockedGlobal(account)}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              handleOpenEditDialog(account);
+                            }}
+                          >
+                            <Iconify icon="solar:pen-bold" width={16} />
+                          </IconButton>
+                        </span>
                       </Tooltip>
-                      <Tooltip title="Delete">
-                        <IconButton
-                          size="small"
-                          color="error"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            setDeleteTarget(account);
-                          }}
-                        >
-                          <Iconify icon="solar:trash-bin-trash-bold" width={16} />
-                        </IconButton>
+                      <Tooltip title={isLockedGlobal(account) ? 'Global — cannot delete here' : 'Delete'}>
+                        <span>
+                          <IconButton
+                            size="small"
+                            color="error"
+                            disabled={isLockedGlobal(account)}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setDeleteTarget(account);
+                            }}
+                          >
+                            <Iconify icon="solar:trash-bin-trash-bold" width={16} />
+                          </IconButton>
+                        </span>
                       </Tooltip>
                     </Stack>
                   </TableCell>
@@ -585,22 +663,22 @@ export default function ChartOfAccounts() {
               </TextField>
             </Grid>
             <Grid size={{ xs: 12, sm: 6 }}>
-              <TextField
-                select
+              <Autocomplete
+                size="small"
                 fullWidth
-                label="Parent Account (optional)"
-                value={form.parent_id ?? ''}
-                onChange={(event) => setForm((current) => ({ ...current, parent_id: event.target.value ?? '' }))}
-              >
-                <MenuItem value="">— None —</MenuItem>
-                {workspace.accounts
-                  .filter((a) => String(a.id) !== String(editTarget?.id))
-                  .map((a) => (
-                    <MenuItem key={a.id} value={a.id}>
-                      {a.code} · {a.name}
-                    </MenuItem>
-                  ))}
-              </TextField>
+                options={workspace.accounts.filter((a) => String(a.id) !== String(editTarget?.id))}
+                value={
+                  workspace.accounts.find((a) => String(a.id) === String(form.parent_id)) || null
+                }
+                getOptionLabel={(a) => (a ? `${a.code} · ${a.name}` : '')}
+                isOptionEqualToValue={(a, b) => String(a?.id) === String(b?.id)}
+                onChange={(_e, opt) =>
+                  setForm((current) => ({ ...current, parent_id: opt ? opt.id : '' }))
+                }
+                renderInput={(params) => (
+                  <TextField {...params} label="Parent Account (optional)" placeholder="Search…" />
+                )}
+              />
             </Grid>
             <Grid size={{ xs: 12, sm: 6 }}>
               <TextField

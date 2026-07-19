@@ -23,7 +23,7 @@ export function NavList({ data, depth, render, cssVars, slotProps, enabledRootRe
 
   const navItemRef = useRef(null);
 
-  const active = useActiveLink(data.path, !!data.children, data.activeMatch);
+  const active = useActiveLink(data.path, !!data.children, data.activeMatch) || !!data.forceActive;
 
   const [openMenu, setOpenMenu] = useState(false);
 

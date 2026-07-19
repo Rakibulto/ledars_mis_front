@@ -5,7 +5,16 @@ import { useForm } from 'react-hook-form';
 import { useMemo, useEffect } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 
-import { Box, Stack, Button, Divider, MenuItem, Typography } from '@mui/material';
+import {
+  Box,
+  Stack,
+  Button,
+  Divider,
+  MenuItem,
+  TextField,
+  Typography,
+  Autocomplete,
+} from '@mui/material';
 
 import { CONFIG } from 'src/config-global';
 
@@ -22,8 +31,8 @@ export function resolveDonorPhotoUrl(photo) {
 
 export const donorSchema = z.object({
   name: z.string().min(1, 'Name is required'),
-  email: z.string().min(1, 'Email is required').email('Invalid email format'),
-  phone: z.string().min(1, 'Phone number is required'),
+  email: z.string().optional().nullable(),
+  phone: z.string().optional().nullable(),
   organization_name: z.string().optional().nullable(),
   type: z.string().optional().nullable(),
   status: z.string().optional().nullable(),
@@ -80,7 +89,12 @@ export function buildFormData(values) {
   };
 
   Object.entries(payload).forEach(([key, value]) => {
-    if (value === null || value === undefined || value === '') return;
+    if (value === null || value === undefined) return;
+
+    if (value === '') {
+      formData.append(key, '');
+      return;
+    }
 
     if (key === 'document' || key === 'photo') {
       if (typeof value === 'string') return;
@@ -130,7 +144,7 @@ function FormSection({ title, description, children }) {
   );
 }
 
-export function DonorForm({ initialValues = {}, onSubmit, submitLabel = 'Save' }) {
+export function DonorForm({ initialValues = {}, onSubmit, submitLabel = 'Save', currencies = [] }) {
   const defaultValues = useMemo(
     () => ({
       ...defaultEmptyValues,
@@ -151,7 +165,7 @@ export function DonorForm({ initialValues = {}, onSubmit, submitLabel = 'Save' }
     if (Object.keys(initialValues).length > 0) {
       methods.reset(defaultValues);
     }
-  }, [initialValues.id]);
+  }, [initialValues, defaultValues, methods]);
 
   return (
     <Form methods={methods} onSubmit={methods.handleSubmit(onSubmit)}>
@@ -211,7 +225,20 @@ export function DonorForm({ initialValues = {}, onSubmit, submitLabel = 'Save' }
           title="Donation Details"
           description="Financial contribution history and currency"
         >
-          <Field.Text name="currency" label="Currency" fullWidth />
+          <Autocomplete
+            options={currencies}
+            value={currencies.find((c) => c.code === methods.watch('currency')) || null}
+            getOptionLabel={(option) =>
+              option ? `${option.code}${option.symbol ? ` (${option.symbol})` : ''}` : ''
+            }
+            isOptionEqualToValue={(option, value) => option.code === value.code}
+            onChange={(_, value) =>
+              methods.setValue('currency', value?.code || '', { shouldValidate: true })
+            }
+            renderInput={(params) => (
+              <TextField {...params} size="small" label="Currency" fullWidth />
+            )}
+          />
           <Field.Text
             name="total_donated_amount"
             label="Total Donated Amount"

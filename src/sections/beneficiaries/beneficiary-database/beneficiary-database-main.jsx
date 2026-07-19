@@ -52,25 +52,9 @@ import SummaryCard from 'src/sections/_components/summary-card';
 import { formatCurrencyAuto } from 'src/sections/_components/format-currency';
 
 import BeneficiaryPDFButton from './beneficiary-pdf-button';
+import BeneficiaryProfileDetails from './beneficiary-profile-details';
 
-const getStatusColor = (status) => {
-  switch (status) {
-    case 'Active':
-      return { bg: 'success.lighter', color: 'success.dark', border: 'success.main' };
-    case 'Inactive':
-      return { bg: 'grey.200', color: 'text.secondary', border: 'grey.400' };
-    case 'Graduated':
-      return { bg: 'info.lighter', color: 'info.dark', border: 'info.main' };
-    default:
-      return { bg: 'grey.200', color: 'text.secondary', border: 'grey.400' };
-  }
-};
-
-function BeneficiaryTableRow({ beneficiary, onView, onReceivedHistory, onEdit, onDelete }) {
-  // console.log('Rendering BeneficiaryTableRow for:', beneficiary);
-  const statusColor = getStatusColor(beneficiary?.status);
-  // console.log('Beneficiary:', beneficiary?.project);
-
+function BeneficiaryTableRow({ beneficiary, onView, onDelete }) {
   return (
     <TableRow
       sx={{
@@ -122,13 +106,15 @@ function BeneficiaryTableRow({ beneficiary, onView, onReceivedHistory, onEdit, o
       {/* Demographics */}
       <TableCell>
         <Typography variant="body2" color="text.primary">
-          {beneficiary?.age} yrs / {beneficiary?.sex}
+          {beneficiary?.age != null ? `${beneficiary.age} yrs` : '—'} / {beneficiary?.sex || '—'}
         </Typography>
         <Typography variant="caption" color="text.secondary" display="block">
-          {beneficiary?.education_level}
+          {beneficiary?.education_level || '—'}
         </Typography>
         <Typography variant="caption" color="text.secondary">
-          {beneficiary?.occupation}
+          {Array.isArray(beneficiary?.main_income_sources)
+            ? beneficiary.main_income_sources.join(', ')
+            : '—'}
         </Typography>
       </TableCell>
 
@@ -142,31 +128,33 @@ function BeneficiaryTableRow({ beneficiary, onView, onReceivedHistory, onEdit, o
           />
           <Box>
             <Typography variant="body2" color="text.primary">
-              {beneficiary?.district}
+              {beneficiary?.district || '—'}
             </Typography>
             <Typography variant="caption" color="text.secondary">
-              {beneficiary?.upazila}, {beneficiary?.union}
+              {beneficiary?.upazila || '—'}, {beneficiary?.union || '—'}
             </Typography>
           </Box>
         </Stack>
       </TableCell>
 
-      {/* Project */}
+      {/* Project / Donor */}
       <TableCell>
-        <Box
-          sx={{
-            display: 'inline-flex',
-            px: 1.5,
-            py: 0.5,
-            borderRadius: 1,
-            bgcolor: 'info.lighter',
-            color: 'info.dark',
-          }}
-        >
-          <Typography variant="body2" fontWeight={600}>
-            {beneficiary?.project_name || beneficiary?.project || 'N/A'}
-          </Typography>
-        </Box>
+        <Typography variant="body2" fontWeight={600} color="info.dark">
+          {beneficiary?.project_name || '—'}
+        </Typography>
+        <Typography variant="caption" color="text.secondary">
+          {beneficiary?.donor_name || '—'}
+        </Typography>
+      </TableCell>
+
+      {/* Household */}
+      <TableCell>
+        <Typography variant="body2" fontWeight={600}>
+          {beneficiary?.household_id || beneficiary?.household_code || '—'}
+        </Typography>
+        <Typography variant="caption" color="text.secondary">
+          {beneficiary?.household_type || '—'}
+        </Typography>
       </TableCell>
 
       {/* Services */}
@@ -181,28 +169,8 @@ function BeneficiaryTableRow({ beneficiary, onView, onReceivedHistory, onEdit, o
           </Typography>
         </Stack>
         <Typography variant="caption" color="text.secondary">
-          Total: ৳{beneficiary?.total_services_value?.toLocaleString()}
+          Total: ৳{Number(beneficiary?.total_services_value || 0).toLocaleString()}
         </Typography>
-      </TableCell>
-
-      {/* Status */}
-      <TableCell align="center">
-        <Box
-          sx={{
-            display: 'inline-flex',
-            px: 1.5,
-            py: 0.5,
-            borderRadius: 1,
-            bgcolor: statusColor.bg,
-            color: statusColor.color,
-            border: (theme) =>
-              `1px solid ${theme.palette[statusColor.border] || statusColor.border}`,
-          }}
-        >
-          <Typography variant="caption" fontWeight={600}>
-            {beneficiary?.status}
-          </Typography>
-        </Box>
       </TableCell>
 
       {/* Actions */}
@@ -284,9 +252,8 @@ export default function BeneficiaryDatabaseMain() {
 
   // Filter states
   const [projectFilter, setProjectFilter] = useState('');
-  const [divisionFilter, setDivisionFilter] = useState('');
+  const [districtFilter, setDistrictFilter] = useState('');
   const [sexFilter, setSexFilter] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
 
   // Delete state
   const confirmDelete = useBoolean();
@@ -302,11 +269,10 @@ export default function BeneficiaryDatabaseMain() {
     params.append('page', page.toString());
     if (searchQuery) params.append('search', searchQuery);
     if (projectFilter) params.append('project', projectFilter);
-    if (divisionFilter) params.append('division', divisionFilter);
+    if (districtFilter) params.append('district', districtFilter);
     if (sexFilter) params.append('sex', sexFilter);
-    if (statusFilter) params.append('status', statusFilter);
     return params.toString();
-  }, [page, searchQuery, projectFilter, divisionFilter, sexFilter, statusFilter]);
+  }, [page, searchQuery, projectFilter, districtFilter, sexFilter]);
   //   project data
   const { data: ProjectData, loading: projectLoading } = useGetRequest(
     `${endpoints.projects.projects}`
@@ -328,42 +294,10 @@ export default function BeneficiaryDatabaseMain() {
       : null
   );
 
-  // Use API data directly with snake_case
+  // Use API data directly
   const beneficiaries = useMemo(() => {
     if (!beneficiariesData?.results) return [];
-
-    return beneficiariesData?.results?.map((ben) => ({
-      id: ben.id,
-      ben_code: ben.ben_code,
-      name: ben.name,
-      father_name: ben.father_name,
-      mother_name: ben.mother_name,
-      nid: ben.nid,
-      contact: ben.contact,
-      email: ben.email,
-      date_of_birth: ben.date_of_birth,
-      age: ben.age,
-      sex: ben.sex,
-      marital_status: ben.marital_status,
-      education_level: ben.education_level,
-      occupation: ben.occupation,
-      monthly_income: parseFloat(ben.monthly_income) || 0,
-      household_size: ben.household_size,
-      district: ben.district,
-      upazila: ben.upazila,
-      division: ben.division,
-      union: ben.union,
-      village: ben.village,
-      address: ben.address,
-      project: ben.project,
-      project_name: ben.project_name || `Project ${ben.project}`,
-      status: ben.status,
-      total_services_received: ben.total_services_received || 0,
-      total_services_value: parseFloat(ben.total_services_value) || 0,
-      registration_date: ben.registration_date,
-      vulnerability_type: ben.vulnerability_type || [],
-      services: [],
-    }));
+    return beneficiariesData.results;
   }, [beneficiariesData]);
 
   // Services data directly from API with full details
@@ -387,34 +321,24 @@ export default function BeneficiaryDatabaseMain() {
     }));
   }, [beneficiaryServicesData]);
 
-  // console.log('beneficiaryServicesData from API:', beneficiaryServicesData);
-  // console.log('beneficiaryServices after mapping:', beneficiaryServices);
-
-  // Get unique values for filters from current data
   const projects = useMemo(
     () => ['', ...new Set(beneficiaries.map((b) => b.project_name).filter(Boolean))],
     [beneficiaries]
   );
-  // console.log('Unique projects for filter:', projects);
-  const divisions = useMemo(
-    () => ['', ...new Set(beneficiaries.map((b) => b.division).filter(Boolean))],
+  const districts = useMemo(
+    () => ['', ...new Set(beneficiaries.map((b) => b.district).filter(Boolean))],
     [beneficiaries]
   );
-  // console.log('Unique divisions for filter:', divisions);
 
-  // Clear all filters
   const handleClearFilters = () => {
     setSearchQuery('');
     setProjectFilter('');
-    setDivisionFilter('');
+    setDistrictFilter('');
     setSexFilter('');
-    setStatusFilter('');
     setPage(1);
   };
 
-  // Check if any filter is active
-  const hasActiveFilters =
-    searchQuery || projectFilter || divisionFilter || sexFilter || statusFilter;
+  const hasActiveFilters = searchQuery || projectFilter || districtFilter || sexFilter;
 
   // Handle view beneficiary
   const handleViewBeneficiary = (beneficiary) => {
@@ -472,31 +396,30 @@ export default function BeneficiaryDatabaseMain() {
       // Define columns with headers
       worksheet.columns = [
         { header: 'SI No', key: 'si_no', width: 10 },
-        { header: 'ID', key: 'id', width: 10 },
         { header: 'Ben Code', key: 'ben_code', width: 18 },
         { header: 'Name', key: 'name', width: 25 },
-        { header: 'Father Name', key: 'father_name', width: 25 },
         { header: 'Mother Name', key: 'mother_name', width: 25 },
+        { header: 'Father Name', key: 'father_name', width: 25 },
+        { header: 'Husband Name', key: 'husband_name', width: 25 },
         { header: 'Age', key: 'age', width: 10 },
         { header: 'Date of Birth', key: 'date_of_birth', width: 15 },
         { header: 'Gender', key: 'sex', width: 12 },
         { header: 'NID', key: 'nid', width: 20 },
         { header: 'Contact', key: 'contact', width: 15 },
-        { header: 'Email', key: 'email', width: 25 },
-        { header: 'Marital Status', key: 'marital_status', width: 15 },
         { header: 'Education Level', key: 'education_level', width: 20 },
-        { header: 'Occupation', key: 'occupation', width: 20 },
+        { header: 'Main Income Sources', key: 'main_income_sources', width: 25 },
         { header: 'Monthly Income', key: 'monthly_income', width: 15 },
         { header: 'Household Size', key: 'household_size', width: 15 },
-        { header: 'Division', key: 'division', width: 15 },
+        { header: 'Household Type', key: 'household_type', width: 18 },
+        { header: 'Household Code', key: 'household_code', width: 18 },
         { header: 'District', key: 'district', width: 20 },
         { header: 'Upazila', key: 'upazila', width: 20 },
         { header: 'Union', key: 'union', width: 20 },
         { header: 'Village', key: 'village', width: 20 },
-        { header: 'Address', key: 'address', width: 30 },
-        { header: 'Vulnerability Type', key: 'vulnerability_type', width: 25 },
-        { header: 'Status', key: 'status', width: 12 },
-        { header: 'Registration Date', key: 'registration_date', width: 18 },
+        { header: 'Vulnerability Categories', key: 'vulnerability_categories', width: 30 },
+        { header: 'Project', key: 'project_name', width: 25 },
+        { header: 'Donor', key: 'donor_name', width: 25 },
+        { header: 'Enrollment Date', key: 'enrollment_date', width: 18 },
         { header: 'Total Services', key: 'total_services_received', width: 15 },
         { header: 'Total Value (BDT)', key: 'total_services_value', width: 18 },
       ];
@@ -516,36 +439,34 @@ export default function BeneficiaryDatabaseMain() {
       beneficiaries?.forEach((beneficiary, index) => {
         worksheet.addRow({
           si_no: index + 1,
-          id: beneficiary.id,
           ben_code: beneficiary.ben_code,
           name: beneficiary.name,
-          father_name: beneficiary.father_name,
           mother_name: beneficiary.mother_name,
+          father_name: beneficiary.father_name,
+          husband_name: beneficiary.husband_name,
           age: beneficiary.age,
           date_of_birth: beneficiary.date_of_birth,
           sex: beneficiary.sex,
           nid: beneficiary.nid,
           contact: beneficiary.contact,
-          email: beneficiary.email,
-          marital_status: beneficiary.marital_status,
           education_level: beneficiary.education_level,
-          occupation: beneficiary.occupation,
+          main_income_sources: Array.isArray(beneficiary.main_income_sources)
+            ? beneficiary.main_income_sources.join(', ')
+            : '',
           monthly_income: beneficiary.monthly_income,
           household_size: beneficiary.household_size,
-          division: beneficiary.division,
+          household_type: beneficiary.household_type,
+          household_code: beneficiary.household_id || beneficiary.household_code,
           district: beneficiary.district,
           upazila: beneficiary.upazila,
           union: beneficiary.union,
           village: beneficiary.village,
-          address: beneficiary.address,
-          vulnerability_type: Array.isArray(beneficiary.vulnerability_type)
-            ? beneficiary.vulnerability_type.map((v) => v.label || v.value || v).join(', ')
-            : beneficiary.vulnerability_type?.label ||
-              beneficiary.vulnerability_type?.value ||
-              beneficiary.vulnerability_type ||
-              '',
-          status: beneficiary.status,
-          registration_date: beneficiary.registration_date,
+          vulnerability_categories: Array.isArray(beneficiary.vulnerability_categories)
+            ? beneficiary.vulnerability_categories.join(', ')
+            : '',
+          project_name: beneficiary.project_name,
+          donor_name: beneficiary.donor_name,
+          enrollment_date: beneficiary.enrollment_date,
           total_services_received: beneficiary.total_services_received,
           total_services_value: beneficiary.total_services_value,
         });
@@ -706,18 +627,18 @@ export default function BeneficiaryDatabaseMain() {
         </Grid>
         <Grid size={{ xs: 12, sm: 6, md: 3, lg: 1.71 }}>
           <SummaryCard
-            title="Active"
-            value={beneficiarySummaryData?.active || 0}
-            icon="solar:check-circle-bold-duotone"
-            bgcolor="success.main"
-            boxShadow="0 4px 20px rgba(16, 185, 129, 0.24)"
+            title="Transgender"
+            value={beneficiarySummaryData?.transgender || 0}
+            icon="solar:users-group-rounded-bold-duotone"
+            bgcolor="info.main"
+            boxShadow="0 4px 20px rgba(59, 130, 246, 0.24)"
             loading={beneficiariesLoading}
           />
         </Grid>
         <Grid size={{ xs: 12, sm: 6, md: 3, lg: 1.71 }}>
           <SummaryCard
-            title="Graduated"
-            value={beneficiarySummaryData?.graduated || 0}
+            title="Services"
+            value={beneficiarySummaryData?.Services || 0}
             icon="solar:graph-up-bold-duotone"
             bgcolor="#9333ea"
             boxShadow="0 4px 20px rgba(147, 51, 234, 0.24)"
@@ -788,31 +709,6 @@ export default function BeneficiaryDatabaseMain() {
           >
             <Box sx={{ position: 'relative', zIndex: 1 }}>
               <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
-                <Iconify icon="solar:graph-up-bold" width={20} sx={{ color: 'warning.main' }} />
-                <Typography variant="body2" color="text.secondary">
-                  Services
-                </Typography>
-              </Stack>
-              <Typography variant="h5" fontWeight={700} color="text.primary">
-                {beneficiarySummaryData?.Services || 0}
-              </Typography>
-            </Box>
-          </Card>
-        </Grid>
-        <Grid size={{ xs: 12, sm: 6, md: 3, lg: 1.71 }}>
-          <Card
-            sx={{
-              p: 2.5,
-              borderRadius: 2,
-              bgcolor: 'background.paper',
-              border: (theme) => `1px solid ${theme.palette.divider}`,
-              boxShadow: (theme) => theme.customShadows?.card || 'none',
-              position: 'relative',
-              overflow: 'hidden',
-            }}
-          >
-            <Box sx={{ position: 'relative', zIndex: 1 }}>
-              <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
                 <Iconify
                   icon="solar:dollar-minimalistic-bold"
                   width={20}
@@ -823,7 +719,6 @@ export default function BeneficiaryDatabaseMain() {
                 </Typography>
               </Stack>
               <Typography variant="h5" fontWeight={700} color="text.primary">
-                {/* ৳{(beneficiarySummaryData.total_value / 1000).toFixed(2)}K */}
                 {formatCurrencyAuto(beneficiarySummaryData?.total_value || 0)}
               </Typography>
             </Box>
@@ -924,7 +819,7 @@ export default function BeneficiaryDatabaseMain() {
           {showFilters && (
             <Box sx={{ mt: 3, pt: 3, borderTop: (theme) => `1px solid ${theme.palette.divider}` }}>
               <Grid container spacing={2}>
-                <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                <Grid size={{ xs: 12, sm: 6, md: 4 }}>
                   <Typography
                     variant="caption"
                     color="text.secondary"
@@ -949,50 +844,44 @@ export default function BeneficiaryDatabaseMain() {
                             {project}
                           </MenuItem>
                         ))} */}
-                      {ProjectData.map((project) => (
-                        <MenuItem key={project?.name} value={project?.name}>
+                      {(Array.isArray(ProjectData)
+                        ? ProjectData
+                        : ProjectData?.results || []
+                      ).map((project) => (
+                        <MenuItem key={project?.id || project?.name} value={project?.name}>
                           {project?.name}
                         </MenuItem>
                       ))}
                     </Select>
                   </FormControl>
                 </Grid>
-                <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                <Grid size={{ xs: 12, sm: 6, md: 4 }}>
                   <Typography
                     variant="caption"
                     color="text.secondary"
                     sx={{ mb: 0.5, display: 'block' }}
                   >
-                    Division
+                    District
                   </Typography>
                   <FormControl fullWidth size="small">
                     <Select
-                      value={divisionFilter}
+                      value={districtFilter}
                       onChange={(e) => {
-                        setDivisionFilter(e.target.value);
+                        setDistrictFilter(e.target.value);
                         setPage(1);
                       }}
                       sx={{ borderRadius: 1.5 }}
                     >
-                      <MenuItem value="">All Divisions</MenuItem>
-                      {[
-                        { id: 1, name: 'Dhaka' },
-                        { id: 2, name: 'Chattogram' },
-                        { id: 3, name: 'Khulna' },
-                        { id: 4, name: 'Rajshahi' },
-                        { id: 5, name: 'Barishal' },
-                        { id: 6, name: 'Sylhet' },
-                        { id: 7, name: 'Rangpur' },
-                        { id: 8, name: 'Mymensingh' },
-                      ].map((division) => (
-                        <MenuItem key={division?.id} value={division?.name}>
-                          {division?.name}
+                      <MenuItem value="">All Districts</MenuItem>
+                      {districts.filter(Boolean).map((district) => (
+                        <MenuItem key={district} value={district}>
+                          {district}
                         </MenuItem>
                       ))}
                     </Select>
                   </FormControl>
                 </Grid>
-                <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                <Grid size={{ xs: 12, sm: 6, md: 4 }}>
                   <Typography
                     variant="caption"
                     color="text.secondary"
@@ -1010,32 +899,9 @@ export default function BeneficiaryDatabaseMain() {
                       sx={{ borderRadius: 1.5 }}
                     >
                       <MenuItem value="">All</MenuItem>
-                      <MenuItem value="Male">Male</MenuItem>
                       <MenuItem value="Female">Female</MenuItem>
-                    </Select>
-                  </FormControl>
-                </Grid>
-                <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-                  <Typography
-                    variant="caption"
-                    color="text.secondary"
-                    sx={{ mb: 0.5, display: 'block' }}
-                  >
-                    Status
-                  </Typography>
-                  <FormControl fullWidth size="small">
-                    <Select
-                      value={statusFilter}
-                      onChange={(e) => {
-                        setStatusFilter(e.target.value);
-                        setPage(1);
-                      }}
-                      sx={{ borderRadius: 1.5 }}
-                    >
-                      <MenuItem value="">All Status</MenuItem>
-                      <MenuItem value="Active">Active</MenuItem>
-                      <MenuItem value="Inactive">Inactive</MenuItem>
-                      <MenuItem value="Graduated">Graduated</MenuItem>
+                      <MenuItem value="Male">Male</MenuItem>
+                      <MenuItem value="Transgender">Transgender</MenuItem>
                     </Select>
                   </FormControl>
                 </Grid>
@@ -1096,11 +962,9 @@ export default function BeneficiaryDatabaseMain() {
                 </TableCell>
                 <TableCell sx={{ fontWeight: 700, color: 'text.primary' }}>Demographics</TableCell>
                 <TableCell sx={{ fontWeight: 700, color: 'text.primary' }}>Location</TableCell>
-                <TableCell sx={{ fontWeight: 700, color: 'text.primary' }}>Project</TableCell>
+                <TableCell sx={{ fontWeight: 700, color: 'text.primary' }}>Project / Donor</TableCell>
+                <TableCell sx={{ fontWeight: 700, color: 'text.primary' }}>Household</TableCell>
                 <TableCell sx={{ fontWeight: 700, color: 'text.primary' }}>Services</TableCell>
-                <TableCell align="center" sx={{ fontWeight: 700, color: 'text.primary' }}>
-                  Status
-                </TableCell>
                 <TableCell align="center" sx={{ fontWeight: 700, color: 'text.primary' }}>
                   Actions
                 </TableCell>
@@ -1228,290 +1092,7 @@ export default function BeneficiaryDatabaseMain() {
         <DialogContent sx={{ p: 0 }}>
           {selectedBeneficiary && (
             <Box>
-              {/* Personal Information */}
-              <Box sx={{ p: 3, bgcolor: 'background.paper' }}>
-                <Typography
-                  variant="subtitle1"
-                  fontWeight={700}
-                  color="success.dark"
-                  sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}
-                >
-                  <Iconify icon="solar:user-bold" width={20} />
-                  Personal Information
-                </Typography>
-                <Grid container spacing={2}>
-                  <Grid size={{ xs: 12, sm: 6 }}>
-                    <Typography variant="caption" color="text.secondary">
-                      Full Name
-                    </Typography>
-                    <Typography variant="body2" fontWeight={600}>
-                      {selectedBeneficiary.name}
-                    </Typography>
-                  </Grid>
-                  <Grid size={{ xs: 12, sm: 6 }}>
-                    <Typography variant="caption" color="text.secondary">
-                      Fathers Name
-                    </Typography>
-                    <Typography variant="body2" fontWeight={600}>
-                      {selectedBeneficiary.father_name}
-                    </Typography>
-                  </Grid>
-                  <Grid size={{ xs: 12, sm: 6 }}>
-                    <Typography variant="caption" color="text.secondary">
-                      Mothers Name
-                    </Typography>
-                    <Typography variant="body2" fontWeight={600}>
-                      {selectedBeneficiary.mother_name}
-                    </Typography>
-                  </Grid>
-                  <Grid size={{ xs: 12, sm: 6 }}>
-                    <Typography variant="caption" color="text.secondary">
-                      Date of Birth
-                    </Typography>
-                    <Typography variant="body2" fontWeight={600}>
-                      {selectedBeneficiary.date_of_birth} ({selectedBeneficiary.age} years)
-                    </Typography>
-                  </Grid>
-                  <Grid size={{ xs: 12, sm: 6 }}>
-                    <Typography variant="caption" color="text.secondary">
-                      Sex
-                    </Typography>
-                    <Typography variant="body2" fontWeight={600}>
-                      {selectedBeneficiary.sex}
-                    </Typography>
-                  </Grid>
-                  <Grid size={{ xs: 12, sm: 6 }}>
-                    <Typography variant="caption" color="text.secondary">
-                      Marital Status
-                    </Typography>
-                    <Typography variant="body2" fontWeight={600}>
-                      {selectedBeneficiary.marital_status}
-                    </Typography>
-                  </Grid>
-                  <Grid size={{ xs: 12, sm: 6 }}>
-                    <Typography variant="caption" color="text.secondary">
-                      Contact
-                    </Typography>
-                    <Typography variant="body2" fontWeight={600}>
-                      {selectedBeneficiary.contact}
-                    </Typography>
-                  </Grid>
-                  <Grid size={{ xs: 12, sm: 6 }}>
-                    <Typography variant="caption" color="text.secondary">
-                      Email
-                    </Typography>
-                    <Typography variant="body2" fontWeight={600}>
-                      {selectedBeneficiary.email || 'N/A'}
-                    </Typography>
-                  </Grid>
-                  <Grid size={{ xs: 12, sm: 6 }}>
-                    <Typography variant="caption" color="text.secondary">
-                      National ID
-                    </Typography>
-                    <Typography variant="body2" fontWeight={600}>
-                      {selectedBeneficiary.nid}
-                    </Typography>
-                  </Grid>
-                  <Grid size={{ xs: 12, sm: 6 }}>
-                    <Typography variant="caption" color="text.secondary">
-                      Beneficiary ID
-                    </Typography>
-                    <Typography variant="body2" fontWeight={600} color="primary.main">
-                      {selectedBeneficiary.id}
-                    </Typography>
-                  </Grid>
-                </Grid>
-              </Box>
-
-              <Divider />
-
-              {/* Socio-Economic Information */}
-              <Box sx={{ p: 3, bgcolor: 'background.neutral' }}>
-                <Typography
-                  variant="subtitle1"
-                  fontWeight={700}
-                  color="info.dark"
-                  sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}
-                >
-                  <Iconify icon="solar:diploma-bold" width={20} />
-                  Socio-Economic Information
-                </Typography>
-                <Grid container spacing={2}>
-                  <Grid size={{ xs: 12, sm: 4 }}>
-                    <Typography variant="caption" color="text.secondary">
-                      Education Level
-                    </Typography>
-                    <Typography variant="body2" fontWeight={600}>
-                      {selectedBeneficiary.education_level}
-                    </Typography>
-                  </Grid>
-                  <Grid size={{ xs: 12, sm: 4 }}>
-                    <Typography variant="caption" color="text.secondary">
-                      Occupation
-                    </Typography>
-                    <Typography variant="body2" fontWeight={600}>
-                      {selectedBeneficiary.occupation}
-                    </Typography>
-                  </Grid>
-                  <Grid size={{ xs: 12, sm: 4 }}>
-                    <Typography variant="caption" color="text.secondary">
-                      Household Size
-                    </Typography>
-                    <Typography variant="body2" fontWeight={600}>
-                      {selectedBeneficiary.household_size} members
-                    </Typography>
-                  </Grid>
-                  <Grid size={{ xs: 12, sm: 4 }}>
-                    <Typography variant="caption" color="text.secondary">
-                      Monthly Income
-                    </Typography>
-                    <Typography variant="body2" fontWeight={600}>
-                      ৳{selectedBeneficiary.monthly_income?.toLocaleString()}
-                    </Typography>
-                  </Grid>
-                </Grid>
-              </Box>
-
-              <Divider />
-
-              {/* Location Information */}
-              <Box sx={{ p: 3, bgcolor: 'background.paper' }}>
-                <Typography
-                  variant="subtitle1"
-                  fontWeight={700}
-                  sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1, color: '#9333ea' }}
-                >
-                  <Iconify icon="solar:map-point-bold" width={20} />
-                  Location Information
-                </Typography>
-                <Grid container spacing={2}>
-                  <Grid size={{ xs: 12, sm: 6 }}>
-                    <Typography variant="caption" color="text.secondary">
-                      Division
-                    </Typography>
-                    <Typography variant="body2" fontWeight={600}>
-                      {selectedBeneficiary.division}
-                    </Typography>
-                  </Grid>
-                  <Grid size={{ xs: 12, sm: 6 }}>
-                    <Typography variant="caption" color="text.secondary">
-                      District
-                    </Typography>
-                    <Typography variant="body2" fontWeight={600}>
-                      {selectedBeneficiary.district}
-                    </Typography>
-                  </Grid>
-                  <Grid size={{ xs: 12, sm: 6 }}>
-                    <Typography variant="caption" color="text.secondary">
-                      Upazila
-                    </Typography>
-                    <Typography variant="body2" fontWeight={600}>
-                      {selectedBeneficiary.upazila}
-                    </Typography>
-                  </Grid>
-                  <Grid size={{ xs: 12, sm: 6 }}>
-                    <Typography variant="caption" color="text.secondary">
-                      Union
-                    </Typography>
-                    <Typography variant="body2" fontWeight={600}>
-                      {selectedBeneficiary.union}
-                    </Typography>
-                  </Grid>
-                  <Grid size={{ xs: 12 }}>
-                    <Typography variant="caption" color="text.secondary">
-                      Address
-                    </Typography>
-                    <Typography variant="body2" fontWeight={600}>
-                      {selectedBeneficiary.village}
-                    </Typography>
-                  </Grid>
-                </Grid>
-              </Box>
-
-              <Divider />
-
-              {/* Program Information */}
-              <Box sx={{ p: 3, bgcolor: '#fff9e6' }}>
-                <Typography
-                  variant="subtitle1"
-                  fontWeight={700}
-                  sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1, color: '#f59e0b' }}
-                >
-                  <Iconify icon="solar:document-bold" width={20} />
-                  Program Information
-                </Typography>
-                <Grid container spacing={2}>
-                  <Grid size={{ xs: 12, sm: 6 }}>
-                    <Typography variant="caption" color="text.secondary">
-                      Project
-                    </Typography>
-                    <Chip
-                      label={selectedBeneficiary.project}
-                      size="small"
-                      sx={{
-                        mt: 0.5,
-                        bgcolor: 'info.lighter',
-                        color: 'info.dark',
-                        fontWeight: 600,
-                      }}
-                    />
-                  </Grid>
-                  <Grid size={{ xs: 12, sm: 6 }}>
-                    <Typography variant="caption" color="text.secondary">
-                      Status
-                    </Typography>
-                    <Chip
-                      label={selectedBeneficiary.status}
-                      size="small"
-                      sx={{
-                        mt: 0.5,
-                        bgcolor: 'success.lighter',
-                        color: 'success.dark',
-                        fontWeight: 600,
-                      }}
-                    />
-                  </Grid>
-                  <Grid size={{ xs: 12, sm: 6 }}>
-                    <Typography variant="caption" color="text.secondary">
-                      Registration Date
-                    </Typography>
-                    <Typography variant="body2" fontWeight={600}>
-                      {selectedBeneficiary.registration_date}
-                    </Typography>
-                  </Grid>
-                </Grid>
-
-                {selectedBeneficiary.vulnerability_type &&
-                  selectedBeneficiary.vulnerability_type.length > 0 && (
-                    <Box sx={{ mt: 2 }}>
-                      <Typography
-                        variant="caption"
-                        color="text.secondary"
-                        sx={{ mb: 1, display: 'block' }}
-                      >
-                        Vulnerability Type
-                      </Typography>
-                      <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                        {selectedBeneficiary.vulnerability_type.map((attr) => (
-                          <Chip
-                            key={attr}
-                            label={attr}
-                            size="small"
-                            icon={<Iconify icon="solar:check-circle-bold" width={14} />}
-                            sx={{
-                              bgcolor: 'error.lighter',
-                              color: 'error.dark',
-                              fontWeight: 600,
-                              '& .MuiChip-icon': {
-                                color: 'error.main',
-                              },
-                            }}
-                          />
-                        ))}
-                      </Stack>
-                    </Box>
-                  )}
-              </Box>
+              <BeneficiaryProfileDetails beneficiary={selectedBeneficiary} />
 
               <Divider />
 

@@ -8,12 +8,16 @@ import { Box, Card, Typography, CardContent } from '@mui/material';
 
 import { endpoints } from 'src/utils/axios';
 
-import { useCreateRequest } from 'src/actions/ledars-hook';
+import { useGetRequest, useCreateRequest } from 'src/actions/ledars-hook';
 
 import { DonorForm, buildFormData } from 'src/sections/projects/donors/donor-form';
 
 export default function DonorCreatePage() {
   const [loading, setLoading] = useState(false);
+  const { data: currenciesData } = useGetRequest(
+    `${endpoints.projectManagements.currencies}?status=active`
+  );
+  const currencies = currenciesData?.results || currenciesData || [];
 
   const handleCreate = async (values) => {
     setLoading(true);
@@ -62,7 +66,11 @@ export default function DonorCreatePage() {
           </Typography>
         </Box>
         <CardContent sx={{ p: { xs: 2.5, md: 3 } }}>
-          <DonorForm onSubmit={handleCreate} submitLabel={loading ? 'Saving...' : 'Create Donor'} />
+          <DonorForm
+            onSubmit={handleCreate}
+            submitLabel={loading ? 'Saving...' : 'Create Donor'}
+            currencies={currencies}
+          />
         </CardContent>
       </Card>
     </Box>

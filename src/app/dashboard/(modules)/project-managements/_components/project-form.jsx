@@ -752,7 +752,13 @@ export default function ProjectForm({ mode = 'create', projectId = null }) {
   const isEditMode = mode === 'edit';
   const isReadOnly = false;
 
-  const { donors, users, isLoading: optionsLoading, actions } = useProjectManagementsApi();
+  const {
+    donors,
+    users,
+    currencies,
+    isLoading: optionsLoading,
+    actions,
+  } = useProjectManagementsApi();
   const {
     project,
     isLoading: projectLoading,
@@ -1500,14 +1506,20 @@ export default function ProjectForm({ mode = 'create', projectId = null }) {
                         />
                       </Grid>
                       <Grid size={{ xs: 12, md: 3 }}>
-                        <TextField
+                        <Autocomplete
                           size="small"
-                          label="Currency"
-                          fullWidth
-                          value={form.currency}
-                          onChange={(event) =>
-                            updateField('currency', event.target.value.toUpperCase())
+                          options={currencies}
+                          value={currencies.find((c) => c.code === form.currency) || null}
+                          getOptionLabel={(option) =>
+                            option
+                              ? `${option.code}${option.symbol ? ` (${option.symbol})` : ''}`
+                              : ''
                           }
+                          isOptionEqualToValue={(option, value) => option.code === value.code}
+                          onChange={(_, value) => updateField('currency', value?.code || 'BDT')}
+                          renderInput={(params) => (
+                            <TextField {...params} size="small" label="Currency" />
+                          )}
                         />
                       </Grid>
                       <Grid size={{ xs: 12, md: 6 }}>

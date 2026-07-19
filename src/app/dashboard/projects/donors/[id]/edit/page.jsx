@@ -17,6 +17,8 @@ export default function DonorEditPage() {
   const { id } = useParams();
   const EP = endpoints.projectManagements;
   const { data: donor, loading } = useGetRequest(EP.donorById(id));
+  const { data: currenciesData } = useGetRequest(`${EP.currencies}?status=active`);
+  const currencies = currenciesData?.results || currenciesData || [];
 
   const initialValues = useMemo(
     () => ({
@@ -88,6 +90,7 @@ export default function DonorEditPage() {
             initialValues={initialValues}
             onSubmit={handleUpdate}
             submitLabel="Save Changes"
+            currencies={currencies}
           />
         </CardContent>
       </Card>
