@@ -39,9 +39,16 @@ import {
   approveProjectManagementWorkItem,
   exportProjectManagementRoadmapExcel,
 } from './use-project-managements-api';
+import { ProjectActionPlanPanel } from './project-action-plan-panel';
+import { ProjectExpenditurePanel } from './project-expenditure-panel';
 
 const ITERATION_COLORS = ['#ff9f43', '#ff3d71', '#6c2bd9'];
 const ASSIGNEE_TIME_TABS = ['daily', 'weekly', 'monthly', 'yearly'];
+const ROADMAP_SECTION_TABS = [
+  { value: 'roadmap', label: 'Roadmap' },
+  { value: 'expenditure', label: 'Project Expenditure' },
+  { value: 'action-plan', label: 'Action Plan' },
+];
 const PLAN_STATUS_OPTIONS = ['Pending', 'In Progress', 'On Hold', 'Completed'];
 
 function formatDate(value, fallback = '—') {
@@ -1094,6 +1101,7 @@ export default function ProjectDetail({ projectId }) {
     didDrag: false,
   });
   const [assigneeTimeView, setAssigneeTimeView] = useState('weekly');
+  const [roadmapSectionTab, setRoadmapSectionTab] = useState('roadmap');
   const [selectedPlan, setSelectedPlan] = useState(null);
   const [selectedWorkloadDetail, setSelectedWorkloadDetail] = useState(null);
   const [savingPlanId, setSavingPlanId] = useState(null);
@@ -2230,21 +2238,60 @@ export default function ProjectDetail({ projectId }) {
 
         <Card sx={{ borderRadius: 3 }}>
           <CardContent>
+            <Stack spacing={2} sx={{ mb: 2.5 }}>
+              <Box>
+                <Typography variant="h6" fontWeight={700}>
+                  Project Plan Roadmap
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                  Timeline board, expenditure plan, and monthly action plan in Excel-style layouts.
+                </Typography>
+              </Box>
+
+              <Tabs
+                value={roadmapSectionTab}
+                onChange={(_, value) => setRoadmapSectionTab(value)}
+                variant="scrollable"
+                allowScrollButtonsMobile
+                sx={{
+                  minHeight: 42,
+                  borderBottom: `1px solid ${theme.palette.divider}`,
+                  '& .MuiTab-root': {
+                    minHeight: 42,
+                    textTransform: 'none',
+                    fontWeight: 700,
+                  },
+                }}
+              >
+                {ROADMAP_SECTION_TABS.map((tab) => (
+                  <Tab key={tab.value} value={tab.value} label={tab.label} />
+                ))}
+              </Tabs>
+            </Stack>
+
+            {roadmapSectionTab === 'expenditure' ? (
+              <ProjectExpenditurePanel projectId={project?.id} />
+            ) : null}
+
+            {roadmapSectionTab === 'action-plan' ? (
+              <ProjectActionPlanPanel
+                projectId={project?.id}
+                defaultYear={project?.start_date ? dayjs(project.start_date).year() : undefined}
+                defaultMonth={
+                  project?.start_date ? dayjs(project.start_date).month() + 1 : undefined
+                }
+              />
+            ) : null}
+
+            {roadmapSectionTab === 'roadmap' ? (
+              <>
             <Stack
               direction={{ xs: 'column', md: 'row' }}
               justifyContent="space-between"
               spacing={2}
               sx={{ mb: 2.5 }}
             >
-              <Box>
-                <Typography variant="h6" fontWeight={700}>
-                  Project Plan Roadmap
-                </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                  Timeline-driven delivery board with task rows, status, assignee workload, and
-                  click-through task details.
-                </Typography>
-              </Box>
+              <Box />
               <Stack spacing={1.5} alignItems={{ xs: 'flex-start', md: 'flex-end' }}>
                 <Button
                   variant="contained"
@@ -2829,6 +2876,8 @@ export default function ProjectDetail({ projectId }) {
                 No plan steps added to this project yet.
               </Typography>
             )}
+              </>
+            ) : null}
           </CardContent>
         </Card>
       </Stack>

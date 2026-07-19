@@ -230,6 +230,19 @@ export const endpoints = {
     projects: '/api/ngo-projects/',
     projectById: (id) => `/api/ngo-projects/${id}/`,
     exportProjectRoadmapExcel: (id) => `/api/ngo-projects/${id}/export-roadmap-excel/`,
+    projectExpenditure: (id, period = 'yearly') => {
+      const params = new URLSearchParams();
+      if (period) params.set('period', String(period));
+      const query = params.toString();
+      return `/api/ngo-projects/${id}/expenditure/${query ? `?${query}` : ''}`;
+    },
+    projectActionPlan: (id, year, month) => {
+      const params = new URLSearchParams();
+      if (year) params.set('year', String(year));
+      if (month) params.set('month', String(month));
+      const query = params.toString();
+      return `/api/ngo-projects/${id}/action-plan/${query ? `?${query}` : ''}`;
+    },
     units: '/api/ngo-project-units/',
     unitById: (id) => `/api/ngo-project-units/${id}/`,
     projectOverview: '/api/ngo-projects/overview/',

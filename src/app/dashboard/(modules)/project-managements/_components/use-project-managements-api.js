@@ -987,6 +987,60 @@ export async function exportProjectManagementRoadmapExcel(id) {
   triggerBrowserDownload(response.data, fileName);
 }
 
+export async function fetchProjectManagementProjectRaw(id) {
+  const { data } = await axiosInstance.get(endpoints.projectManagements.projectById(id));
+  return data;
+}
+
+export async function importProjectExpenditureExcel(projectId, file) {
+  const {
+    parseExpenditureWorkbook,
+    mergeExpenditureImportIntoProject,
+  } = await import('./plan-tables-excel');
+
+  const rawProject = await fetchProjectManagementProjectRaw(projectId);
+  const updates = await parseExpenditureWorkbook(file);
+  const payload = mergeExpenditureImportIntoProject(rawProject, updates);
+
+  const { data } = await axiosInstance.patch(
+    endpoints.projectManagements.projectById(projectId),
+    payload
+  );
+
+  await mutate(endpoints.projectManagements.projectById(projectId));
+  await mutate(`${endpoints.projectManagements.projects}?ordering=-created_at`);
+  await mutate(endpoints.projectManagements.dashboard);
+
+  return data;
+}
+
+export async function importProjectActionPlanExcel(projectId, file, year, month) {
+  const {
+    parseActionPlanWorkbook,
+    mergeActionPlanImportIntoProject,
+  } = await import('./plan-tables-excel');
+
+  const rawProject = await fetchProjectManagementProjectRaw(projectId);
+  const parsed = await parseActionPlanWorkbook(file, year, month);
+  const payload = mergeActionPlanImportIntoProject(rawProject, parsed);
+
+  const { data } = await axiosInstance.patch(
+    endpoints.projectManagements.projectById(projectId),
+    payload
+  );
+
+  await mutate(endpoints.projectManagements.projectById(projectId));
+  await mutate(`${endpoints.projectManagements.projects}?ordering=-created_at`);
+  await mutate(endpoints.projectManagements.dashboard);
+
+  return {
+    data,
+    year: parsed.year,
+    month: parsed.month,
+    importedRows: parsed.updates.length,
+  };
+}
+
 export function useProjectManagementsApi() {
   const projectsUrl = `${endpoints.projectManagements.projects}?ordering=-created_at`;
   const donorsUrl = `${endpoints.projectManagements.donors}?ordering=name`;

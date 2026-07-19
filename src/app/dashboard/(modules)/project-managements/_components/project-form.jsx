@@ -37,6 +37,12 @@ import {
   useProjectManagementsApi,
   useProjectManagementProject,
 } from './use-project-managements-api';
+import {
+  sumUnitPeriodUnits,
+  normalizeUnitPeriodsFromApi,
+  deriveSubPlanDatesFromPeriods,
+  SubPlanUnitDistributionCalendar,
+} from './sub-plan-unit-distribution-calendar';
 
 function toStringArray(value, fallback = []) {
   if (Array.isArray(value)) return value.filter(Boolean).map(String);
@@ -81,6 +87,8 @@ const EMPTY_SUB_PLAN = {
   unit_no: '',
   unit_cost: '',
   assigned_user_ids: [],
+  unit_periods: [],
+  show_unit_distribution: false,
 };
 
 function calculateSubPlanCost(unitNo, unitCost) {
@@ -224,58 +232,23 @@ function formatCurrencyAmount(currency, amount) {
 function isPlaceholderSubPlan(subPlan) {
   return (
     !String(subPlan?.title || '').trim() &&
-    !subPlan?.start_date &&
-    !subPlan?.end_date &&
     !String(subPlan?.unit_type || '').trim() &&
     !Number(subPlan?.unit_no || 0) &&
     !Number(subPlan?.unit_cost || 0) &&
-    (!Array.isArray(subPlan?.assigned_user_ids) || subPlan.assigned_user_ids.length === 0)
+    (!Array.isArray(subPlan?.assigned_user_ids) || subPlan.assigned_user_ids.length === 0) &&
+    sumUnitPeriodUnits(subPlan?.unit_periods) <= 0
   );
 }
 
-function syncSubPlanDatesWithProject(subPlan, projectStartDate, projectEndDate) {
-  const next = {
+function syncSubPlanDatesWithProject(subPlan) {
+  const derived = deriveSubPlanDatesFromPeriods(subPlan.unit_periods);
+
+  return {
     ...subPlan,
     assigned_user_ids: Array.isArray(subPlan.assigned_user_ids) ? subPlan.assigned_user_ids : [],
+    start_date: derived.start_date,
+    end_date: derived.end_date,
   };
-
-  if (
-    next.start_date &&
-    projectStartDate &&
-    dayjs(next.start_date).isBefore(dayjs(projectStartDate), 'day')
-  ) {
-    next.start_date = projectStartDate;
-  }
-  if (
-    next.start_date &&
-    projectEndDate &&
-    dayjs(next.start_date).isAfter(dayjs(projectEndDate), 'day')
-  ) {
-    next.start_date = projectEndDate;
-  }
-  if (
-    next.end_date &&
-    projectStartDate &&
-    dayjs(next.end_date).isBefore(dayjs(projectStartDate), 'day')
-  ) {
-    next.end_date = projectStartDate;
-  }
-  if (
-    next.end_date &&
-    projectEndDate &&
-    dayjs(next.end_date).isAfter(dayjs(projectEndDate), 'day')
-  ) {
-    next.end_date = projectEndDate;
-  }
-  if (
-    next.start_date &&
-    next.end_date &&
-    dayjs(next.end_date).isBefore(dayjs(next.start_date), 'day')
-  ) {
-    next.end_date = next.start_date;
-  }
-
-  return next;
 }
 
 function syncPlanDatesWithProject(plan, projectStartDate, projectEndDate) {
@@ -283,7 +256,7 @@ function syncPlanDatesWithProject(plan, projectStartDate, projectEndDate) {
     Array.isArray(plan.sub_plans) && plan.sub_plans.length
       ? plan.sub_plans
       : [{ ...EMPTY_SUB_PLAN }]
-  ).map((sub) => syncSubPlanDatesWithProject(sub, projectStartDate, projectEndDate));
+  ).map((sub) => syncSubPlanDatesWithProject(sub));
 
   const starts = subPlans.map((s) => s.start_date).filter(Boolean);
   const ends = subPlans.map((s) => s.end_date).filter(Boolean);
@@ -418,24 +391,23 @@ function validateForm(form) {
         if (!isPlaceholderSubPlan(sub)) {
           const subSerial = getSubSerialCode(mainSerial, subIndex);
 
-          if (sub.start_date && sub.end_date && sub.end_date < sub.start_date) {
-            return `Sub plan ${subSerial} end date cannot be before its start date.`;
+          const periods = normalizeUnitPeriodsFromApi(sub.unit_periods);
+          if (periods.some((period) => period.end_date < period.start_date)) {
+            return `Sub plan ${subSerial} has an invalid distribution date range.`;
+          }
+          if (periods.some((period) => form.start_date && period.start_date < form.start_date)) {
+            return `Sub plan ${subSerial} distribution must stay within the project date range.`;
+          }
+          if (periods.some((period) => form.end_date && period.end_date > form.end_date)) {
+            return `Sub plan ${subSerial} distribution must stay within the project date range.`;
           }
 
-          if (
-            form.start_date &&
-            sub.start_date &&
-            dayjs(sub.start_date).isBefore(dayjs(form.start_date), 'day')
-          ) {
-            return `Sub plan ${subSerial} start date must stay within the project date range.`;
-          }
-
-          if (
-            form.end_date &&
-            sub.end_date &&
-            dayjs(sub.end_date).isAfter(dayjs(form.end_date), 'day')
-          ) {
-            return `Sub plan ${subSerial} end date must stay within the project date range.`;
+          const unitNo = Number(sub.unit_no || 0);
+          const distributed = sumUnitPeriodUnits(sub.unit_periods);
+          if (unitNo > 0 && distributed > 0 && Math.abs(distributed - unitNo) > 0.01) {
+            return `Sub plan ${subSerial}: distributed units (${distributed.toFixed(
+              2
+            )}) must equal Unit No (${unitNo.toFixed(2)}).`;
           }
         }
       }
@@ -521,26 +493,36 @@ function toPayload(form) {
           .filter(
             (sub) =>
               sub.title?.trim() ||
-              sub.start_date ||
-              sub.end_date ||
               sub.unit_type?.trim() ||
               Number(sub.unit_no || 0) ||
-              Number(sub.unit_cost || 0)
+              Number(sub.unit_cost || 0) ||
+              sumUnitPeriodUnits(sub.unit_periods) > 0
           )
           .map((sub, subIndex) => {
             const unitNo = Number(sub.unit_no || 0);
             const unitCost = Number(sub.unit_cost || 0);
+            const unitPeriods = normalizeUnitPeriodsFromApi(sub.unit_periods)
+              .map((period) => ({
+                period_type: 'range',
+                start_date: period.start_date,
+                end_date: period.end_date,
+                unit_no: Number(period.unit_no || 0),
+              }))
+              .filter((period) => period.unit_no > 0);
+            const derivedDates = deriveSubPlanDatesFromPeriods(unitPeriods);
+
             return {
               serial_code: getSubSerialCode(serialCode, subIndex),
               title: (sub.title || '').trim(),
-              start_date: sub.start_date || null,
-              end_date: sub.end_date || null,
+              start_date: derivedDates.start_date || null,
+              end_date: derivedDates.end_date || null,
               unit_type: (sub.unit_type || '').trim(),
               unit_no: unitNo,
               unit_cost: unitCost,
               cost: calculateSubPlanCost(unitNo, unitCost),
               sort_order: subIndex + 1,
               assigned_user_ids: sub.assigned_user_ids || [],
+              unit_periods: unitPeriods,
             };
           });
 
@@ -626,25 +608,32 @@ function mapProjectToForm(project) {
               : [],
             sub_plans:
               Array.isArray(plan.sub_plans) && plan.sub_plans.length
-                ? plan.sub_plans.map((sub) => ({
-                    title: sub.title || '',
-                    start_date: sub.start_date || '',
-                    end_date: sub.end_date || '',
-                    unit_type: sub.unit_type || '',
-                    unit_no: sub.unit_no != null && sub.unit_no !== '' ? String(sub.unit_no) : '',
-                    unit_cost:
-                      sub.unit_cost != null && sub.unit_cost !== '' ? String(sub.unit_cost) : '',
-                    assigned_user_ids: Array.isArray(sub.assigned_users)
-                      ? sub.assigned_users.map((user) => user.id)
-                      : Array.isArray(sub.assigned_user_ids)
-                        ? sub.assigned_user_ids
-                        : [],
-                  }))
+                ? plan.sub_plans.map((sub) => {
+                    const unitPeriods = Array.isArray(sub.unit_periods)
+                      ? normalizeUnitPeriodsFromApi(sub.unit_periods)
+                      : [];
+                    const derivedDates = deriveSubPlanDatesFromPeriods(unitPeriods);
+
+                    return {
+                      title: sub.title || '',
+                      start_date: derivedDates.start_date || sub.start_date || '',
+                      end_date: derivedDates.end_date || sub.end_date || '',
+                      unit_type: sub.unit_type || '',
+                      unit_no: sub.unit_no != null && sub.unit_no !== '' ? String(sub.unit_no) : '',
+                      unit_cost:
+                        sub.unit_cost != null && sub.unit_cost !== '' ? String(sub.unit_cost) : '',
+                      assigned_user_ids: Array.isArray(sub.assigned_users)
+                        ? sub.assigned_users.map((user) => user.id)
+                        : Array.isArray(sub.assigned_user_ids)
+                          ? sub.assigned_user_ids
+                          : [],
+                      unit_periods: unitPeriods,
+                      show_unit_distribution: unitPeriods.length > 0,
+                    };
+                  })
                 : [
                     {
                       ...EMPTY_SUB_PLAN,
-                      start_date: plan.start_date || '',
-                      end_date: plan.end_date || '',
                       assigned_user_ids: Array.isArray(plan.assigned_users)
                         ? plan.assigned_users.map((user) => user.id)
                         : [],
@@ -950,7 +939,7 @@ export default function ProjectForm({ mode = 'create', projectId = null }) {
         ).map((sub, currentSubIndex) => {
           if (currentSubIndex !== subIndex) return sub;
 
-          return {
+          const nextSub = {
             ...sub,
             [field]:
               field === 'assigned_user_ids'
@@ -959,6 +948,8 @@ export default function ProjectForm({ mode = 'create', projectId = null }) {
                   : []
                 : value,
           };
+
+          return nextSub;
         });
 
         return syncPlanDatesWithProject(
@@ -966,6 +957,61 @@ export default function ProjectForm({ mode = 'create', projectId = null }) {
           prev.start_date,
           prev.end_date
         );
+      }),
+    }));
+  }
+
+  function setSubPlanUnitPeriods(planIndex, subIndex, unitPeriods) {
+    setForm((prev) => ({
+      ...prev,
+      plans: prev.plans.map((plan, currentIndex) => {
+        if (currentIndex !== planIndex) return plan;
+
+        const subPlans = (
+          Array.isArray(plan.sub_plans) && plan.sub_plans.length
+            ? plan.sub_plans
+            : [{ ...EMPTY_SUB_PLAN }]
+        ).map((sub, currentSubIndex) => {
+          if (currentSubIndex !== subIndex) return sub;
+          const derivedDates = deriveSubPlanDatesFromPeriods(unitPeriods);
+          return {
+            ...sub,
+            show_unit_distribution: true,
+            unit_periods: unitPeriods,
+            start_date: derivedDates.start_date,
+            end_date: derivedDates.end_date,
+          };
+        });
+
+        return syncPlanDatesWithProject(
+          { ...plan, sub_plans: subPlans },
+          prev.start_date,
+          prev.end_date
+        );
+      }),
+    }));
+  }
+
+  function toggleSubPlanUnitDistribution(planIndex, subIndex) {
+    setForm((prev) => ({
+      ...prev,
+      plans: prev.plans.map((plan, currentIndex) => {
+        if (currentIndex !== planIndex) return plan;
+
+        const subPlans = (
+          Array.isArray(plan.sub_plans) && plan.sub_plans.length
+            ? plan.sub_plans
+            : [{ ...EMPTY_SUB_PLAN }]
+        ).map((sub, currentSubIndex) => {
+          if (currentSubIndex !== subIndex) return sub;
+
+          return {
+            ...sub,
+            show_unit_distribution: !sub.show_unit_distribution,
+          };
+        });
+
+        return { ...plan, sub_plans: subPlans };
       }),
     }));
   }
@@ -2242,6 +2288,44 @@ export default function ProjectForm({ mode = 'create', projectId = null }) {
                                     }}
                                   />
                                 </Box>
+                                <Box sx={{ flex: '0 0 20%', maxWidth: '20%' }}>
+                                  <Autocomplete
+                                    multiple
+                                    size="small"
+                                    options={selectedAssignedUsers}
+                                    value={selectedPlanUsers}
+                                    onChange={(_, value) =>
+                                      updatePlan(
+                                        index,
+                                        'assigned_user_ids',
+                                        value.map((item) => item.id)
+                                      )
+                                    }
+                                    getOptionLabel={(option) => option?.username || 'Unknown user'}
+                                    renderTags={(value, getTagProps) =>
+                                      value.map((option, tagIndex) => (
+                                        <Chip
+                                          {...getTagProps({ index: tagIndex })}
+                                          key={option.id}
+                                          label={option.username}
+                                          size="small"
+                                        />
+                                      ))
+                                    }
+                                    renderInput={(params) => (
+                                      <TextField {...params} size="small" label="Assign Users" />
+                                    )}
+                                    sx={{
+                                      mb: 2,
+                                      bgcolor: 'background.paper',
+                                      borderRadius: 1,
+                                      '& .MuiOutlinedInput-root': {
+                                        bgcolor: 'background.paper',
+                                        borderRadius: '8px',
+                                      },
+                                    }}
+                                  />
+                                </Box>
                                 <Box
                                   sx={{
                                     flex: '0 0 10%',
@@ -2262,48 +2346,6 @@ export default function ProjectForm({ mode = 'create', projectId = null }) {
                                   ) : null}
                                 </Box>
                               </Box>
-
-                              <Autocomplete
-                                multiple
-                                size="small"
-                                options={selectedAssignedUsers}
-                                value={selectedPlanUsers}
-                                onChange={(_, value) =>
-                                  updatePlan(
-                                    index,
-                                    'assigned_user_ids',
-                                    value.map((item) => item.id)
-                                  )
-                                }
-                                getOptionLabel={(option) => option?.username || 'Unknown user'}
-                                renderTags={(value, getTagProps) =>
-                                  value.map((option, tagIndex) => (
-                                    <Chip
-                                      {...getTagProps({ index: tagIndex })}
-                                      key={option.id}
-                                      label={option.username}
-                                      size="small"
-                                    />
-                                  ))
-                                }
-                                renderInput={(params) => (
-                                  <TextField
-                                    {...params}
-                                    size="small"
-                                    label="Assign Users"
-                                    helperText="Only users selected in Basic Information are available here."
-                                  />
-                                )}
-                                sx={{
-                                  mb: 2,
-                                  bgcolor: 'background.paper',
-                                  borderRadius: 1,
-                                  '& .MuiOutlinedInput-root': {
-                                    bgcolor: 'background.paper',
-                                    borderRadius: '8px',
-                                  },
-                                }}
-                              />
 
                               <Stack spacing={1.25}>
                                 {subPlans.map((subPlan, subIndex) => {
@@ -2358,10 +2400,7 @@ export default function ProjectForm({ mode = 'create', projectId = null }) {
                                             color="error"
                                             onClick={() => removeSubPlan(index, subIndex)}
                                           >
-                                            <Iconify
-                                              icon="solar:trash-bin-trash-bold"
-                                              width={16}
-                                            />
+                                            <Iconify icon="solar:trash-bin-trash-bold" width={16} />
                                           </IconButton>
                                         ) : null}
                                       </Stack>
@@ -2376,54 +2415,7 @@ export default function ProjectForm({ mode = 'create', projectId = null }) {
                                           '& .MuiChip-root': { height: 20, fontSize: 11 },
                                         }}
                                       >
-                                        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-                                          <TextField
-                                            size="small"
-                                            label="Start Date"
-                                            type="date"
-                                            fullWidth
-                                            InputLabelProps={{ shrink: true }}
-                                            value={subPlan.start_date}
-                                            onChange={(event) =>
-                                              updateSubPlan(
-                                                index,
-                                                subIndex,
-                                                'start_date',
-                                                event.target.value
-                                              )
-                                            }
-                                            inputProps={{
-                                              min: form.start_date || undefined,
-                                              max: form.end_date || undefined,
-                                            }}
-                                          />
-                                        </Grid>
-                                        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-                                          <TextField
-                                            size="small"
-                                            label="End Date"
-                                            type="date"
-                                            fullWidth
-                                            InputLabelProps={{ shrink: true }}
-                                            value={subPlan.end_date}
-                                            onChange={(event) =>
-                                              updateSubPlan(
-                                                index,
-                                                subIndex,
-                                                'end_date',
-                                                event.target.value
-                                              )
-                                            }
-                                            inputProps={{
-                                              min:
-                                                subPlan.start_date ||
-                                                form.start_date ||
-                                                undefined,
-                                              max: form.end_date || undefined,
-                                            }}
-                                          />
-                                        </Grid>
-                                        <Grid size={{ xs: 12, md: 6 }}>
+                                        <Grid size={{ xs: 12 }}>
                                           <Autocomplete
                                             multiple
                                             size="small"
@@ -2546,6 +2538,61 @@ export default function ProjectForm({ mode = 'create', projectId = null }) {
                                             InputProps={{ readOnly: true }}
                                             helperText="Unit No × Unit Cost"
                                           />
+                                        </Grid>
+                                        <Grid size={{ xs: 12 }}>
+                                          <Stack
+                                            direction={{ xs: 'column', sm: 'row' }}
+                                            spacing={1}
+                                            alignItems={{ xs: 'stretch', sm: 'center' }}
+                                            justifyContent="space-between"
+                                          >
+                                            <Button
+                                              size="small"
+                                              variant="outlined"
+                                              onClick={() =>
+                                                toggleSubPlanUnitDistribution(index, subIndex)
+                                              }
+                                            >
+                                              {subPlan.show_unit_distribution
+                                                ? 'Hide unit distribution calendar'
+                                                : 'Open unit distribution calendar'}
+                                            </Button>
+                                            {subPlan.show_unit_distribution ? (
+                                              <Typography variant="caption" color="text.secondary">
+                                                Distributed:{' '}
+                                                {sumUnitPeriodUnits(subPlan.unit_periods).toFixed(
+                                                  2
+                                                )}{' '}
+                                                / {Number(subPlan.unit_no || 0).toFixed(2)}
+                                              </Typography>
+                                            ) : null}
+                                          </Stack>
+                                          {subPlan.show_unit_distribution ? (
+                                            <SubPlanUnitDistributionCalendar
+                                              projectStart={form.start_date}
+                                              projectEnd={form.end_date}
+                                              totalUnits={subPlan.unit_no}
+                                              periods={subPlan.unit_periods}
+                                              accentColor={cardColor.accent}
+                                              onChange={(nextPeriods) =>
+                                                setSubPlanUnitPeriods(index, subIndex, nextPeriods)
+                                              }
+                                            />
+                                          ) : null}
+                                          {subPlan.show_unit_distribution &&
+                                          Number(subPlan.unit_no || 0) > 0 &&
+                                          Math.abs(
+                                            sumUnitPeriodUnits(subPlan.unit_periods) -
+                                              Number(subPlan.unit_no || 0)
+                                          ) > 0.01 ? (
+                                            <Typography
+                                              variant="caption"
+                                              color="error"
+                                              sx={{ display: 'block', mt: 1 }}
+                                            >
+                                              Distributed units must equal the activity Unit No.
+                                            </Typography>
+                                          ) : null}
                                         </Grid>
                                       </Grid>
                                     </Box>
