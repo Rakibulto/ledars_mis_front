@@ -11,10 +11,14 @@ import { NavUl, NavLi, NavCollapse } from '../styles';
 // ----------------------------------------------------------------------
 
 function getItemKey(item) {
-  return item.path || item.title;
+  return `${item.title || ''}::${item.path || ''}`;
 }
 
 function hasActiveItem(item, pathname) {
+  if (item.forceActive) {
+    return true;
+  }
+
   if (isPathActive(pathname, item.path, !!item.children, item.activeMatch)) {
     return true;
   }
@@ -36,7 +40,7 @@ export function NavList({
   openMenu,
   onToggleMenu,
 }) {
-  const active = useActiveLink(data.path, !!data.children, data.activeMatch);
+  const active = useActiveLink(data.path, !!data.children, data.activeMatch) || !!data.forceActive;
 
   const handleToggleMenu = useCallback(() => {
     if (data.children) {

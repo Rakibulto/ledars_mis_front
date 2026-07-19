@@ -15,7 +15,7 @@ import { NavUl, NavLi, Subheader } from '../styles';
 // ----------------------------------------------------------------------
 
 function getItemKey(item) {
-  return item.path || item.title;
+  return `${item.title || ''}::${item.path || ''}`;
 }
 
 function getGroupKey(group) {
@@ -24,6 +24,10 @@ function getGroupKey(group) {
 
 function hasActiveItem(items, pathname) {
   return items.some((item) => {
+    if (item.forceActive) {
+      return true;
+    }
+
     if (isPathActive(pathname, item.path, !!item.children, item.activeMatch)) {
       return true;
     }

@@ -1,6 +1,10 @@
-import { useMemo, useCallback } from 'react';
+import { useMemo, useCallback, useEffect, useState } from 'react';
+
+import useSWR from 'swr';
 
 import { paths } from 'src/routes/paths';
+
+import { fetcher, endpoints } from 'src/utils/axios';
 
 import { useGetEmployee } from 'src/actions/employees';
 
@@ -8,6 +12,11 @@ import { Label } from 'src/components/label';
 import { Iconify } from 'src/components/iconify';
 
 import { useAuthContext } from 'src/auth/hooks';
+
+import {
+  GATEWAY_PROJECT_CHANGE_EVENT,
+  readGatewayProjectId,
+} from 'src/app/dashboard/(modules)/accounts-gateway/_components/gateway-project-storage';
 
 // ----------------------------------------------------------------------
 
@@ -219,6 +228,61 @@ export function useNavData() {
   const canShowWebLogin =
     user?.role === 'Employee' || user?.role === 'Supervisor' ? !!employee?.allow_web_login : true;
 
+  const { data: gatewayProjectsData } = useSWR(
+    `${endpoints.projectManagements.projects}?page_size=200&ordering=title`,
+    fetcher
+  );
+
+  const gatewayProjects = useMemo(() => {
+    if (Array.isArray(gatewayProjectsData)) return gatewayProjectsData;
+    if (Array.isArray(gatewayProjectsData?.results)) return gatewayProjectsData.results;
+    return [];
+  }, [gatewayProjectsData]);
+
+  const [gatewayProjectId, setGatewayProjectId] = useState(() => readGatewayProjectId());
+
+  useEffect(() => {
+    const sync = (event) => {
+      if (event?.type === GATEWAY_PROJECT_CHANGE_EVENT) {
+        setGatewayProjectId(event.detail?.projectId ?? null);
+        return;
+      }
+      setGatewayProjectId(readGatewayProjectId());
+    };
+    window.addEventListener(GATEWAY_PROJECT_CHANGE_EVENT, sync);
+    window.addEventListener('storage', sync);
+    return () => {
+      window.removeEventListener(GATEWAY_PROJECT_CHANGE_EVENT, sync);
+      window.removeEventListener('storage', sync);
+    };
+  }, []);
+
+  const selectedGatewayProject = useMemo(
+    () => gatewayProjects.find((p) => p.id === gatewayProjectId) || null,
+    [gatewayProjects, gatewayProjectId]
+  );
+
+  const accountsNavTitle = selectedGatewayProject
+    ? `Accounts (${selectedGatewayProject.short_name || selectedGatewayProject.code || 'Project'})`
+    : 'Accounts';
+
+  const projectsNavTitle = selectedGatewayProject
+    ? `Projects (${selectedGatewayProject.short_name || selectedGatewayProject.code || 'Selected'})`
+    : 'Projects';
+
+  const gatewayProjectNavChildren = useMemo(
+    () =>
+      gatewayProjects.map((p) => {
+        const label = p.short_name || p.code || p.title || `Project #${p.id}`;
+        return {
+          title: label,
+          path: paths.dashboard.accountsGateway.selectProject(p.id),
+          icon: ICONS.projects,
+        };
+      }),
+    [gatewayProjects]
+  );
+
   const navData = useMemo(() => {
     const employeeChildren = [
       ...(hasPermission('view_employee')
@@ -226,25 +290,25 @@ export function useNavData() {
         : []),
       ...(hasPermission('view_employee')
         ? [
-          {
-            title: 'Account Information',
-            path: paths.dashboard.user.account,
-            icon: ICONS.account,
-          },
-        ]
+            {
+              title: 'Account Information',
+              path: paths.dashboard.user.account,
+              icon: ICONS.account,
+            },
+          ]
         : []),
     ];
 
     const holidayChildren = [
       ...(hasPermission('view_holiday')
         ? [
-          { title: 'List', path: paths.dashboard.holiday.list, icon: ICONS.menuItem },
-          {
-            title: 'Holiday Calendar',
-            path: paths.dashboard.holiday.calendar,
-            icon: ICONS.calendar,
-          },
-        ]
+            { title: 'List', path: paths.dashboard.holiday.list, icon: ICONS.menuItem },
+            {
+              title: 'Holiday Calendar',
+              path: paths.dashboard.holiday.calendar,
+              icon: ICONS.calendar,
+            },
+          ]
         : []),
       ...(!hasPermission('view_holiday') && user?.role !== 'Employee' && user?.role !== 'Supervisor'
         ? [{ title: 'Calendar', path: paths.dashboard.holiday.calendar, icon: ICONS.calendar }]
@@ -275,40 +339,40 @@ export function useNavData() {
       // ============================================================
       ...(hasPermission('view_meeting')
         ? [
-          {
-            items: [
-              {
-                title: 'Meeting Management',
-                icon: ICONS.meeting,
-                children: [
-                  {
-                    title: 'Meeting List',
-                    path: paths.dashboard.meetingManagement.list,
-                    icon: ICONS.meeting,
-                  },
-                  ...(hasPermission('add_meeting')
-                    ? [
-                      {
-                        title: 'Create Meeting',
-                        path: paths.dashboard.meetingManagement.create,
-                        icon: ICONS.formAutomation,
-                      },
-                    ]
-                    : []),
-                  ...(hasPermission('view_meeting')
-                    ? [
-                      {
-                        title: 'Meeting Calendar',
-                        path: paths.dashboard.meetingManagement.calendar,
-                        icon: ICONS.calendar,
-                      },
-                    ]
-                    : []),
-                ],
-              },
-            ],
-          },
-        ]
+            {
+              items: [
+                {
+                  title: 'Meeting Management',
+                  icon: ICONS.meeting,
+                  children: [
+                    {
+                      title: 'Meeting List',
+                      path: paths.dashboard.meetingManagement.list,
+                      icon: ICONS.meeting,
+                    },
+                    ...(hasPermission('add_meeting')
+                      ? [
+                          {
+                            title: 'Create Meeting',
+                            path: paths.dashboard.meetingManagement.create,
+                            icon: ICONS.formAutomation,
+                          },
+                        ]
+                      : []),
+                    ...(hasPermission('view_meeting')
+                      ? [
+                          {
+                            title: 'Meeting Calendar',
+                            path: paths.dashboard.meetingManagement.calendar,
+                            icon: ICONS.calendar,
+                          },
+                        ]
+                      : []),
+                  ],
+                },
+              ],
+            },
+          ]
         : []),
 
       // ============================================================
@@ -316,31 +380,31 @@ export function useNavData() {
       // ============================================================
       ...(hasPermission('view_lead')
         ? [
-          {
-            items: [
-              {
-                title: 'CRM',
-                icon: ICONS.crm,
-                children: [
-                  {
-                    title: 'All Leads',
-                    path: paths.dashboard.crm.leads.list,
-                    icon: ICONS.menuItem,
-                  },
-                  ...(hasPermission('add_lead')
-                    ? [
-                      {
-                        title: 'Create Lead',
-                        path: paths.dashboard.crm.leads.create,
-                        icon: ICONS.formAutomation,
-                      },
-                    ]
-                    : []),
-                ],
-              },
-            ],
-          },
-        ]
+            {
+              items: [
+                {
+                  title: 'CRM',
+                  icon: ICONS.crm,
+                  children: [
+                    {
+                      title: 'All Leads',
+                      path: paths.dashboard.crm.leads.list,
+                      icon: ICONS.menuItem,
+                    },
+                    ...(hasPermission('add_lead')
+                      ? [
+                          {
+                            title: 'Create Lead',
+                            path: paths.dashboard.crm.leads.create,
+                            icon: ICONS.formAutomation,
+                          },
+                        ]
+                      : []),
+                  ],
+                },
+              ],
+            },
+          ]
         : []),
 
       // ============================================================
@@ -348,31 +412,31 @@ export function useNavData() {
       // ============================================================
       ...(hasPermission('view_movementmanagement')
         ? [
-          {
-            items: [
-              {
-                title: 'Movement Management',
-                icon: ICONS.movement,
-                children: [
-                  {
-                    title: 'Movement List',
-                    path: paths.dashboard.crm.movementManagement.list,
-                    icon: ICONS.menuItem,
-                  },
-                  ...(hasPermission('add_movementmanagement')
-                    ? [
-                      {
-                        title: 'Create Movement',
-                        path: paths.dashboard.crm.movementManagement.create,
-                        icon: ICONS.formAutomation,
-                      },
-                    ]
-                    : []),
-                ],
-              },
-            ],
-          },
-        ]
+            {
+              items: [
+                {
+                  title: 'Movement Management',
+                  icon: ICONS.movement,
+                  children: [
+                    {
+                      title: 'Movement List',
+                      path: paths.dashboard.crm.movementManagement.list,
+                      icon: ICONS.menuItem,
+                    },
+                    ...(hasPermission('add_movementmanagement')
+                      ? [
+                          {
+                            title: 'Create Movement',
+                            path: paths.dashboard.crm.movementManagement.create,
+                            icon: ICONS.formAutomation,
+                          },
+                        ]
+                      : []),
+                  ],
+                },
+              ],
+            },
+          ]
         : []),
 
       // ============================================================
@@ -397,647 +461,654 @@ export function useNavData() {
         'view_usermanagement'
       )
         ? [
-          {
-            items: [
-              {
-                title: 'Procurement Management',
-                icon: ICONS.procurement,
-                children: [
-                  ...(hasAnyPermission(
-                    'view_materialrequisition',
-                    'view_rfq',
-                    'view_vendorquotation',
-                    'view_workorder',
-                    'view_paymentrequisition'
-                  )
-                    ? [
-                      {
-                        title: 'Dashboard',
-                        path: paths.dashboard.procurement.dashboard,
-                        icon: ICONS.dashboard,
-                      },
-                    ]
-                    : []),
-                  ...(hasPermission('view_materialrequisition')
-                    ? [
-                      {
-                        title: 'Material Requisitions',
-                        path: paths.dashboard.procurement.requisitions.root,
-                        icon: ICONS.requisition,
-                        children: [
-                          {
-                            title: 'Requisition List',
-                            path: paths.dashboard.procurement.requisitions.list,
-                            icon: ICONS.requisition,
-                          },
-                          ...(hasPermission('add_materialrequisition')
-                            ? [
-                              {
-                                title: 'Create Requisition',
-                                path: paths.dashboard.procurement.requisitions.create,
-                                icon: ICONS.formAutomation,
-                              },
-                            ]
-                            : []),
-                          {
-                            title: 'Workflow Approval',
-                            path: paths.dashboard.procurement.requisitions.workflowApproval,
-                            icon: ICONS.approval,
-                          },
-                        ],
-                      },
-                    ]
-                    : []),
-                  ...(hasPermission('view_rfq')
-                    ? [
-                      {
-                        title: 'RFQ Management',
-                        path: paths.dashboard.procurement.rfq.root,
-                        icon: ICONS.rfq,
-                        children: [
-                          {
-                            title: 'RFQ List',
-                            path: paths.dashboard.procurement.rfq.list,
-                            icon: ICONS.rfq,
-                          },
-                          ...(hasPermission('add_rfq')
-                            ? [
-                              {
-                                title: 'Create RFQ',
-                                path: paths.dashboard.procurement.rfq.create,
-                                icon: ICONS.formAutomation,
-                              },
-                            ]
-                            : []),
-                          {
-                            title: 'Vendor Distribution',
-                            path: paths.dashboard.procurement.rfq.distribution,
-                            icon: ICONS.vendors,
-                          },
-                          {
-                            title: 'Submission Monitoring',
-                            path: paths.dashboard.procurement.rfq.monitoring,
-                            icon: ICONS.analytics,
-                          },
-                        ],
-                      },
-                    ]
-                    : []),
-                  ...(hasPermission('view_vendorquotation')
-                    ? [
-                      {
-                        title: 'Quotations',
-                        path: paths.dashboard.procurement.quotations.root,
-                        icon: ICONS.quotation,
-                        children: [
-                          {
-                            title: 'Opening & Evaluation',
-                            path: paths.dashboard.procurement.quotations.list,
-                            icon: ICONS.menuItem,
-                          },
-                          {
-                            title: 'Direct Evaluation',
-                            path: paths.dashboard.procurement.quotations.directEvaluation,
-                            icon: ICONS.rfq,
-                          },
-                          ...(hasPermission('add_vendorquotation')
-                            ? [
-                              {
-                                title: 'Manual Submit Quotation',
-                                path: paths.dashboard.procurement.quotations.manualSubmitQuotation,
-                                icon: ICONS.quotation,
-                              },
-                            ]
-                            : []),
-                        ],
-                      },
-                    ]
-                    : []),
-                  ...(hasPermission('view_comparativestatement')
-                    ? [
-                      {
-                        title: 'Comparative Statements',
-                        path: paths.dashboard.procurement.comparative.root,
-                        icon: ICONS.comparison,
-                        children: [
-                          {
-                            title: 'CS List',
-                            path: paths.dashboard.procurement.comparative.list,
-                            icon: ICONS.comparison,
-                          },
-                          {
-                            title: 'Pending Approvals',
-                            path: paths.dashboard.procurement.comparative.pending,
-                            icon: ICONS.approval,
-                          },
-                        ],
-                      },
-                    ]
-                    : []),
-                  ...(hasPermission('view_award')
-                    ? [
-                      {
-                        title: 'Awards',
-                        path: paths.dashboard.procurement.awards.root,
-                        icon: ICONS.award,
-                        children: [
-                          {
-                            title: 'Award Summary',
-                            path: paths.dashboard.procurement.awards.summary,
-                            icon: ICONS.award,
-                          },
-                          {
-                            title: 'Award History',
-                            path: paths.dashboard.procurement.awards.history,
-                            icon: ICONS.reports,
-                          },
-                        ],
-                      },
-                    ]
-                    : []),
-                  ...(hasPermission('view_workorder')
-                    ? [
-                      {
-                        title: 'Work Orders',
-                        path: paths.dashboard.procurement.workOrders.root,
-                        icon: ICONS.workOrder,
-                        children: [
-                          {
-                            title: 'WO List',
-                            path: paths.dashboard.procurement.workOrders.list,
-                            icon: ICONS.workOrder,
-                          },
-                          ...(hasPermission('add_workorder')
-                            ? [
-                              {
-                                title: 'Create WO',
-                                path: paths.dashboard.procurement.workOrders.create,
-                                icon: ICONS.formAutomation,
-                              },
-                            ]
-                            : []),
-                          {
-                            title: 'Pending Approvals',
-                            path: paths.dashboard.procurement.workOrders.pendingApprovals,
-                            icon: ICONS.approval,
-                          },
-                        ],
-                      },
-                    ]
-                    : []),
-                  ...(hasPermission('view_directpurchase')
-                    ? [
-                      {
-                        title: 'Direct Purchase',
-                        path: paths.dashboard.procurement.directPurchase.root,
-                        icon: ICONS.payment,
-                        children: [
-                          {
-                            title: 'DP List',
-                            path: paths.dashboard.procurement.directPurchase.list,
-                            icon: ICONS.menuItem,
-                          },
-                          ...(hasPermission('add_directpurchase')
-                            ? [
-                              {
-                                title: 'Create DP',
-                                path: paths.dashboard.procurement.directPurchase.create,
-                                icon: ICONS.formAutomation,
-                              },
-                            ]
-                            : []),
-                        ],
-                      },
-                    ]
-                    : []),
-                  ...(hasPermission('view_goodsreceiptnote')
-                    ? [
-                      {
-                        title: 'Goods Receive Notes',
-                        path: paths.dashboard.procurement.grn.root,
-                        icon: ICONS.grn,
-                        children: [
-                          {
-                            title: 'GRN List',
-                            path: paths.dashboard.procurement.grn.list,
-                            icon: ICONS.grn,
-                          },
-                          ...(hasPermission('add_goodsreceiptnote')
-                            ? [
-                              {
-                                title: 'Create GRN',
-                                path: paths.dashboard.procurement.grn.create,
-                                icon: ICONS.formAutomation,
-                              },
-                            ]
-                            : []),
-                          {
-                            title: 'Pending Verification',
-                            path: paths.dashboard.procurement.grn.pendingVerification,
-                            icon: ICONS.approval,
-                          },
-                        ],
-                      },
-                    ]
-                    : []),
-                  ...(hasPermission('view_warehouse')
-                    ? [
-                      {
-                        title: 'Inventory',
-                        path: paths.dashboard.procurement.inventory.root,
-                        icon: ICONS.inventory,
-                        children: [
+            {
+              items: [
+                {
+                  title: 'Procurement Management',
+                  icon: ICONS.procurement,
+                  children: [
+                    ...(hasAnyPermission(
+                      'view_materialrequisition',
+                      'view_rfq',
+                      'view_vendorquotation',
+                      'view_workorder',
+                      'view_paymentrequisition'
+                    )
+                      ? [
                           {
                             title: 'Dashboard',
-                            path: paths.dashboard.procurement.inventory.dashboard,
+                            path: paths.dashboard.procurement.dashboard,
                             icon: ICONS.dashboard,
                           },
+                        ]
+                      : []),
+                    ...(hasPermission('view_materialrequisition')
+                      ? [
                           {
-                            title: 'All Items',
-                            path: `${paths.dashboard.procurement.inventory.items}?type=all`,
-                            icon: ICONS.inventory,
+                            title: 'Material Requisitions',
+                            path: paths.dashboard.procurement.requisitions.root,
+                            icon: ICONS.requisition,
+                            children: [
+                              {
+                                title: 'Requisition List',
+                                path: paths.dashboard.procurement.requisitions.list,
+                                icon: ICONS.requisition,
+                              },
+                              ...(hasPermission('add_materialrequisition')
+                                ? [
+                                    {
+                                      title: 'Create Requisition',
+                                      path: paths.dashboard.procurement.requisitions.create,
+                                      icon: ICONS.formAutomation,
+                                    },
+                                  ]
+                                : []),
+                              {
+                                title: 'Workflow Approval',
+                                path: paths.dashboard.procurement.requisitions.workflowApproval,
+                                icon: ICONS.approval,
+                              },
+                            ],
                           },
+                        ]
+                      : []),
+                    ...(hasPermission('view_rfq')
+                      ? [
                           {
-                            title: 'Fixed Assets',
-                            path: `${paths.dashboard.procurement.inventory.items}?type=asset`,
-                            icon: ICONS.inventory,
+                            title: 'RFQ Management',
+                            path: paths.dashboard.procurement.rfq.root,
+                            icon: ICONS.rfq,
+                            children: [
+                              {
+                                title: 'RFQ List',
+                                path: paths.dashboard.procurement.rfq.list,
+                                icon: ICONS.rfq,
+                              },
+                              ...(hasPermission('add_rfq')
+                                ? [
+                                    {
+                                      title: 'Create RFQ',
+                                      path: paths.dashboard.procurement.rfq.create,
+                                      icon: ICONS.formAutomation,
+                                    },
+                                  ]
+                                : []),
+                              {
+                                title: 'Vendor Distribution',
+                                path: paths.dashboard.procurement.rfq.distribution,
+                                icon: ICONS.vendors,
+                              },
+                              {
+                                title: 'Submission Monitoring',
+                                path: paths.dashboard.procurement.rfq.monitoring,
+                                icon: ICONS.analytics,
+                              },
+                            ],
                           },
+                        ]
+                      : []),
+                    ...(hasPermission('view_vendorquotation')
+                      ? [
                           {
-                            title: 'Consumables',
-                            path: `${paths.dashboard.procurement.inventory.items}?type=consumable`,
-                            icon: ICONS.inventory,
+                            title: 'Quotations',
+                            path: paths.dashboard.procurement.quotations.root,
+                            icon: ICONS.quotation,
+                            children: [
+                              {
+                                title: 'Opening & Evaluation',
+                                path: paths.dashboard.procurement.quotations.list,
+                                icon: ICONS.menuItem,
+                              },
+                              {
+                                title: 'Direct Evaluation',
+                                path: paths.dashboard.procurement.quotations.directEvaluation,
+                                icon: ICONS.rfq,
+                              },
+                              ...(hasPermission('add_vendorquotation')
+                                ? [
+                                    {
+                                      title: 'Manual Submit Quotation',
+                                      path: paths.dashboard.procurement.quotations
+                                        .manualSubmitQuotation,
+                                      icon: ICONS.quotation,
+                                    },
+                                  ]
+                                : []),
+                            ],
                           },
-                        ],
-                      },
-                    ]
-                    : []),
-                  ...(hasPermission('view_paymentrequisition')
-                    ? [
-                      {
-                        title: 'Payment Requisitions',
-                        path: paths.dashboard.procurement.paymentRequisitions.root,
-                        icon: ICONS.payment,
-                        children: [
+                        ]
+                      : []),
+                    ...(hasPermission('view_comparativestatement')
+                      ? [
                           {
-                            title: 'PRF List',
-                            path: paths.dashboard.procurement.paymentRequisitions.listApproved,
+                            title: 'Comparative Statements',
+                            path: paths.dashboard.procurement.comparative.root,
+                            icon: ICONS.comparison,
+                            children: [
+                              {
+                                title: 'CS List',
+                                path: paths.dashboard.procurement.comparative.list,
+                                icon: ICONS.comparison,
+                              },
+                              {
+                                title: 'Pending Approvals',
+                                path: paths.dashboard.procurement.comparative.pending,
+                                icon: ICONS.approval,
+                              },
+                            ],
+                          },
+                        ]
+                      : []),
+                    ...(hasPermission('view_award')
+                      ? [
+                          {
+                            title: 'Awards',
+                            path: paths.dashboard.procurement.awards.root,
+                            icon: ICONS.award,
+                            children: [
+                              {
+                                title: 'Award Summary',
+                                path: paths.dashboard.procurement.awards.summary,
+                                icon: ICONS.award,
+                              },
+                              {
+                                title: 'Award History',
+                                path: paths.dashboard.procurement.awards.history,
+                                icon: ICONS.reports,
+                              },
+                            ],
+                          },
+                        ]
+                      : []),
+                    ...(hasPermission('view_workorder')
+                      ? [
+                          {
+                            title: 'Work Orders',
+                            path: paths.dashboard.procurement.workOrders.root,
+                            icon: ICONS.workOrder,
+                            children: [
+                              {
+                                title: 'WO List',
+                                path: paths.dashboard.procurement.workOrders.list,
+                                icon: ICONS.workOrder,
+                              },
+                              ...(hasPermission('add_workorder')
+                                ? [
+                                    {
+                                      title: 'Create WO',
+                                      path: paths.dashboard.procurement.workOrders.create,
+                                      icon: ICONS.formAutomation,
+                                    },
+                                  ]
+                                : []),
+                              {
+                                title: 'Pending Approvals',
+                                path: paths.dashboard.procurement.workOrders.pendingApprovals,
+                                icon: ICONS.approval,
+                              },
+                            ],
+                          },
+                        ]
+                      : []),
+                    ...(hasPermission('view_directpurchase')
+                      ? [
+                          {
+                            title: 'Direct Purchase',
+                            path: paths.dashboard.procurement.directPurchase.root,
                             icon: ICONS.payment,
-                          },
-                          ...(hasPermission('add_paymentrequisition')
-                            ? [
+                            children: [
                               {
-                                title: 'Create PRF',
-                                path: paths.dashboard.procurement.paymentRequisitions.create,
-                                icon: ICONS.formAutomation,
+                                title: 'DP List',
+                                path: paths.dashboard.procurement.directPurchase.list,
+                                icon: ICONS.menuItem,
                               },
-                            ]
-                            : []),
-                          {
-                            title: 'Pending Approvals',
-                            path: paths.dashboard.procurement.paymentRequisitions.pendingApprovals,
-                            icon: ICONS.approval,
+                              ...(hasPermission('add_directpurchase')
+                                ? [
+                                    {
+                                      title: 'Create DP',
+                                      path: paths.dashboard.procurement.directPurchase.create,
+                                      icon: ICONS.formAutomation,
+                                    },
+                                  ]
+                                : []),
+                            ],
                           },
+                        ]
+                      : []),
+                    ...(hasPermission('view_goodsreceiptnote')
+                      ? [
                           {
-                            title: 'Payment Schedule',
-                            path: paths.dashboard.procurement.paymentRequisitions.paymentSchedule,
-                            icon: ICONS.calendar,
-                          },
-                        ],
-                      },
-                    ]
-                    : []),
-                  ...(hasPermission('view_treasuryprocessing')
-                    ? [
-                      {
-                        title: 'Treasury & Finance',
-                        path: paths.dashboard.procurement.treasury.root,
-                        icon: ICONS.treasury,
-                        children: [
-                          {
-                            title: 'Finance Review Queue',
-                            path: paths.dashboard.procurement.treasury.financeReview,
-                            icon: ICONS.accounting,
-                          },
-                          {
-                            title: 'Payment Status',
-                            path: paths.dashboard.procurement.treasury.timeline,
-                            icon: ICONS.shift,
-                          },
-                        ],
-                      },
-                    ]
-                    : []),
-                  ...(hasAnyPermission('view_vendorverification', 'view_vendorcategory', 'view_vendorcategorymapping')
-                    ? [
-                      {
-                        title: 'Vendors',
-                        path: paths.dashboard.procurement.vendors.root,
-                        icon: ICONS.vendors,
-                        children: [
-                          ...(hasPermission('add_vendorverification')
-                            ? [
+                            title: 'Goods Receive Notes',
+                            path: paths.dashboard.procurement.grn.root,
+                            icon: ICONS.grn,
+                            children: [
                               {
-                                title: 'Vendor Register',
-                                path: paths.dashboard.procurement.vendors.create,
-                                icon: ICONS.vendors,
+                                title: 'GRN List',
+                                path: paths.dashboard.procurement.grn.list,
+                                icon: ICONS.grn,
                               },
-                            ]
-                            : []),
-                          ...(hasAnyPermission('view_vendorverification', 'view_vendorcategory')
-                            ? [
+                              ...(hasPermission('add_goodsreceiptnote')
+                                ? [
+                                    {
+                                      title: 'Create GRN',
+                                      path: paths.dashboard.procurement.grn.create,
+                                      icon: ICONS.formAutomation,
+                                    },
+                                  ]
+                                : []),
                               {
-                                title: 'Vendor List',
-                                path: paths.dashboard.procurement.vendors.list,
-                                icon: ICONS.vendors,
-                              },
-                            ]
-                            : []),
-                          ...(hasPermission('view_vendorverification')
-                            ? [
-                              {
-                                title: 'Vendor Verification',
-                                path: paths.dashboard.procurement.vendors.verification,
+                                title: 'Pending Verification',
+                                path: paths.dashboard.procurement.grn.pendingVerification,
                                 icon: ICONS.approval,
                               },
-                            ]
-                            : []),
-                          ...(hasPermission('view_vendorcategorymapping')
-                            ? [
-                              {
-                                title: 'Category Mapping',
-                                path: paths.dashboard.procurement.vendors.categoryMapping,
-                                icon: ICONS.categories,
-                              },
-                            ]
-                            : []),
-                          ...(hasPermission('view_vendorverification')
-                            ? [
-                              {
-                                title: 'Vendor Enlistment',
-                                path: paths.dashboard.procurement.vendors.enlistment,
-                                icon: ICONS.formAutomation,
-                              },
-                              {
-                                title: 'Vendor Blacklist',
-                                path: paths.dashboard.procurement.vendors.blacklist,
-                                icon: ICONS.lock,
-                              },
-                            ]
-                            : []),
-                        ],
-                      },
-                    ]
-                    : []),
-                  ...(hasAnyPermission(
-                    'view_materialrequisition',
-                    'view_rfq',
-                    'view_workorder',
-                    'view_award',
-                    'view_comparativestatement',
-                    'view_paymentrequisition',
-                    'view_procurementnotification'
-                  )
-                    ? [
-                      {
-                        title: 'Reports',
-                        path: paths.dashboard.procurement.reports.root,
-                        icon: ICONS.reports,
-                        children: [
-                          {
-                            title: 'Requisition Report',
-                            path: paths.dashboard.procurement.reports.requisitions,
-                            icon: ICONS.reports,
+                            ],
                           },
+                        ]
+                      : []),
+                    ...(hasPermission('view_warehouse')
+                      ? [
                           {
-                            title: 'RFQ Report',
-                            path: paths.dashboard.procurement.reports.rfq,
-                            icon: ICONS.reports,
-                          },
-                          {
-                            title: 'Vendor Participation',
-                            path: paths.dashboard.procurement.reports.vendorParticipation,
-                            icon: ICONS.reports,
-                          },
-                          {
-                            title: 'Vendor Awards',
-                            path: paths.dashboard.procurement.reports.vendorAwards,
-                            icon: ICONS.reports,
-                          },
-                          {
-                            title: 'Work Order Report',
-                            path: paths.dashboard.procurement.reports.workOrders,
-                            icon: ICONS.reports,
-                          },
-                          {
-                            title: 'Inventory Received',
-                            path: paths.dashboard.procurement.reports.inventoryReceived,
-                            icon: ICONS.reports,
-                          },
-                          {
-                            title: 'Fixed Asset Register',
-                            path: paths.dashboard.procurement.reports.fixedAssets,
-                            icon: ICONS.reports,
-                          },
-                          {
-                            title: 'Consumable Stock',
-                            path: paths.dashboard.procurement.reports.consumables,
-                            icon: ICONS.reports,
-                          },
-                          {
-                            title: 'Payment Status',
-                            path: paths.dashboard.procurement.reports.payments,
-                            icon: ICONS.reports,
-                          },
-                          {
-                            title: 'Budget vs Procurement',
-                            path: paths.dashboard.procurement.reports.budget,
-                            icon: ICONS.reports,
-                          },
-                          {
-                            title: 'CS Summary',
-                            path: paths.dashboard.procurement.reports.comparativeStatements,
-                            icon: ICONS.reports,
-                          },
-                          {
-                            title: 'Audit Logs',
-                            path: paths.dashboard.procurement.reports.auditLogs,
-                            icon: ICONS.reports,
-                          },
-                          {
-                            title: 'Project Procurement Report',
-                            path: paths.dashboard.procurement.reports.projectProcurement,
-                            icon: ICONS.reports,
-                          },
-                        ],
-                      },
-                    ]
-                    : []),
-                  ...(hasPermission('view_procurementnotification')
-                    ? [
-                      {
-                        title: 'Notifications',
-                        path: paths.dashboard.procurement.notifications,
-                        icon: ICONS.notifications,
-                      },
-                    ]
-                    : []),
-                  ...(hasAnyPermission(
-                    'view_usermanagement',
-                    'view_procurementrole',
-                    'view_approvalmatrix',
-                    'view_budget',
-                    'view_account',
-                    'view_accountcategory',
-                    'view_emailtemplate',
-                    'view_notificationsetting',
-                    'view_officemanagement',
-                    'view_fiscalyear',
-                    'view_currency'
-                  )
-                    ? [
-                      {
-                        title: 'Settings',
-                        path: paths.dashboard.procurement.settings.root,
-                        icon: ICONS.settings,
-                        children: [
-                          ...(hasPermission('view_usermanagement')
-                            ? [
-                              {
-                                title: 'User Management',
-                                path: paths.dashboard.procurement.settings.users,
-                                icon: ICONS.user,
-                              },
-                            ]
-                            : []),
-                          ...(hasPermission('view_procurementrole')
-                            ? [
-                              {
-                                title: 'Roles & Permissions',
-                                path: paths.dashboard.procurement.settings.roles,
-                                icon: ICONS.lock,
-                              },
-                            ]
-                            : []),
-                          ...(hasPermission('view_approvalmatrix')
-                            ? [
-                              {
-                                title: 'Approval Matrix',
-                                path: paths.dashboard.procurement.settings.approvalMatrix,
-                                icon: ICONS.approval,
-                              },
-                            ]
-                            : []),
-                          ...(hasPermission('view_budget')
-                            ? [
-                              {
-                                title: 'Budget Codes',
-                                path: paths.dashboard.procurement.settings.budgetCodes,
-                                icon: ICONS.accounting,
-                              },
-                            ]
-                            : []),
-                          ...(hasPermission('view_accountcategory')
-                            ? [
-                              {
-                                title: 'Account Categories',
-                                path: paths.dashboard.procurement.settings.accountCategories,
-                                icon: ICONS.categories,
-                              },
-                            ]
-                            : []),
-                          ...(hasPermission('view_account')
-                            ? [
-                              {
-                                title: 'Account Codes',
-                                path: paths.dashboard.procurement.settings.accountCodes,
-                                icon: ICONS.accounting,
-                              },
-                            ]
-                            : []),
-                          {
-                            title: 'Category Setup',
-                            path: paths.dashboard.procurement.settings.categories,
-                            icon: ICONS.categories,
-                          },
-                          {
-                            title: 'Item Master',
-                            path: paths.dashboard.procurement.settings.items,
+                            title: 'Inventory',
+                            path: paths.dashboard.procurement.inventory.root,
                             icon: ICONS.inventory,
+                            children: [
+                              {
+                                title: 'Dashboard',
+                                path: paths.dashboard.procurement.inventory.dashboard,
+                                icon: ICONS.dashboard,
+                              },
+                              {
+                                title: 'All Items',
+                                path: `${paths.dashboard.procurement.inventory.items}?type=all`,
+                                icon: ICONS.inventory,
+                              },
+                              {
+                                title: 'Fixed Assets',
+                                path: `${paths.dashboard.procurement.inventory.items}?type=asset`,
+                                icon: ICONS.inventory,
+                              },
+                              {
+                                title: 'Consumables',
+                                path: `${paths.dashboard.procurement.inventory.items}?type=consumable`,
+                                icon: ICONS.inventory,
+                              },
+                            ],
                           },
-                          ...(hasPermission('view_emailtemplate')
-                            ? [
-                              {
-                                title: 'Email Templates',
-                                path: paths.dashboard.procurement.settings.emailTemplates,
-                                icon: ICONS.mail,
-                              },
-                            ]
-                            : []),
-                          ...(hasPermission('view_notificationsetting')
-                            ? [
-                              {
-                                title: 'Notification Settings',
-                                path: paths.dashboard.procurement.settings.notifications,
-                                icon: ICONS.notifications,
-                              },
-                            ]
-                            : []),
-                          ...(hasPermission('view_officemanagement')
-                            ? [
-                              {
-                                title: 'Office Management',
-                                path: paths.dashboard.procurement.settings.offices,
-                                icon: ICONS.branch,
-                              },
-                            ]
-                            : []),
+                        ]
+                      : []),
+                    ...(hasPermission('view_paymentrequisition')
+                      ? [
                           {
-                            title: 'Authority Delegation',
-                            path: paths.dashboard.procurement.settings.delegation,
-                            icon: ICONS.approval,
-                          },
-                          {
-                            title: 'Escalation Rules',
-                            path: paths.dashboard.procurement.settings.escalation,
-                            icon: ICONS.notifications,
-                          },
-                          ...(hasPermission('view_fiscalyear')
-                            ? [
+                            title: 'Payment Requisitions',
+                            path: paths.dashboard.procurement.paymentRequisitions.root,
+                            icon: ICONS.payment,
+                            children: [
                               {
-                                title: 'Fiscal Year',
-                                path: paths.dashboard.procurement.settings.fiscalYear,
+                                title: 'PRF List',
+                                path: paths.dashboard.procurement.paymentRequisitions.listApproved,
+                                icon: ICONS.payment,
+                              },
+                              ...(hasPermission('add_paymentrequisition')
+                                ? [
+                                    {
+                                      title: 'Create PRF',
+                                      path: paths.dashboard.procurement.paymentRequisitions.create,
+                                      icon: ICONS.formAutomation,
+                                    },
+                                  ]
+                                : []),
+                              {
+                                title: 'Pending Approvals',
+                                path: paths.dashboard.procurement.paymentRequisitions
+                                  .pendingApprovals,
+                                icon: ICONS.approval,
+                              },
+                              {
+                                title: 'Payment Schedule',
+                                path: paths.dashboard.procurement.paymentRequisitions
+                                  .paymentSchedule,
                                 icon: ICONS.calendar,
                               },
-                            ]
-                            : []),
-                          ...(hasPermission('view_currency')
-                            ? [
+                            ],
+                          },
+                        ]
+                      : []),
+                    ...(hasPermission('view_treasuryprocessing')
+                      ? [
+                          {
+                            title: 'Treasury & Finance',
+                            path: paths.dashboard.procurement.treasury.root,
+                            icon: ICONS.treasury,
+                            children: [
                               {
-                                title: 'Currency & Rates',
-                                path: paths.dashboard.procurement.settings.currency,
+                                title: 'Finance Review Queue',
+                                path: paths.dashboard.procurement.treasury.financeReview,
                                 icon: ICONS.accounting,
                               },
-                            ]
-                            : []),
+                              {
+                                title: 'Payment Status',
+                                path: paths.dashboard.procurement.treasury.timeline,
+                                icon: ICONS.shift,
+                              },
+                            ],
+                          },
+                        ]
+                      : []),
+                    ...(hasAnyPermission(
+                      'view_vendorverification',
+                      'view_vendorcategory',
+                      'view_vendorcategorymapping'
+                    )
+                      ? [
                           {
-                            title: 'System Logs',
-                            path: paths.dashboard.procurement.settings.systemLogs,
+                            title: 'Vendors',
+                            path: paths.dashboard.procurement.vendors.root,
+                            icon: ICONS.vendors,
+                            children: [
+                              ...(hasPermission('add_vendorverification')
+                                ? [
+                                    {
+                                      title: 'Vendor Register',
+                                      path: paths.dashboard.procurement.vendors.create,
+                                      icon: ICONS.vendors,
+                                    },
+                                  ]
+                                : []),
+                              ...(hasAnyPermission('view_vendorverification', 'view_vendorcategory')
+                                ? [
+                                    {
+                                      title: 'Vendor List',
+                                      path: paths.dashboard.procurement.vendors.list,
+                                      icon: ICONS.vendors,
+                                    },
+                                  ]
+                                : []),
+                              ...(hasPermission('view_vendorverification')
+                                ? [
+                                    {
+                                      title: 'Vendor Verification',
+                                      path: paths.dashboard.procurement.vendors.verification,
+                                      icon: ICONS.approval,
+                                    },
+                                  ]
+                                : []),
+                              ...(hasPermission('view_vendorcategorymapping')
+                                ? [
+                                    {
+                                      title: 'Category Mapping',
+                                      path: paths.dashboard.procurement.vendors.categoryMapping,
+                                      icon: ICONS.categories,
+                                    },
+                                  ]
+                                : []),
+                              ...(hasPermission('view_vendorverification')
+                                ? [
+                                    {
+                                      title: 'Vendor Enlistment',
+                                      path: paths.dashboard.procurement.vendors.enlistment,
+                                      icon: ICONS.formAutomation,
+                                    },
+                                    {
+                                      title: 'Vendor Blacklist',
+                                      path: paths.dashboard.procurement.vendors.blacklist,
+                                      icon: ICONS.lock,
+                                    },
+                                  ]
+                                : []),
+                            ],
+                          },
+                        ]
+                      : []),
+                    ...(hasAnyPermission(
+                      'view_materialrequisition',
+                      'view_rfq',
+                      'view_workorder',
+                      'view_award',
+                      'view_comparativestatement',
+                      'view_paymentrequisition',
+                      'view_procurementnotification'
+                    )
+                      ? [
+                          {
+                            title: 'Reports',
+                            path: paths.dashboard.procurement.reports.root,
                             icon: ICONS.reports,
+                            children: [
+                              {
+                                title: 'Requisition Report',
+                                path: paths.dashboard.procurement.reports.requisitions,
+                                icon: ICONS.reports,
+                              },
+                              {
+                                title: 'RFQ Report',
+                                path: paths.dashboard.procurement.reports.rfq,
+                                icon: ICONS.reports,
+                              },
+                              {
+                                title: 'Vendor Participation',
+                                path: paths.dashboard.procurement.reports.vendorParticipation,
+                                icon: ICONS.reports,
+                              },
+                              {
+                                title: 'Vendor Awards',
+                                path: paths.dashboard.procurement.reports.vendorAwards,
+                                icon: ICONS.reports,
+                              },
+                              {
+                                title: 'Work Order Report',
+                                path: paths.dashboard.procurement.reports.workOrders,
+                                icon: ICONS.reports,
+                              },
+                              {
+                                title: 'Inventory Received',
+                                path: paths.dashboard.procurement.reports.inventoryReceived,
+                                icon: ICONS.reports,
+                              },
+                              {
+                                title: 'Fixed Asset Register',
+                                path: paths.dashboard.procurement.reports.fixedAssets,
+                                icon: ICONS.reports,
+                              },
+                              {
+                                title: 'Consumable Stock',
+                                path: paths.dashboard.procurement.reports.consumables,
+                                icon: ICONS.reports,
+                              },
+                              {
+                                title: 'Payment Status',
+                                path: paths.dashboard.procurement.reports.payments,
+                                icon: ICONS.reports,
+                              },
+                              {
+                                title: 'Budget vs Procurement',
+                                path: paths.dashboard.procurement.reports.budget,
+                                icon: ICONS.reports,
+                              },
+                              {
+                                title: 'CS Summary',
+                                path: paths.dashboard.procurement.reports.comparativeStatements,
+                                icon: ICONS.reports,
+                              },
+                              {
+                                title: 'Audit Logs',
+                                path: paths.dashboard.procurement.reports.auditLogs,
+                                icon: ICONS.reports,
+                              },
+                              {
+                                title: 'Project Procurement Report',
+                                path: paths.dashboard.procurement.reports.projectProcurement,
+                                icon: ICONS.reports,
+                              },
+                            ],
                           },
+                        ]
+                      : []),
+                    ...(hasPermission('view_procurementnotification')
+                      ? [
                           {
-                            title: 'Backup & Recovery',
-                            path: paths.dashboard.procurement.settings.backup,
-                            icon: ICONS.settings,
+                            title: 'Notifications',
+                            path: paths.dashboard.procurement.notifications,
+                            icon: ICONS.notifications,
                           },
-                        ],
-                      },
-                    ]
-                    : []),
-                ],
-              },
-            ],
-          },
-        ]
+                        ]
+                      : []),
+                    ...(hasAnyPermission(
+                      'view_usermanagement',
+                      'view_procurementrole',
+                      'view_approvalmatrix',
+                      'view_budget',
+                      'view_account',
+                      'view_accountcategory',
+                      'view_emailtemplate',
+                      'view_notificationsetting',
+                      'view_officemanagement',
+                      'view_fiscalyear',
+                      'view_currency'
+                    )
+                      ? [
+                          {
+                            title: 'Settings',
+                            path: paths.dashboard.procurement.settings.root,
+                            icon: ICONS.settings,
+                            children: [
+                              ...(hasPermission('view_usermanagement')
+                                ? [
+                                    {
+                                      title: 'User Management',
+                                      path: paths.dashboard.procurement.settings.users,
+                                      icon: ICONS.user,
+                                    },
+                                  ]
+                                : []),
+                              ...(hasPermission('view_procurementrole')
+                                ? [
+                                    {
+                                      title: 'Roles & Permissions',
+                                      path: paths.dashboard.procurement.settings.roles,
+                                      icon: ICONS.lock,
+                                    },
+                                  ]
+                                : []),
+                              ...(hasPermission('view_approvalmatrix')
+                                ? [
+                                    {
+                                      title: 'Approval Matrix',
+                                      path: paths.dashboard.procurement.settings.approvalMatrix,
+                                      icon: ICONS.approval,
+                                    },
+                                  ]
+                                : []),
+                              ...(hasPermission('view_budget')
+                                ? [
+                                    {
+                                      title: 'Budget Codes',
+                                      path: paths.dashboard.procurement.settings.budgetCodes,
+                                      icon: ICONS.accounting,
+                                    },
+                                  ]
+                                : []),
+                              ...(hasPermission('view_accountcategory')
+                                ? [
+                                    {
+                                      title: 'Account Categories',
+                                      path: paths.dashboard.procurement.settings.accountCategories,
+                                      icon: ICONS.categories,
+                                    },
+                                  ]
+                                : []),
+                              ...(hasPermission('view_account')
+                                ? [
+                                    {
+                                      title: 'Account Codes',
+                                      path: paths.dashboard.procurement.settings.accountCodes,
+                                      icon: ICONS.accounting,
+                                    },
+                                  ]
+                                : []),
+                              {
+                                title: 'Category Setup',
+                                path: paths.dashboard.procurement.settings.categories,
+                                icon: ICONS.categories,
+                              },
+                              {
+                                title: 'Item Master',
+                                path: paths.dashboard.procurement.settings.items,
+                                icon: ICONS.inventory,
+                              },
+                              ...(hasPermission('view_emailtemplate')
+                                ? [
+                                    {
+                                      title: 'Email Templates',
+                                      path: paths.dashboard.procurement.settings.emailTemplates,
+                                      icon: ICONS.mail,
+                                    },
+                                  ]
+                                : []),
+                              ...(hasPermission('view_notificationsetting')
+                                ? [
+                                    {
+                                      title: 'Notification Settings',
+                                      path: paths.dashboard.procurement.settings.notifications,
+                                      icon: ICONS.notifications,
+                                    },
+                                  ]
+                                : []),
+                              ...(hasPermission('view_officemanagement')
+                                ? [
+                                    {
+                                      title: 'Office Management',
+                                      path: paths.dashboard.procurement.settings.offices,
+                                      icon: ICONS.branch,
+                                    },
+                                  ]
+                                : []),
+                              {
+                                title: 'Authority Delegation',
+                                path: paths.dashboard.procurement.settings.delegation,
+                                icon: ICONS.approval,
+                              },
+                              {
+                                title: 'Escalation Rules',
+                                path: paths.dashboard.procurement.settings.escalation,
+                                icon: ICONS.notifications,
+                              },
+                              ...(hasPermission('view_fiscalyear')
+                                ? [
+                                    {
+                                      title: 'Fiscal Year',
+                                      path: paths.dashboard.procurement.settings.fiscalYear,
+                                      icon: ICONS.calendar,
+                                    },
+                                  ]
+                                : []),
+                              ...(hasPermission('view_currency')
+                                ? [
+                                    {
+                                      title: 'Currency & Rates',
+                                      path: paths.dashboard.procurement.settings.currency,
+                                      icon: ICONS.accounting,
+                                    },
+                                  ]
+                                : []),
+                              {
+                                title: 'System Logs',
+                                path: paths.dashboard.procurement.settings.systemLogs,
+                                icon: ICONS.reports,
+                              },
+                              {
+                                title: 'Backup & Recovery',
+                                path: paths.dashboard.procurement.settings.backup,
+                                icon: ICONS.settings,
+                              },
+                            ],
+                          },
+                        ]
+                      : []),
+                  ],
+                },
+              ],
+            },
+          ]
         : []),
 
       // ============================================================
@@ -1050,130 +1121,258 @@ export function useNavData() {
         'view_advance'
       )
         ? [
-          {
-            items: [
-              {
-                title: 'Project Managements',
-                icon: ICONS.project,
-                children: [
-                  ...(hasPermission('view_projectmanagementproject')
-                    ? [
-                      {
-                        title: 'Overview',
-                        path: paths.dashboard.projectManagements.root,
-                        icon: ICONS.dashboard,
-                      },
-                      {
-                        title: 'Dashboard',
-                        path: paths.dashboard.projectManagements.dashboard,
-                        icon: ICONS.analytics,
-                      },
-                      {
-                        title: 'Projects',
-                        path: paths.dashboard.projectManagements.projects.root,
-                        icon: ICONS.projects,
-                        children: [
+            {
+              items: [
+                {
+                  title: 'Project Managements',
+                  icon: ICONS.project,
+                  children: [
+                    ...(hasPermission('view_projectmanagementproject')
+                      ? [
                           {
-                            title: 'All Projects',
-                            path: paths.dashboard.projectManagements.projects.allProjects,
-                            icon: ICONS.menuItem,
-                            activeMatch: [
-                              { pattern: '^/dashboard/project-managements/projects/[^/]+/?$' },
-                              { pattern: '^/dashboard/project-managements/projects/[^/]+/edit/?$' },
-                            ],
+                            title: 'Overview',
+                            path: paths.dashboard.projectManagements.root,
+                            icon: ICONS.dashboard,
                           },
-                          ...(hasPermission('add_projectmanagementproject')
-                            ? [
-                              {
-                                title: 'Create New Project',
-                                path: paths.dashboard.projectManagements.projects.create,
-                                icon: ICONS.formAutomation,
-                              },
-                            ]
-                            : []),
                           {
-                            title: 'Report',
-                            path: paths.dashboard.projectManagements.projects.report,
-                            icon: ICONS.reports,
+                            title: 'Dashboard',
+                            path: paths.dashboard.projectManagements.dashboard,
+                            icon: ICONS.analytics,
                           },
-                        ],
-                      },
-                    ]
-                    : []),
-                  ...(hasPermission('view_projectmanagementplanworkitem')
-                    ? [
-                      {
-                        title: 'Task Management',
-                        path: paths.dashboard.projectManagements.taskManagement.root,
-                        icon: ICONS.menuItem,
-                        children: [
                           {
-                            title: 'All Tasks',
-                            path: paths.dashboard.projectManagements.taskManagement.allTasks,
-                            icon: ICONS.menuItem,
-                            activeMatch: [
+                            title: 'Projects',
+                            path: paths.dashboard.projectManagements.projects.root,
+                            icon: ICONS.projects,
+                            children: [
                               {
-                                pattern:
-                                  '^/dashboard/project-managements/task-management/all-tasks/[^/]+/[^/]+/?$',
-                              },
-                            ],
-                          },
-                        ],
-                      },
-                    ]
-                    : []),
-                  ...(hasAnyPermission('view_projectmanagementexpense', 'view_advance')
-                    ? [
-                      {
-                        title: 'Expense Management',
-                        path: paths.dashboard.projectManagements.expenses.root,
-                        icon: ICONS.reports,
-                        children: [
-                          ...(hasPermission('view_projectmanagementexpense')
-                            ? [
-                              {
-                                title: 'Expenses',
-                                path: paths.dashboard.projectManagements.expenses.root,
+                                title: 'All Projects',
+                                path: paths.dashboard.projectManagements.projects.allProjects,
                                 icon: ICONS.menuItem,
-                              },
-                              ...(hasPermission('add_projectmanagementexpense')
-                                ? [
+                                activeMatch: [
+                                  { pattern: '^/dashboard/project-managements/projects/[^/]+/?$' },
                                   {
-                                    title: 'Create Expense',
-                                    path: paths.dashboard.projectManagements.expenses.create,
-                                    icon: ICONS.formAutomation,
+                                    pattern:
+                                      '^/dashboard/project-managements/projects/[^/]+/edit/?$',
                                   },
-                                ]
-                                : []),
-                            ]
-                            : []),
-                          ...(hasPermission('view_advance')
-                            ? [
-                              {
-                                title: 'Advance Receivables',
-                                path: paths.dashboard.projectManagements.expenses.advances.root,
-                                icon: ICONS.payment,
+                                ],
                               },
-                            ]
-                            : []),
-                        ],
-                      },
-                    ]
-                    : []),
-                ],
-              },
-            ],
-          },
-        ]
+                              ...(hasPermission('add_projectmanagementproject')
+                                ? [
+                                    {
+                                      title: 'Create New Project',
+                                      path: paths.dashboard.projectManagements.projects.create,
+                                      icon: ICONS.formAutomation,
+                                    },
+                                  ]
+                                : []),
+                              {
+                                title: 'Report',
+                                path: paths.dashboard.projectManagements.projects.report,
+                                icon: ICONS.reports,
+                              },
+                            ],
+                          },
+                        ]
+                      : []),
+                    ...(hasPermission('view_projectmanagementplanworkitem')
+                      ? [
+                          {
+                            title: 'Task Management',
+                            path: paths.dashboard.projectManagements.taskManagement.root,
+                            icon: ICONS.menuItem,
+                            children: [
+                              {
+                                title: 'All Tasks',
+                                path: paths.dashboard.projectManagements.taskManagement.allTasks,
+                                icon: ICONS.menuItem,
+                                activeMatch: [
+                                  {
+                                    pattern:
+                                      '^/dashboard/project-managements/task-management/all-tasks/[^/]+/[^/]+/?$',
+                                  },
+                                ],
+                              },
+                            ],
+                          },
+                        ]
+                      : []),
+                    ...(hasAnyPermission('view_projectmanagementexpense', 'view_advance')
+                      ? [
+                          {
+                            title: 'Expense Management',
+                            path: paths.dashboard.projectManagements.expenses.root,
+                            icon: ICONS.reports,
+                            children: [
+                              ...(hasPermission('view_projectmanagementexpense')
+                                ? [
+                                    {
+                                      title: 'Expenses',
+                                      path: paths.dashboard.projectManagements.expenses.root,
+                                      icon: ICONS.menuItem,
+                                    },
+                                    ...(hasPermission('add_projectmanagementexpense')
+                                      ? [
+                                          {
+                                            title: 'Create Expense',
+                                            path: paths.dashboard.projectManagements.expenses
+                                              .create,
+                                            icon: ICONS.formAutomation,
+                                          },
+                                        ]
+                                      : []),
+                                  ]
+                                : []),
+                              ...(hasPermission('view_advance')
+                                ? [
+                                    {
+                                      title: 'Advance Receivables',
+                                      path: paths.dashboard.projectManagements.expenses.advances
+                                        .root,
+                                      icon: ICONS.payment,
+                                    },
+                                  ]
+                                : []),
+                            ],
+                          },
+                        ]
+                      : []),
+                    {
+                      title: 'Currency',
+                      path: paths.dashboard.projects.currencies.root,
+                      icon: ICONS.payment,
+                    },
+                  ],
+                },
+              ],
+            },
+          ]
         : []),
 
       // ============================================================
-      // Accounting & Finance
+      // Accounts Gateway
       // ============================================================
       {
         items: [
           {
-            title: "Accounting & Finance",
+            title: accountsNavTitle,
+            icon: ICONS.accounting,
+            children: [
+              {
+                title: projectsNavTitle,
+                path: paths.dashboard.accountsGateway.projects,
+                icon: ICONS.projects,
+                children: gatewayProjectNavChildren,
+              },
+              {
+                title: 'Dashboard',
+                path: paths.dashboard.accountsGateway.root,
+                icon: ICONS.dashboard,
+              },
+              {
+                title: 'Masters',
+                path: paths.dashboard.accountsGateway.masters.root,
+                icon: ICONS.settings,
+                children: [
+                  {
+                    title: 'Chart of Accounts',
+                    path: paths.dashboard.accountsGateway.masters.chartOfAccounts,
+                    icon: ICONS.accounting,
+                  },
+                  {
+                    title: 'Bank / Cash',
+                    path: paths.dashboard.accountsGateway.masters.bankCash,
+                    icon: ICONS.accounting,
+                  },
+                  {
+                    title: 'Journals',
+                    path: paths.dashboard.accountsGateway.masters.journals,
+                    icon: ICONS.accounting,
+                  },
+                ],
+              },
+              {
+                title: 'Vouchers',
+                path: paths.dashboard.accountsGateway.vouchers.root,
+                icon: ICONS.documents,
+                children: [
+                  {
+                    title: 'Payment',
+                    path: paths.dashboard.accountsGateway.voucherMenu('payment'),
+                    icon: ICONS.documents,
+                  },
+                  {
+                    title: 'Receipt',
+                    path: paths.dashboard.accountsGateway.voucherMenu('receipt'),
+                    icon: ICONS.documents,
+                  },
+                  {
+                    title: 'Journal',
+                    path: paths.dashboard.accountsGateway.voucherMenu('journal'),
+                    icon: ICONS.documents,
+                  },
+                ],
+              },
+              {
+                title: 'Display',
+                path: paths.dashboard.accountsGateway.display.root,
+                icon: ICONS.analytics,
+                children: [
+                  {
+                    title: 'Day Book',
+                    path: paths.dashboard.accountsGateway.display.dayBook,
+                    icon: ICONS.calendar,
+                  },
+                  {
+                    title: 'Cash / Bank Book',
+                    path: paths.dashboard.accountsGateway.display.cashBankBook,
+                    icon: ICONS.accounting,
+                  },
+                  {
+                    title: 'Ledger',
+                    path: paths.dashboard.accountsGateway.display.ledger,
+                    icon: ICONS.accounting,
+                  },
+                ],
+              },
+              {
+                title: 'Reports',
+                path: paths.dashboard.accountsGateway.reports.root,
+                icon: ICONS.analytics,
+                children: [
+                  {
+                    title: 'Trial Balance',
+                    path: paths.dashboard.accountsGateway.reports.trialBalance,
+                    icon: ICONS.accounting,
+                  },
+                  {
+                    title: 'Profit & Loss',
+                    path: paths.dashboard.accountsGateway.reports.profitAndLoss,
+                    icon: ICONS.accounting,
+                  },
+                  {
+                    title: 'Balance Sheet',
+                    path: paths.dashboard.accountsGateway.reports.balanceSheet,
+                    icon: ICONS.accounting,
+                  },
+                  {
+                    title: 'Project Statement',
+                    path: paths.dashboard.accountsGateway.reports.projectStatement,
+                    icon: ICONS.accounting,
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+
+      // ============================================================
+      // Accounting & Finance (Advanced)
+      // ============================================================
+      {
+        items: [
+          {
+            title: 'Accounting & Finance (Advanced)',
             icon: ICONS.accounting,
             children: [
               {
@@ -1340,7 +1539,10 @@ export function useNavData() {
                     path: paths.dashboard.accountingFinance.transactions.creditNotes,
                     icon: ICONS.documents,
                     activeMatch: [
-                      { path: paths.dashboard.accountingFinance.transactions.creditNotes, deep: true },
+                      {
+                        path: paths.dashboard.accountingFinance.transactions.creditNotes,
+                        deep: true,
+                      },
                     ],
                   },
                   {
@@ -1348,7 +1550,10 @@ export function useNavData() {
                     path: paths.dashboard.accountingFinance.transactions.vendorBills,
                     icon: ICONS.menuItem,
                     activeMatch: [
-                      { path: paths.dashboard.accountingFinance.transactions.vendorBills, deep: true },
+                      {
+                        path: paths.dashboard.accountingFinance.transactions.vendorBills,
+                        deep: true,
+                      },
                     ],
                   },
                   {
@@ -1356,7 +1561,10 @@ export function useNavData() {
                     path: paths.dashboard.accountingFinance.transactions.debitNotes,
                     icon: ICONS.documents,
                     activeMatch: [
-                      { path: paths.dashboard.accountingFinance.transactions.debitNotes, deep: true },
+                      {
+                        path: paths.dashboard.accountingFinance.transactions.debitNotes,
+                        deep: true,
+                      },
                     ],
                   },
                   {
@@ -1386,7 +1594,10 @@ export function useNavData() {
                     path: paths.dashboard.accountingFinance.transactions.bankDeposits,
                     icon: ICONS.accounting,
                     activeMatch: [
-                      { path: paths.dashboard.accountingFinance.transactions.bankDeposits, deep: true },
+                      {
+                        path: paths.dashboard.accountingFinance.transactions.bankDeposits,
+                        deep: true,
+                      },
                     ],
                   },
                   {
@@ -1460,7 +1671,10 @@ export function useNavData() {
                     path: paths.dashboard.accountingFinance.transactions.journalItems,
                     icon: ICONS.documents,
                     activeMatch: [
-                      { path: paths.dashboard.accountingFinance.transactions.journalItems, deep: true },
+                      {
+                        path: paths.dashboard.accountingFinance.transactions.journalItems,
+                        deep: true,
+                      },
                     ],
                   },
                   {
@@ -1505,7 +1719,10 @@ export function useNavData() {
                     path: paths.dashboard.accountingFinance.banking.bankStatements,
                     icon: ICONS.documents,
                     activeMatch: [
-                      { path: paths.dashboard.accountingFinance.banking.bankStatements, deep: true },
+                      {
+                        path: paths.dashboard.accountingFinance.banking.bankStatements,
+                        deep: true,
+                      },
                     ],
                   },
                   {
@@ -1513,7 +1730,10 @@ export function useNavData() {
                     path: paths.dashboard.accountingFinance.banking.reconciliation,
                     icon: ICONS.approval,
                     activeMatch: [
-                      { path: paths.dashboard.accountingFinance.banking.reconciliation, deep: true },
+                      {
+                        path: paths.dashboard.accountingFinance.banking.reconciliation,
+                        deep: true,
+                      },
                     ],
                   },
                   {
@@ -1529,7 +1749,10 @@ export function useNavData() {
                     path: paths.dashboard.accountingFinance.banking.checkManagement,
                     icon: ICONS.documents,
                     activeMatch: [
-                      { path: paths.dashboard.accountingFinance.banking.checkManagement, deep: true },
+                      {
+                        path: paths.dashboard.accountingFinance.banking.checkManagement,
+                        deep: true,
+                      },
                     ],
                   },
                 ],
@@ -1555,7 +1778,10 @@ export function useNavData() {
                     path: paths.dashboard.accountingFinance.receivables.dueInvoices,
                     icon: ICONS.documents,
                     activeMatch: [
-                      { path: paths.dashboard.accountingFinance.receivables.dueInvoices, deep: true },
+                      {
+                        path: paths.dashboard.accountingFinance.receivables.dueInvoices,
+                        deep: true,
+                      },
                     ],
                   },
                   {
@@ -1563,7 +1789,10 @@ export function useNavData() {
                     path: paths.dashboard.accountingFinance.receivables.agingReport,
                     icon: ICONS.reports,
                     activeMatch: [
-                      { path: paths.dashboard.accountingFinance.receivables.agingReport, deep: true },
+                      {
+                        path: paths.dashboard.accountingFinance.receivables.agingReport,
+                        deep: true,
+                      },
                     ],
                   },
                   {
@@ -1600,7 +1829,10 @@ export function useNavData() {
                     path: paths.dashboard.accountingFinance.payables.supplierLedger,
                     icon: ICONS.menuItem,
                     activeMatch: [
-                      { path: paths.dashboard.accountingFinance.payables.supplierLedger, deep: true },
+                      {
+                        path: paths.dashboard.accountingFinance.payables.supplierLedger,
+                        deep: true,
+                      },
                     ],
                   },
                   {
@@ -1624,7 +1856,10 @@ export function useNavData() {
                     path: paths.dashboard.accountingFinance.payables.paymentSchedule,
                     icon: ICONS.calendar,
                     activeMatch: [
-                      { path: paths.dashboard.accountingFinance.payables.paymentSchedule, deep: true },
+                      {
+                        path: paths.dashboard.accountingFinance.payables.paymentSchedule,
+                        deep: true,
+                      },
                     ],
                   },
                   {
@@ -1948,9 +2183,8 @@ export function useNavData() {
                 ],
               },
             ],
-          }
-        ]
-
+          },
+        ],
       },
 
       // ============================================================
@@ -1958,22 +2192,22 @@ export function useNavData() {
       // ============================================================
       ...(hasPermission('view_donor')
         ? [
-          {
-            items: [
-              {
-                title: 'Ledars Management',
-                icon: ICONS.ledars,
-                children: [
-                  {
-                    title: 'Donor Management',
-                    path: paths.dashboard.projects.donors.root,
-                    icon: ICONS.vendors,
-                  },
-                ],
-              },
-            ],
-          },
-        ]
+            {
+              items: [
+                {
+                  title: 'Ledars Management',
+                  icon: ICONS.ledars,
+                  children: [
+                    {
+                      title: 'Donor Management',
+                      path: paths.dashboard.projects.donors.root,
+                      icon: ICONS.vendors,
+                    },
+                  ],
+                },
+              ],
+            },
+          ]
         : []),
 
       // ============================================================
@@ -1999,387 +2233,388 @@ export function useNavData() {
         'view_role',
         'add_attendancedata'
       ) ||
-        user?.role === 'Employee' ||
-        user?.role === 'Supervisor'
+      user?.role === 'Employee' ||
+      user?.role === 'Supervisor'
         ? [
-          {
-            items: [
-              {
-                title: 'HRM',
-                icon: ICONS.hrm,
-                children: [
-              ...(hasAnyPermission(
-                'view_employee',
-                'view_attendancedata',
-                'view_leaverequest',
-                'view_payroll',
-                'view_finalsettlement',
-                'view_holiday'
-              ) || user?.is_superuser
-                ? [
-                  {
-                    title: 'Dashboard',
-                    path: paths.dashboard.hrm,
-                    icon: ICONS.dashboard,
-                  },
-                ]
-                : []),
-              ...((user?.role === 'Employee' || user?.role === 'Supervisor') &&
-                !hasPermission('view_employee')
-                ? [
-                  {
-                    title: 'Account Information',
-                    path: paths.dashboard.user.account,
-                    icon: ICONS.account,
-                  },
-                ]
-                : []),
-              ...(employeeChildren.length > 0
-                ? [
-                  {
-                    title: 'Employee',
-                    path: paths.dashboard.user.root,
-                    icon: ICONS.user,
-                    children: employeeChildren,
-                  },
-                ]
-                : []),
-              ...(user?.is_superuser
-                ? [
-                  {
-                    title: 'Settings',
-                    path: paths.dashboard.settings.root,
-                    icon: ICONS.settings,
-                    children: [
-                      ...(hasPermission('view_department')
-                        ? [
+            {
+              items: [
+                {
+                  title: 'HRM',
+                  icon: ICONS.hrm,
+                  children: [
+                    ...(hasAnyPermission(
+                      'view_employee',
+                      'view_attendancedata',
+                      'view_leaverequest',
+                      'view_payroll',
+                      'view_finalsettlement',
+                      'view_holiday'
+                    ) || user?.is_superuser
+                      ? [
                           {
-                            title: 'Department',
-                            path: paths.dashboard.settings.department,
-                            icon: ICONS.department,
+                            title: 'Dashboard',
+                            path: paths.dashboard.hrm,
+                            icon: ICONS.dashboard,
                           },
                         ]
-                        : []),
-                      ...(hasPermission('view_designation')
-                        ? [
+                      : []),
+                    ...((user?.role === 'Employee' || user?.role === 'Supervisor') &&
+                    !hasPermission('view_employee')
+                      ? [
                           {
-                            title: 'Designation',
-                            path: paths.dashboard.settings.designation,
+                            title: 'Account Information',
+                            path: paths.dashboard.user.account,
                             icon: ICONS.account,
                           },
                         ]
-                        : []),
-                      ...(hasPermission('view_branch')
-                        ? [
+                      : []),
+                    ...(employeeChildren.length > 0
+                      ? [
                           {
-                            title: 'Branch',
-                            path: paths.dashboard.settings.branch,
-                            icon: ICONS.branch,
+                            title: 'Employee',
+                            path: paths.dashboard.user.root,
+                            icon: ICONS.user,
+                            children: employeeChildren,
                           },
                         ]
-                        : []),
-                      ...(hasPermission('view_grade')
-                        ? [
+                      : []),
+                    ...(user?.is_superuser
+                      ? [
                           {
-                            title: 'Grade',
-                            path: paths.dashboard.settings.grade,
-                            icon: ICONS.label,
-                          },
-                        ]
-                        : []),
-                      ...(hasPermission('view_shift')
-                        ? [
-                          {
-                            title: 'Shift',
-                            path: paths.dashboard.settings.shift,
-                            icon: ICONS.shift,
-                          },
-                        ]
-                        : []),
-                      ...(hasPermission('view_role')
-                        ? [
-                          {
-                            title: 'Role',
-                            path: paths.dashboard.settings.role,
-                            icon: ICONS.account,
-                          },
-                        ]
-                        : []),
-                      ...(hasPermission('view_leavepolicy') ||
-                        hasPermission('view_leavegroup') ||
-                        hasPermission('view_specialleavepolicy') ||
-                        hasPermission('view_leavereset')
-                        ? [
-                          {
-                            title: 'Leave Management',
-                            path: paths.dashboard.settings.leave.root,
+                            title: 'Settings',
+                            path: paths.dashboard.settings.root,
+                            icon: ICONS.settings,
                             children: [
-                              ...(hasPermission('view_leavegroup')
+                              ...(hasPermission('view_department')
                                 ? [
-                                  {
-                                    title: 'Group',
-                                    path: paths.dashboard.settings.leave.group,
-                                    icon: ICONS.leave,
-                                  },
-                                ]
+                                    {
+                                      title: 'Department',
+                                      path: paths.dashboard.settings.department,
+                                      icon: ICONS.department,
+                                    },
+                                  ]
                                 : []),
-                              ...(hasPermission('view_leavepolicy')
+                              ...(hasPermission('view_designation')
                                 ? [
-                                  {
-                                    title: 'Policy',
-                                    path: paths.dashboard.settings.leave.policy,
-                                    icon: ICONS.leave,
-                                  },
-                                ]
+                                    {
+                                      title: 'Designation',
+                                      path: paths.dashboard.settings.designation,
+                                      icon: ICONS.account,
+                                    },
+                                  ]
                                 : []),
-                              ...(hasPermission('view_leavereset')
+                              ...(hasPermission('view_branch')
                                 ? [
-                                  {
-                                    title: 'Reset Period',
-                                    path: paths.dashboard.settings.leave.reset,
-                                    icon: ICONS.leave,
-                                  },
-                                ]
+                                    {
+                                      title: 'Branch',
+                                      path: paths.dashboard.settings.branch,
+                                      icon: ICONS.branch,
+                                    },
+                                  ]
                                 : []),
-                              ...(hasPermission('view_specialleavepolicy')
+                              ...(hasPermission('view_grade')
                                 ? [
-                                  {
-                                    title: 'Special Policies',
-                                    path: paths.dashboard.settings.leave.special,
-                                    icon: ICONS.leave,
-                                  },
-                                ]
+                                    {
+                                      title: 'Grade',
+                                      path: paths.dashboard.settings.grade,
+                                      icon: ICONS.label,
+                                    },
+                                  ]
+                                : []),
+                              ...(hasPermission('view_shift')
+                                ? [
+                                    {
+                                      title: 'Shift',
+                                      path: paths.dashboard.settings.shift,
+                                      icon: ICONS.shift,
+                                    },
+                                  ]
+                                : []),
+                              ...(hasPermission('view_role')
+                                ? [
+                                    {
+                                      title: 'Role',
+                                      path: paths.dashboard.settings.role,
+                                      icon: ICONS.account,
+                                    },
+                                  ]
+                                : []),
+                              ...(hasPermission('view_leavepolicy') ||
+                              hasPermission('view_leavegroup') ||
+                              hasPermission('view_specialleavepolicy') ||
+                              hasPermission('view_leavereset')
+                                ? [
+                                    {
+                                      title: 'Leave Management',
+                                      path: paths.dashboard.settings.leave.root,
+                                      children: [
+                                        ...(hasPermission('view_leavegroup')
+                                          ? [
+                                              {
+                                                title: 'Group',
+                                                path: paths.dashboard.settings.leave.group,
+                                                icon: ICONS.leave,
+                                              },
+                                            ]
+                                          : []),
+                                        ...(hasPermission('view_leavepolicy')
+                                          ? [
+                                              {
+                                                title: 'Policy',
+                                                path: paths.dashboard.settings.leave.policy,
+                                                icon: ICONS.leave,
+                                              },
+                                            ]
+                                          : []),
+                                        ...(hasPermission('view_leavereset')
+                                          ? [
+                                              {
+                                                title: 'Reset Period',
+                                                path: paths.dashboard.settings.leave.reset,
+                                                icon: ICONS.leave,
+                                              },
+                                            ]
+                                          : []),
+                                        ...(hasPermission('view_specialleavepolicy')
+                                          ? [
+                                              {
+                                                title: 'Special Policies',
+                                                path: paths.dashboard.settings.leave.special,
+                                                icon: ICONS.leave,
+                                              },
+                                            ]
+                                          : []),
+                                      ],
+                                    },
+                                  ]
+                                : []),
+                              ...(hasPermission('view_preapprovedip')
+                                ? [
+                                    {
+                                      title: 'Pre-approved IP',
+                                      path: paths.dashboard.settings.preapprovedip,
+                                      icon: ICONS.lock,
+                                    },
+                                  ]
+                                : []),
+                              ...(hasPermission('view_cutoff')
+                                ? [
+                                    {
+                                      title: 'Cut-off Date',
+                                      path: paths.dashboard.settings.cutOffDate,
+                                      icon: ICONS.calendar,
+                                    },
+                                  ]
+                                : []),
+                              ...(hasPermission('view_supervisorlevel')
+                                ? [
+                                    {
+                                      title: 'Supervisor Level',
+                                      path: paths.dashboard.settings.supervisorLevel,
+                                      icon: ICONS.user,
+                                    },
+                                  ]
                                 : []),
                             ],
                           },
                         ]
-                        : []),
-                      ...(hasPermission('view_preapprovedip')
-                        ? [
+                      : []),
+                    {
+                      title: 'Attendance Management',
+                      path: paths.dashboard.attendance.root,
+                      icon: ICONS.calendar,
+                      children: [
+                        ...(hasAnyPermission('view_attendance', 'view_attendancedata')
+                          ? [
+                              {
+                                title: 'List',
+                                path: paths.dashboard.attendance.list,
+                                icon: ICONS.menuItem,
+                              },
+                            ]
+                          : []),
+                        ...(canShowWebLogin || hasPermission('add_attendancedata')
+                          ? [
+                              {
+                                title: 'Mark Attendance',
+                                path: paths.dashboard.attendance.webLogin,
+                                icon: ICONS.calendar,
+                              },
+                            ]
+                          : []),
+                        ...(hasPermission('view_attendanceadjustmentrequest') ||
+                        hasPermission('add_attendanceadjustmentrequest')
+                          ? [
+                              {
+                                title: 'Adjustment',
+                                path: paths.dashboard.attendance.adjustment,
+                                icon: ICONS.approval,
+                              },
+                            ]
+                          : []),
+                        ...(hasPermission('view_attendanceadjustmentapproval')
+                          ? [
+                              {
+                                title: 'Adjustment Approvals',
+                                path: paths.dashboard.attendance.approval,
+                                icon: ICONS.approval,
+                              },
+                            ]
+                          : []),
+                        ...(user?.role === 'Supervisor' ||
+                        hasAnyPermission('view_attendance', 'view_attendancedata')
+                          ? [
+                              {
+                                title: 'Daily Attendance',
+                                path: paths.dashboard.attendance.daily,
+                                icon: ICONS.calendar,
+                              },
+                            ]
+                          : []),
+                        ...(hasPermission('view_attendancedata') ||
+                        hasPermission('view_own_attendance') ||
+                        hasPermission('view_subordinate_attendance')
+                          ? [
+                              {
+                                title: 'Monthly Attendance Summary',
+                                path: paths.dashboard.attendance.monthly,
+                                icon: ICONS.reports,
+                              },
+                            ]
+                          : []),
+                      ],
+                    },
+                    ...((user?.role === 'Employee' || user?.role === 'Supervisor') &&
+                    !hasPermission('view_holiday')
+                      ? [
                           {
-                            title: 'Pre-approved IP',
-                            path: paths.dashboard.settings.preapprovedip,
-                            icon: ICONS.lock,
+                            title: 'Holiday Calendar',
+                            path: paths.dashboard.holiday.calendar,
+                            icon: ICONS.booking,
                           },
                         ]
-                        : []),
-                      ...(hasPermission('view_cutoff')
-                        ? [
+                      : []),
+                    ...(holidayChildren.length > 0
+                      ? [
                           {
-                            title: 'Cut-off Date',
-                            path: paths.dashboard.settings.cutOffDate,
-                            icon: ICONS.calendar,
+                            title: 'Holiday Management',
+                            path: paths.dashboard.holiday.root,
+                            icon: ICONS.booking,
+                            children: holidayChildren,
                           },
                         ]
-                        : []),
-                      ...(hasPermission('view_supervisorlevel')
-                        ? [
+                      : []),
+                    {
+                      title: 'Leave Management',
+                      path: paths.dashboard.leave.root,
+                      icon: ICONS.leave,
+                      children: [
+                        ...(hasPermission('view_leaverequest') || hasPermission('add_leaverequest')
+                          ? [
+                              {
+                                title: 'Leave Requests',
+                                path: paths.dashboard.leave.request,
+                                icon: ICONS.leave,
+                              },
+                            ]
+                          : []),
+                        ...(user?.role === 'Supervisor' || hasPermission('view_leaveapproval')
+                          ? [
+                              {
+                                title: 'Approvals',
+                                path: paths.dashboard.leave.approval,
+                                icon: ICONS.approval,
+                              },
+                            ]
+                          : []),
+                        ...(hasPermission('view_leaverequest')
+                          ? [
+                              {
+                                title: 'Leave Calendar',
+                                path: paths.dashboard.leave.calendar,
+                                icon: ICONS.calendar,
+                              },
+                            ]
+                          : []),
+                        ...(user?.role === 'Admin'
+                          ? [
+                              {
+                                title: 'Employee Leave Balance',
+                                path: paths.dashboard.leave.balance,
+                                icon: ICONS.analytics,
+                              },
+                            ]
+                          : []),
+                        ...(user?.role === 'Supervisor'
+                          ? [
+                              {
+                                title: 'Subordinate Leave Balance',
+                                path: paths.dashboard.leave.balance,
+                                icon: ICONS.analytics,
+                              },
+                            ]
+                          : []),
+                      ],
+                    },
+                    ...(hasPermission('add_payroll') || hasPermission('view_payroll')
+                      ? [
                           {
-                            title: 'Supervisor Level',
-                            path: paths.dashboard.settings.supervisorLevel,
-                            icon: ICONS.user,
-                          },
-                        ]
-                        : []),
-                    ],
-                  },
-                ]
-                : []),
-              {
-                title: 'Attendance Management',
-                path: paths.dashboard.attendance.root,
-                icon: ICONS.calendar,
-                children: [
-                  ...(hasAnyPermission('view_attendance', 'view_attendancedata')
-                    ? [
-                      {
-                        title: 'List',
-                        path: paths.dashboard.attendance.list,
-                        icon: ICONS.menuItem,
-                      },
-                    ]
-                    : []),
-                  ...(canShowWebLogin || hasPermission('add_attendancedata')
-                    ? [
-                      {
-                        title: 'Mark Attendance',
-                        path: paths.dashboard.attendance.webLogin,
-                        icon: ICONS.calendar,
-                      },
-                    ]
-                    : []),
-                  ...(hasPermission('view_attendanceadjustmentrequest') ||
-                    hasPermission('add_attendanceadjustmentrequest')
-                    ? [
-                      {
-                        title: 'Adjustment',
-                        path: paths.dashboard.attendance.adjustment,
-                        icon: ICONS.approval,
-                      },
-                    ]
-                    : []),
-                  ...(hasPermission('view_attendanceadjustmentapproval')
-                    ? [
-                      {
-                        title: 'Adjustment Approvals',
-                        path: paths.dashboard.attendance.approval,
-                        icon: ICONS.approval,
-                      },
-                    ]
-                    : []),
-                  ...(user?.role === 'Supervisor' || hasAnyPermission('view_attendance', 'view_attendancedata')
-                    ? [
-                      {
-                        title: 'Daily Attendance',
-                        path: paths.dashboard.attendance.daily,
-                        icon: ICONS.calendar,
-                      },
-                    ]
-                    : []),
-                  ...(hasPermission('view_attendancedata') ||
-                    hasPermission('view_own_attendance') ||
-                    hasPermission('view_subordinate_attendance')
-                    ? [
-                      {
-                        title: 'Monthly Attendance Summary',
-                        path: paths.dashboard.attendance.monthly,
-                        icon: ICONS.reports,
-                      },
-                    ]
-                    : []),
-                ],
-              },
-              ...((user?.role === 'Employee' || user?.role === 'Supervisor') &&
-                !hasPermission('view_holiday')
-                ? [
-                  {
-                    title: 'Holiday Calendar',
-                    path: paths.dashboard.holiday.calendar,
-                    icon: ICONS.booking,
-                  },
-                ]
-                : []),
-              ...(holidayChildren.length > 0
-                ? [
-                  {
-                    title: 'Holiday Management',
-                    path: paths.dashboard.holiday.root,
-                    icon: ICONS.booking,
-                    children: holidayChildren,
-                  },
-                ]
-                : []),
-              {
-                title: 'Leave Management',
-                path: paths.dashboard.leave.root,
-                icon: ICONS.leave,
-                children: [
-                  ...(hasPermission('view_leaverequest') || hasPermission('add_leaverequest')
-                    ? [
-                      {
-                        title: 'Leave Requests',
-                        path: paths.dashboard.leave.request,
-                        icon: ICONS.leave,
-                      },
-                    ]
-                    : []),
-                  ...(user?.role === 'Supervisor' || hasPermission('view_leaveapproval')
-                    ? [
-                      {
-                        title: 'Approvals',
-                        path: paths.dashboard.leave.approval,
-                        icon: ICONS.approval,
-                      },
-                    ]
-                    : []),
-                  ...(hasPermission('view_leaverequest')
-                    ? [
-                      {
-                        title: 'Leave Calendar',
-                        path: paths.dashboard.leave.calendar,
-                        icon: ICONS.calendar,
-                      },
-                    ]
-                    : []),
-                  ...(user?.role === 'Admin'
-                    ? [
-                      {
-                        title: 'Employee Leave Balance',
-                        path: paths.dashboard.leave.balance,
-                        icon: ICONS.analytics,
-                      },
-                    ]
-                    : []),
-                  ...(user?.role === 'Supervisor'
-                    ? [
-                      {
-                        title: 'Subordinate Leave Balance',
-                        path: paths.dashboard.leave.balance,
-                        icon: ICONS.analytics,
-                      },
-                    ]
-                    : []),
-                ],
-              },
-              ...(hasPermission('add_payroll') || hasPermission('view_payroll')
-                ? [
-                  {
-                    title: 'Payroll',
-                    path: paths.dashboard.payroll.root,
-                    icon: ICONS.payroll,
-                    children: [
-                      ...(hasPermission('add_payroll')
-                        ? [
-                          {
-                            title: 'Generate Payroll',
-                            path: paths.dashboard.payroll.generate,
-                            icon: ICONS.formAutomation,
-                          },
-                        ]
-                        : []),
-                      ...(hasPermission('view_payroll') || hasPermission('add_payroll')
-                        ? [
-                          {
-                            title: 'Payroll List',
-                            path: paths.dashboard.payroll.list,
+                            title: 'Payroll',
+                            path: paths.dashboard.payroll.root,
                             icon: ICONS.payroll,
+                            children: [
+                              ...(hasPermission('add_payroll')
+                                ? [
+                                    {
+                                      title: 'Generate Payroll',
+                                      path: paths.dashboard.payroll.generate,
+                                      icon: ICONS.formAutomation,
+                                    },
+                                  ]
+                                : []),
+                              ...(hasPermission('view_payroll') || hasPermission('add_payroll')
+                                ? [
+                                    {
+                                      title: 'Payroll List',
+                                      path: paths.dashboard.payroll.list,
+                                      icon: ICONS.payroll,
+                                    },
+                                  ]
+                                : []),
+                            ],
                           },
                         ]
-                        : []),
-                    ],
-                  },
-                ]
-                : []),
-              ...(hasPermission('view_finalsettlement')
-                ? [
-                  {
-                    title: 'Final Settlement',
-                    path: paths.dashboard.finalSettlement.root,
-                    icon: ICONS.payment,
-                    children: [
-                      {
-                        title: 'Settlement List',
-                        path: paths.dashboard.finalSettlement.list,
-                        icon: ICONS.menuItem,
-                      },
-                      ...(hasPermission('add_finalsettlement')
-                        ? [
+                      : []),
+                    ...(hasPermission('view_finalsettlement')
+                      ? [
                           {
-                            title: 'Create Settlement',
-                            path: paths.dashboard.finalSettlement.create,
-                            icon: ICONS.formAutomation,
+                            title: 'Final Settlement',
+                            path: paths.dashboard.finalSettlement.root,
+                            icon: ICONS.payment,
+                            children: [
+                              {
+                                title: 'Settlement List',
+                                path: paths.dashboard.finalSettlement.list,
+                                icon: ICONS.menuItem,
+                              },
+                              ...(hasPermission('add_finalsettlement')
+                                ? [
+                                    {
+                                      title: 'Create Settlement',
+                                      path: paths.dashboard.finalSettlement.create,
+                                      icon: ICONS.formAutomation,
+                                    },
+                                  ]
+                                : []),
+                            ],
                           },
                         ]
-                        : []),
-                    ],
-                  },
-                ]
-                : []),
-            ],
-          },
-        ],
-      },
-        ]
+                      : []),
+                  ],
+                },
+              ],
+            },
+          ]
         : []),
 
       // ============================================================
@@ -2402,240 +2637,240 @@ export function useNavData() {
         'view_beneficiarysetting'
       )
         ? [
-          {
-            items: [
-              {
-                title: 'Beneficiaries',
-                icon: ICONS.beneficiaries,
-                children: [
-              {
-                title: 'Dashboard',
-                path: paths.dashboard.beneficiaries.dashboard,
-                icon: ICONS.dashboard,
-              },
-              ...(hasPermission('view_beneficiary')
-                ? [
-                  {
-                    title: 'Registration & Database',
-                    path: paths.dashboard.beneficiaries.database,
-                    icon: ICONS.beneficiaries,
-                    children: [
-                      {
-                        title: 'Beneficiary Database',
-                        path: paths.dashboard.beneficiaries.database,
-                        icon: ICONS.beneficiaries,
-                        children: [
+            {
+              items: [
+                {
+                  title: 'Beneficiaries',
+                  icon: ICONS.beneficiaries,
+                  children: [
+                    {
+                      title: 'Dashboard',
+                      path: paths.dashboard.beneficiaries.dashboard,
+                      icon: ICONS.dashboard,
+                    },
+                    ...(hasPermission('view_beneficiary')
+                      ? [
                           {
-                            title: 'All Beneficiaries',
+                            title: 'Registration & Database',
                             path: paths.dashboard.beneficiaries.database,
                             icon: ICONS.beneficiaries,
-                          },
-                          ...(hasPermission('add_beneficiary')
-                            ? [
+                            children: [
                               {
-                                title: 'Add Beneficiary',
-                                path: paths.dashboard.beneficiaries.add_database,
-                                icon: ICONS.formAutomation,
+                                title: 'Beneficiary Database',
+                                path: paths.dashboard.beneficiaries.database,
+                                icon: ICONS.beneficiaries,
+                                children: [
+                                  {
+                                    title: 'All Beneficiaries',
+                                    path: paths.dashboard.beneficiaries.database,
+                                    icon: ICONS.beneficiaries,
+                                  },
+                                  ...(hasPermission('add_beneficiary')
+                                    ? [
+                                        {
+                                          title: 'Add Beneficiary',
+                                          path: paths.dashboard.beneficiaries.add_database,
+                                          icon: ICONS.formAutomation,
+                                        },
+                                      ]
+                                    : []),
+                                ],
                               },
-                            ]
-                            : []),
-                        ],
-                      },
-                      {
-                        title: 'ID Card Generation',
-                        path: paths.dashboard.beneficiaries.id_card_generation,
-                        icon: ICONS.account,
-                      },
-                      {
-                        title: 'Import / Export',
-                        path: paths.dashboard.beneficiaries.beneficiary_import,
-                        icon: ICONS.external,
-                      },
-                    ],
-                  },
-                ]
-                : []),
-              ...(hasAnyPermission(
-                'view_vulnerabilityassessment',
-                'view_targetingcriteria',
-                'view_needsassessment',
-                'view_eligibilityscreening'
-              )
-                ? [
-                  {
-                    title: 'Assessment & Targeting',
-                    path: paths.dashboard.beneficiaries.vulnerability_assessment,
-                    icon: ICONS.approval,
-                    children: [
-                      ...(hasPermission('view_vulnerabilityassessment')
-                        ? [
-                          {
-                            title: 'Vulnerability Assessment',
-                            path: paths.dashboard.beneficiaries.vulnerability_assessment,
-                            icon: ICONS.approval,
+                              {
+                                title: 'ID Card Generation',
+                                path: paths.dashboard.beneficiaries.id_card_generation,
+                                icon: ICONS.account,
+                              },
+                              {
+                                title: 'Import / Export',
+                                path: paths.dashboard.beneficiaries.beneficiary_import,
+                                icon: ICONS.external,
+                              },
+                            ],
                           },
                         ]
-                        : []),
-                      ...(hasPermission('view_targetingcriteria')
-                        ? [
+                      : []),
+                    ...(hasAnyPermission(
+                      'view_vulnerabilityassessment',
+                      'view_targetingcriteria',
+                      'view_needsassessment',
+                      'view_eligibilityscreening'
+                    )
+                      ? [
                           {
-                            title: 'Targeting Criteria',
-                            path: paths.dashboard.beneficiaries.targeting_criteria,
+                            title: 'Assessment & Targeting',
+                            path: paths.dashboard.beneficiaries.vulnerability_assessment,
+                            icon: ICONS.approval,
+                            children: [
+                              ...(hasPermission('view_vulnerabilityassessment')
+                                ? [
+                                    {
+                                      title: 'Vulnerability Assessment',
+                                      path: paths.dashboard.beneficiaries.vulnerability_assessment,
+                                      icon: ICONS.approval,
+                                    },
+                                  ]
+                                : []),
+                              ...(hasPermission('view_targetingcriteria')
+                                ? [
+                                    {
+                                      title: 'Targeting Criteria',
+                                      path: paths.dashboard.beneficiaries.targeting_criteria,
+                                      icon: ICONS.settings,
+                                    },
+                                  ]
+                                : []),
+                              ...(hasPermission('view_needsassessment')
+                                ? [
+                                    {
+                                      title: 'Needs Assessment',
+                                      path: paths.dashboard.beneficiaries.needs_assessment,
+                                      icon: ICONS.requisition,
+                                    },
+                                  ]
+                                : []),
+                              ...(hasPermission('view_eligibilityscreening')
+                                ? [
+                                    {
+                                      title: 'Eligibility Screening',
+                                      path: paths.dashboard.beneficiaries.eligibility_screening,
+                                      icon: ICONS.approval,
+                                    },
+                                  ]
+                                : []),
+                            ],
+                          },
+                        ]
+                      : []),
+                    ...(hasAnyPermission('view_householdprofiling', 'view_householdsurvey')
+                      ? [
+                          {
+                            title: 'Household Management',
+                            path: paths.dashboard.beneficiaries.household_profiling,
+                            icon: ICONS.department,
+                            children: [
+                              ...(hasPermission('view_householdprofiling')
+                                ? [
+                                    {
+                                      title: 'Household Profiling',
+                                      path: paths.dashboard.beneficiaries.household_profiling,
+                                      icon: ICONS.department,
+                                    },
+                                  ]
+                                : []),
+                              ...(hasPermission('view_householdsurvey')
+                                ? [
+                                    {
+                                      title: 'Household Surveys',
+                                      path: paths.dashboard.beneficiaries.household_surveys,
+                                      icon: ICONS.documents,
+                                    },
+                                  ]
+                                : []),
+                            ],
+                          },
+                        ]
+                      : []),
+                    ...(hasAnyPermission(
+                      'view_complaintsfeedback',
+                      'view_satisfactionsurvey',
+                      'view_grievanceredressal'
+                    )
+                      ? [
+                          {
+                            title: 'Accountability',
+                            path: paths.dashboard.beneficiaries.complaints_feedback,
+                            icon: ICONS.notifications,
+                            children: [
+                              ...(hasPermission('view_complaintsfeedback')
+                                ? [
+                                    {
+                                      title: 'Complaints & Feedback',
+                                      path: paths.dashboard.beneficiaries.complaints_feedback,
+                                      icon: ICONS.notifications,
+                                    },
+                                  ]
+                                : []),
+                              ...(hasPermission('view_satisfactionsurvey')
+                                ? [
+                                    {
+                                      title: 'Satisfaction Surveys',
+                                      path: paths.dashboard.beneficiaries.satisfaction_surveys,
+                                      icon: ICONS.documents,
+                                    },
+                                  ]
+                                : []),
+                              ...(hasPermission('view_grievanceredressal')
+                                ? [
+                                    {
+                                      title: 'Grievance Redressal',
+                                      path: paths.dashboard.beneficiaries.grievance_redressal,
+                                      icon: ICONS.approval,
+                                    },
+                                  ]
+                                : []),
+                            ],
+                          },
+                        ]
+                      : []),
+                    {
+                      title: 'Reports & Analytics',
+                      path: paths.dashboard.beneficiaries.beneficiary_analytics,
+                      icon: ICONS.reports,
+                      children: [
+                        {
+                          title: 'Beneficiary Analytics',
+                          path: paths.dashboard.beneficiaries.beneficiary_analytics,
+                          icon: ICONS.analytics,
+                        },
+                        {
+                          title: 'Demographic Report',
+                          path: paths.dashboard.beneficiaries.demographic_report,
+                          icon: ICONS.reports,
+                        },
+                        ...(hasPermission('view_coveragearea')
+                          ? [
+                              {
+                                title: 'Coverage Map',
+                                path: paths.dashboard.beneficiaries.coverage_map,
+                                icon: ICONS.branch,
+                              },
+                            ]
+                          : []),
+                        ...(hasPermission('view_donorreport')
+                          ? [
+                              {
+                                title: 'Donor Report',
+                                path: paths.dashboard.beneficiaries.donor_report,
+                                icon: ICONS.documents,
+                              },
+                            ]
+                          : []),
+                        ...(hasPermission('view_attendancetracker')
+                          ? [
+                              {
+                                title: 'Attendance Tracker',
+                                path: paths.dashboard.beneficiaries.attendance_tracker,
+                                icon: ICONS.calendar,
+                              },
+                            ]
+                          : []),
+                      ],
+                    },
+                    ...(hasPermission('view_beneficiarysetting')
+                      ? [
+                          {
+                            title: 'Settings',
+                            path: paths.dashboard.beneficiaries.beneficiary_settings,
                             icon: ICONS.settings,
                           },
                         ]
-                        : []),
-                      ...(hasPermission('view_needsassessment')
-                        ? [
-                          {
-                            title: 'Needs Assessment',
-                            path: paths.dashboard.beneficiaries.needs_assessment,
-                            icon: ICONS.requisition,
-                          },
-                        ]
-                        : []),
-                      ...(hasPermission('view_eligibilityscreening')
-                        ? [
-                          {
-                            title: 'Eligibility Screening',
-                            path: paths.dashboard.beneficiaries.eligibility_screening,
-                            icon: ICONS.approval,
-                          },
-                        ]
-                        : []),
-                    ],
-                  },
-                ]
-                : []),
-              ...(hasAnyPermission('view_householdprofiling', 'view_householdsurvey')
-                ? [
-                  {
-                    title: 'Household Management',
-                    path: paths.dashboard.beneficiaries.household_profiling,
-                    icon: ICONS.department,
-                    children: [
-                      ...(hasPermission('view_householdprofiling')
-                        ? [
-                          {
-                            title: 'Household Profiling',
-                            path: paths.dashboard.beneficiaries.household_profiling,
-                            icon: ICONS.department,
-                          },
-                        ]
-                        : []),
-                      ...(hasPermission('view_householdsurvey')
-                        ? [
-                          {
-                            title: 'Household Surveys',
-                            path: paths.dashboard.beneficiaries.household_surveys,
-                            icon: ICONS.documents,
-                          },
-                        ]
-                        : []),
-                    ],
-                  },
-                ]
-                : []),
-              ...(hasAnyPermission(
-                'view_complaintsfeedback',
-                'view_satisfactionsurvey',
-                'view_grievanceredressal'
-              )
-                ? [
-                  {
-                    title: 'Accountability',
-                    path: paths.dashboard.beneficiaries.complaints_feedback,
-                    icon: ICONS.notifications,
-                    children: [
-                      ...(hasPermission('view_complaintsfeedback')
-                        ? [
-                          {
-                            title: 'Complaints & Feedback',
-                            path: paths.dashboard.beneficiaries.complaints_feedback,
-                            icon: ICONS.notifications,
-                          },
-                        ]
-                        : []),
-                      ...(hasPermission('view_satisfactionsurvey')
-                        ? [
-                          {
-                            title: 'Satisfaction Surveys',
-                            path: paths.dashboard.beneficiaries.satisfaction_surveys,
-                            icon: ICONS.documents,
-                          },
-                        ]
-                        : []),
-                      ...(hasPermission('view_grievanceredressal')
-                        ? [
-                          {
-                            title: 'Grievance Redressal',
-                            path: paths.dashboard.beneficiaries.grievance_redressal,
-                            icon: ICONS.approval,
-                          },
-                        ]
-                        : []),
-                    ],
-                  },
-                ]
-                : []),
-              {
-                title: 'Reports & Analytics',
-                path: paths.dashboard.beneficiaries.beneficiary_analytics,
-                icon: ICONS.reports,
-                children: [
-                  {
-                    title: 'Beneficiary Analytics',
-                    path: paths.dashboard.beneficiaries.beneficiary_analytics,
-                    icon: ICONS.analytics,
-                  },
-                  {
-                    title: 'Demographic Report',
-                    path: paths.dashboard.beneficiaries.demographic_report,
-                    icon: ICONS.reports,
-                  },
-                  ...(hasPermission('view_coveragearea')
-                    ? [
-                      {
-                        title: 'Coverage Map',
-                        path: paths.dashboard.beneficiaries.coverage_map,
-                        icon: ICONS.branch,
-                      },
-                    ]
-                    : []),
-                  ...(hasPermission('view_donorreport')
-                    ? [
-                      {
-                        title: 'Donor Report',
-                        path: paths.dashboard.beneficiaries.donor_report,
-                        icon: ICONS.documents,
-                      },
-                    ]
-                    : []),
-                  ...(hasPermission('view_attendancetracker')
-                    ? [
-                      {
-                        title: 'Attendance Tracker',
-                        path: paths.dashboard.beneficiaries.attendance_tracker,
-                        icon: ICONS.calendar,
-                      },
-                    ]
-                    : []),
-                ],
-              },
-              ...(hasPermission('view_beneficiarysetting')
-                ? [
-                  {
-                    title: 'Settings',
-                    path: paths.dashboard.beneficiaries.beneficiary_settings,
-                    icon: ICONS.settings,
-                  },
-                ]
-                : []),
-            ],
-          },
-        ],
-      },
-        ]
+                      : []),
+                  ],
+                },
+              ],
+            },
+          ]
         : []),
 
       // ============================================================
@@ -2660,351 +2895,356 @@ export function useNavData() {
         'view_inventorysettings'
       )
         ? [
-          {
-            items: [
-              {
-                title: 'Store & Inventory',
-                icon: ICONS.store,
-                children: [
-                  {
-                    title: 'Dashboard',
-                    path: paths.dashboard.storeInventory.dashboard,
-                    icon: ICONS.dashboard,
-                  },
-                  ...(hasAnyPermission('view_item', 'view_category', 'view_unitofmeasure')
-                    ? [
-                      {
-                        title: 'Products',
-                        path: paths.dashboard.storeInventory.itemMaster,
-                        icon: ICONS.inventory,
-                        children: [
-                          ...(hasPermission('view_item')
-                            ? [
-                              {
-                                title: 'Item Master',
-                                path: paths.dashboard.storeInventory.itemMaster,
-                                icon: ICONS.inventory,
-                                children: [
-                                  {
-                                    title: 'All Items',
-                                    path: paths.dashboard.storeInventory.itemMaster,
-                                    icon: ICONS.inventory,
-                                  },
-                                  ...(hasPermission('add_item')
-                                    ? [
-                                      {
-                                        title: 'Add Item',
-                                        path: paths.dashboard.storeInventory.add_item,
-                                        icon: ICONS.formAutomation,
-                                      },
-                                    ]
-                                    : []),
-                                  ...(hasPermission('view_category')
-                                    ? [
-                                      {
-                                        title: 'Category List',
-                                        path: paths.dashboard.storeInventory.add_category,
-                                        icon: ICONS.categories,
-                                      },
-                                    ]
-                                    : []),
-                                ],
-                              },
-                            ]
-                            : []),
-                          ...(hasPermission('view_unitofmeasure')
-                            ? [
-                              {
-                                title: 'Units of Measure',
-                                path: paths.dashboard.storeInventory.unitsOfMeasure,
-                                icon: ICONS.menuItem,
-                              },
-                            ]
-                            : []),
-                        ],
-                      },
-                    ]
-                    : []),
-                  ...(hasAnyPermission(
-                    'view_gin',
-                    'view_stocktransfer',
-                    'view_stockadjustment',
-                    'view_scraprecord',
-                    'view_returnrecord'
-                  )
-                    ? [
-                      {
-                        title: 'Operations',
-                        path: paths.dashboard.storeInventory.goodsReceiptNote,
-                        icon: ICONS.requisition,
-                        children: [
-                          ...(hasPermission('view_gin')
-                            ? [
-                              {
-                                title: 'Goods Issue Note',
-                                path: paths.dashboard.storeInventory.goods_issue_note,
-                                icon: ICONS.delivery,
-                                children: [
-                                  {
-                                    title: 'GIN List',
-                                    path: paths.dashboard.storeInventory.goods_issue_note,
-                                    icon: ICONS.menuItem,
-                                  },
-                                  ...(hasPermission('add_gin')
-                                    ? [
-                                      {
-                                        title: 'Create GIN',
-                                        path: paths.dashboard.storeInventory.goods_issue_note_create,
-                                        icon: ICONS.formAutomation,
-                                      },
-                                    ]
-                                    : []),
-                                ],
-                              },
-                            ]
-                            : []),
-                          ...(hasPermission('view_stocktransfer')
-                            ? [
-                              {
-                                title: 'Internal Transfers',
-                                path: paths.dashboard.storeInventory.stock_transfer,
-                                icon: ICONS.delivery,
-                              },
-                            ]
-                            : []),
-                          ...(hasPermission('view_stockadjustment')
-                            ? [
-                              {
-                                title: 'Stock Adjustment',
-                                path: paths.dashboard.storeInventory.stock_adjustment,
-                                icon: ICONS.inventory,
-                                children: [
-                                  {
-                                    title: 'Adjustment List',
-                                    path: paths.dashboard.storeInventory.stock_adjustment,
-                                    icon: ICONS.menuItem,
-                                  },
-                                  ...(hasPermission('add_stockadjustment')
-                                    ? [
-                                      {
-                                        title: 'Create Adjustment',
-                                        path: paths.dashboard.storeInventory.stock_adjustment_create,
-                                        icon: ICONS.formAutomation,
-                                      },
-                                    ]
-                                    : []),
-                                ],
-                              },
-                            ]
-                            : []),
-                          ...(hasPermission('view_scraprecord')
-                            ? [
-                              {
-                                title: 'Scrap Management',
-                                path: paths.dashboard.storeInventory.scrapManagement,
-                                icon: ICONS.menuItem,
-                                children: [
-                                  {
-                                    title: 'Scrap List',
-                                    path: paths.dashboard.storeInventory.scrapManagement,
-                                    icon: ICONS.menuItem,
-                                  },
-                                  ...(hasPermission('add_scraprecord')
-                                    ? [
-                                      {
-                                        title: 'Create Scrap',
-                                        path: paths.dashboard.storeInventory.scrapManagement_create,
-                                        icon: ICONS.formAutomation,
-                                      },
-                                    ]
-                                    : []),
-                                ],
-                              },
-                            ]
-                            : []),
-                          ...(hasPermission('view_returnrecord')
-                            ? [
-                              {
-                                title: 'Return Management',
-                                path: paths.dashboard.storeInventory.returnManagement,
-                                icon: ICONS.menuItem,
-                                children: [
-                                  {
-                                    title: 'Return List',
-                                    path: paths.dashboard.storeInventory.returnManagement,
-                                    icon: ICONS.menuItem,
-                                  },
-                                  ...(hasPermission('add_returnrecord')
-                                    ? [
-                                      {
-                                        title: 'Create Return',
-                                        path: paths.dashboard.storeInventory.returnManagement_create,
-                                        icon: ICONS.menuItem,
-                                      },
-                                    ]
-                                    : []),
-                                  {
-                                    title: 'Return History',
-                                    path: paths.dashboard.storeInventory.returnManagement_history,
-                                    icon: ICONS.menuItem,
-                                  },
-                                ],
-                              },
-                            ]
-                            : []),
-                        ],
-                      },
-                    ]
-                    : []),
-                  ...(hasAnyPermission('view_locationstock', 'view_stockmove')
-                    ? [
-                      {
-                        title: 'Inventory Log',
-                        path: paths.dashboard.storeInventory.inventoryLog,
-                        icon: ICONS.inventory,
-                        children: [
-                          ...(hasPermission('view_locationstock')
-                            ? [
-                              {
-                                title: 'Inventory List',
-                                path: paths.dashboard.storeInventory.inventoryLogList,
-                                icon: ICONS.menuItem,
-                              },
-                            ]
-                            : []),
+            {
+              items: [
+                {
+                  title: 'Store & Inventory',
+                  icon: ICONS.store,
+                  children: [
+                    {
+                      title: 'Dashboard',
+                      path: paths.dashboard.storeInventory.dashboard,
+                      icon: ICONS.dashboard,
+                    },
+                    ...(hasAnyPermission('view_item', 'view_category', 'view_unitofmeasure')
+                      ? [
                           {
-                            title: 'Analytics',
-                            path: paths.dashboard.storeInventory.inventoryLogAnalytics,
-                            icon: ICONS.analytics,
+                            title: 'Products',
+                            path: paths.dashboard.storeInventory.itemMaster,
+                            icon: ICONS.inventory,
+                            children: [
+                              ...(hasPermission('view_item')
+                                ? [
+                                    {
+                                      title: 'Item Master',
+                                      path: paths.dashboard.storeInventory.itemMaster,
+                                      icon: ICONS.inventory,
+                                      children: [
+                                        {
+                                          title: 'All Items',
+                                          path: paths.dashboard.storeInventory.itemMaster,
+                                          icon: ICONS.inventory,
+                                        },
+                                        ...(hasPermission('add_item')
+                                          ? [
+                                              {
+                                                title: 'Add Item',
+                                                path: paths.dashboard.storeInventory.add_item,
+                                                icon: ICONS.formAutomation,
+                                              },
+                                            ]
+                                          : []),
+                                        ...(hasPermission('view_category')
+                                          ? [
+                                              {
+                                                title: 'Category List',
+                                                path: paths.dashboard.storeInventory.add_category,
+                                                icon: ICONS.categories,
+                                              },
+                                            ]
+                                          : []),
+                                      ],
+                                    },
+                                  ]
+                                : []),
+                              ...(hasPermission('view_unitofmeasure')
+                                ? [
+                                    {
+                                      title: 'Units of Measure',
+                                      path: paths.dashboard.storeInventory.unitsOfMeasure,
+                                      icon: ICONS.menuItem,
+                                    },
+                                  ]
+                                : []),
+                            ],
                           },
-                          ...(hasPermission('view_stockmove')
-                            ? [
-                              {
-                                title: 'History',
-                                path: paths.dashboard.storeInventory.inventoryLogHistory,
-                                icon: ICONS.shift,
-                              },
-                            ]
-                            : []),
-                        ],
-                      },
-                    ]
-                    : []),
-                  ...(hasAnyPermission('view_warehouse', 'view_storagelocation')
-                    ? [
-                      {
-                        title: 'Warehouse & Locations',
-                        path: paths.dashboard.storeInventory.warehouses,
-                        icon: ICONS.department,
-                        children: [
+                        ]
+                      : []),
+                    ...(hasAnyPermission(
+                      'view_gin',
+                      'view_stocktransfer',
+                      'view_stockadjustment',
+                      'view_scraprecord',
+                      'view_returnrecord'
+                    )
+                      ? [
                           {
-                            title: 'Office Locations',
-                            path: paths.dashboard.storeInventory.officeLocations,
-                            icon: ICONS.branch,
+                            title: 'Operations',
+                            path: paths.dashboard.storeInventory.goodsReceiptNote,
+                            icon: ICONS.requisition,
+                            children: [
+                              ...(hasPermission('view_gin')
+                                ? [
+                                    {
+                                      title: 'Goods Issue Note',
+                                      path: paths.dashboard.storeInventory.goods_issue_note,
+                                      icon: ICONS.delivery,
+                                      children: [
+                                        {
+                                          title: 'GIN List',
+                                          path: paths.dashboard.storeInventory.goods_issue_note,
+                                          icon: ICONS.menuItem,
+                                        },
+                                        ...(hasPermission('add_gin')
+                                          ? [
+                                              {
+                                                title: 'Create GIN',
+                                                path: paths.dashboard.storeInventory
+                                                  .goods_issue_note_create,
+                                                icon: ICONS.formAutomation,
+                                              },
+                                            ]
+                                          : []),
+                                      ],
+                                    },
+                                  ]
+                                : []),
+                              ...(hasPermission('view_stocktransfer')
+                                ? [
+                                    {
+                                      title: 'Internal Transfers',
+                                      path: paths.dashboard.storeInventory.stock_transfer,
+                                      icon: ICONS.delivery,
+                                    },
+                                  ]
+                                : []),
+                              ...(hasPermission('view_stockadjustment')
+                                ? [
+                                    {
+                                      title: 'Stock Adjustment',
+                                      path: paths.dashboard.storeInventory.stock_adjustment,
+                                      icon: ICONS.inventory,
+                                      children: [
+                                        {
+                                          title: 'Adjustment List',
+                                          path: paths.dashboard.storeInventory.stock_adjustment,
+                                          icon: ICONS.menuItem,
+                                        },
+                                        ...(hasPermission('add_stockadjustment')
+                                          ? [
+                                              {
+                                                title: 'Create Adjustment',
+                                                path: paths.dashboard.storeInventory
+                                                  .stock_adjustment_create,
+                                                icon: ICONS.formAutomation,
+                                              },
+                                            ]
+                                          : []),
+                                      ],
+                                    },
+                                  ]
+                                : []),
+                              ...(hasPermission('view_scraprecord')
+                                ? [
+                                    {
+                                      title: 'Scrap Management',
+                                      path: paths.dashboard.storeInventory.scrapManagement,
+                                      icon: ICONS.menuItem,
+                                      children: [
+                                        {
+                                          title: 'Scrap List',
+                                          path: paths.dashboard.storeInventory.scrapManagement,
+                                          icon: ICONS.menuItem,
+                                        },
+                                        ...(hasPermission('add_scraprecord')
+                                          ? [
+                                              {
+                                                title: 'Create Scrap',
+                                                path: paths.dashboard.storeInventory
+                                                  .scrapManagement_create,
+                                                icon: ICONS.formAutomation,
+                                              },
+                                            ]
+                                          : []),
+                                      ],
+                                    },
+                                  ]
+                                : []),
+                              ...(hasPermission('view_returnrecord')
+                                ? [
+                                    {
+                                      title: 'Return Management',
+                                      path: paths.dashboard.storeInventory.returnManagement,
+                                      icon: ICONS.menuItem,
+                                      children: [
+                                        {
+                                          title: 'Return List',
+                                          path: paths.dashboard.storeInventory.returnManagement,
+                                          icon: ICONS.menuItem,
+                                        },
+                                        ...(hasPermission('add_returnrecord')
+                                          ? [
+                                              {
+                                                title: 'Create Return',
+                                                path: paths.dashboard.storeInventory
+                                                  .returnManagement_create,
+                                                icon: ICONS.menuItem,
+                                              },
+                                            ]
+                                          : []),
+                                        {
+                                          title: 'Return History',
+                                          path: paths.dashboard.storeInventory
+                                            .returnManagement_history,
+                                          icon: ICONS.menuItem,
+                                        },
+                                      ],
+                                    },
+                                  ]
+                                : []),
+                            ],
                           },
-                          ...(hasPermission('view_warehouse')
-                            ? [
-                              {
-                                title: 'Warehouses',
-                                path: paths.dashboard.storeInventory.warehouses,
-                                icon: ICONS.department,
-                              },
-                            ]
-                            : []),
-                        ],
-                      },
-                    ]
-                    : []),
-                  ...(hasAnyPermission(
-                    'view_qualitycheck',
-                    'view_qualityalert',
-                    'view_qualitycontrolpoint'
-                  )
-                    ? [
-                      {
-                        title: 'Quality Control',
-                        path: paths.dashboard.storeInventory.qualityChecks,
-                        icon: ICONS.approval,
-                        children: [
-                          ...(hasPermission('view_qualitycheck')
-                            ? [
-                              {
-                                title: 'Quality Checks',
-                                path: paths.dashboard.storeInventory.qualityChecks,
-                                icon: ICONS.approval,
-                              },
-                            ]
-                            : []),
-                          ...(hasPermission('view_qualityalert')
-                            ? [
-                              {
-                                title: 'Quality Alerts',
-                                path: paths.dashboard.storeInventory.qualityAlerts,
-                                icon: ICONS.notifications,
-                              },
-                            ]
-                            : []),
-                          ...(hasPermission('view_qualitycontrolpoint')
-                            ? [
-                              {
-                                title: 'Control Points',
-                                path: paths.dashboard.storeInventory.qualityControlPoints,
-                                icon: ICONS.settings,
-                              },
-                            ]
-                            : []),
-                        ],
-                      },
-                    ]
-                    : []),
-                  {
-                    title: 'Barcode & Scanning',
-                    path: paths.dashboard.storeInventory.barcodeScanning,
-                    icon: ICONS.menuItem,
-                    children: [
-                      {
-                        title: 'Barcode Scanning',
-                        path: paths.dashboard.storeInventory.barcodeScanning,
-                        icon: ICONS.menuItem,
-                      },
-                      {
-                        title: 'Label Printing',
-                        path: paths.dashboard.storeInventory.labelPrinting,
-                        icon: ICONS.documents,
-                      },
-                    ],
-                  },
-                  ...(hasPermission('view_inventorysettings') || user?.is_superuser
-                    ? [
-                      {
-                        title: 'Settings',
-                        path: paths.dashboard.storeInventory.warehouseSettings,
-                        icon: ICONS.settings,
-                        children: [
+                        ]
+                      : []),
+                    ...(hasAnyPermission('view_locationstock', 'view_stockmove')
+                      ? [
                           {
-                            title: 'Warehouse Settings',
+                            title: 'Inventory Log',
+                            path: paths.dashboard.storeInventory.inventoryLog,
+                            icon: ICONS.inventory,
+                            children: [
+                              ...(hasPermission('view_locationstock')
+                                ? [
+                                    {
+                                      title: 'Inventory List',
+                                      path: paths.dashboard.storeInventory.inventoryLogList,
+                                      icon: ICONS.menuItem,
+                                    },
+                                  ]
+                                : []),
+                              {
+                                title: 'Analytics',
+                                path: paths.dashboard.storeInventory.inventoryLogAnalytics,
+                                icon: ICONS.analytics,
+                              },
+                              ...(hasPermission('view_stockmove')
+                                ? [
+                                    {
+                                      title: 'History',
+                                      path: paths.dashboard.storeInventory.inventoryLogHistory,
+                                      icon: ICONS.shift,
+                                    },
+                                  ]
+                                : []),
+                            ],
+                          },
+                        ]
+                      : []),
+                    ...(hasAnyPermission('view_warehouse', 'view_storagelocation')
+                      ? [
+                          {
+                            title: 'Warehouse & Locations',
+                            path: paths.dashboard.storeInventory.warehouses,
+                            icon: ICONS.department,
+                            children: [
+                              {
+                                title: 'Office Locations',
+                                path: paths.dashboard.storeInventory.officeLocations,
+                                icon: ICONS.branch,
+                              },
+                              ...(hasPermission('view_warehouse')
+                                ? [
+                                    {
+                                      title: 'Warehouses',
+                                      path: paths.dashboard.storeInventory.warehouses,
+                                      icon: ICONS.department,
+                                    },
+                                  ]
+                                : []),
+                            ],
+                          },
+                        ]
+                      : []),
+                    ...(hasAnyPermission(
+                      'view_qualitycheck',
+                      'view_qualityalert',
+                      'view_qualitycontrolpoint'
+                    )
+                      ? [
+                          {
+                            title: 'Quality Control',
+                            path: paths.dashboard.storeInventory.qualityChecks,
+                            icon: ICONS.approval,
+                            children: [
+                              ...(hasPermission('view_qualitycheck')
+                                ? [
+                                    {
+                                      title: 'Quality Checks',
+                                      path: paths.dashboard.storeInventory.qualityChecks,
+                                      icon: ICONS.approval,
+                                    },
+                                  ]
+                                : []),
+                              ...(hasPermission('view_qualityalert')
+                                ? [
+                                    {
+                                      title: 'Quality Alerts',
+                                      path: paths.dashboard.storeInventory.qualityAlerts,
+                                      icon: ICONS.notifications,
+                                    },
+                                  ]
+                                : []),
+                              ...(hasPermission('view_qualitycontrolpoint')
+                                ? [
+                                    {
+                                      title: 'Control Points',
+                                      path: paths.dashboard.storeInventory.qualityControlPoints,
+                                      icon: ICONS.settings,
+                                    },
+                                  ]
+                                : []),
+                            ],
+                          },
+                        ]
+                      : []),
+                    {
+                      title: 'Barcode & Scanning',
+                      path: paths.dashboard.storeInventory.barcodeScanning,
+                      icon: ICONS.menuItem,
+                      children: [
+                        {
+                          title: 'Barcode Scanning',
+                          path: paths.dashboard.storeInventory.barcodeScanning,
+                          icon: ICONS.menuItem,
+                        },
+                        {
+                          title: 'Label Printing',
+                          path: paths.dashboard.storeInventory.labelPrinting,
+                          icon: ICONS.documents,
+                        },
+                      ],
+                    },
+                    ...(hasPermission('view_inventorysettings') || user?.is_superuser
+                      ? [
+                          {
+                            title: 'Settings',
                             path: paths.dashboard.storeInventory.warehouseSettings,
                             icon: ICONS.settings,
+                            children: [
+                              {
+                                title: 'Warehouse Settings',
+                                path: paths.dashboard.storeInventory.warehouseSettings,
+                                icon: ICONS.settings,
+                              },
+                              {
+                                title: 'Office Settings',
+                                path: paths.dashboard.storeInventory.officeSettings,
+                                icon: ICONS.settings,
+                              },
+                              {
+                                title: 'Approval Workflow',
+                                path: paths.dashboard.storeInventory.approvalWorkflow,
+                                icon: ICONS.approval,
+                              },
+                            ],
                           },
-                          {
-                            title: 'Office Settings',
-                            path: paths.dashboard.storeInventory.officeSettings,
-                            icon: ICONS.settings,
-                          },
-                          {
-                            title: 'Approval Workflow',
-                            path: paths.dashboard.storeInventory.approvalWorkflow,
-                            icon: ICONS.approval,
-                          },
-                        ],
-                      },
-                    ]
-                    : []),
-                ],
-              },
-            ],
-          },
-        ]
+                        ]
+                      : []),
+                  ],
+                },
+              ],
+            },
+          ]
         : []),
 
       // ============================================================
@@ -3012,30 +3252,39 @@ export function useNavData() {
       // ============================================================
       ...(user?.is_superuser
         ? [
-          {
-            items: [
-              {
-                title: 'Settings',
-                icon: ICONS.settings,
-                children: [
-                  {
-                    title: 'Permission Groups',
-                    path: paths.dashboard.settings.permissionGroups,
-                    icon: ICONS.parameter,
-                  },
-                  {
-                    title: 'Module Permissions',
-                    path: paths.dashboard.settings.modulePermissions,
-                    icon: ICONS.lock,
-                  },
-                ],
-              },
-            ],
-          },
-        ]
+            {
+              items: [
+                {
+                  title: 'Settings',
+                  icon: ICONS.settings,
+                  children: [
+                    {
+                      title: 'Permission Groups',
+                      path: paths.dashboard.settings.permissionGroups,
+                      icon: ICONS.parameter,
+                    },
+                    {
+                      title: 'Module Permissions',
+                      path: paths.dashboard.settings.modulePermissions,
+                      icon: ICONS.lock,
+                    },
+                  ],
+                },
+              ],
+            },
+          ]
         : []),
     ]);
-  }, [hasPermission, hasAnyPermission, user?.role, user?.is_superuser, canShowWebLogin]);
+  }, [
+    hasPermission,
+    hasAnyPermission,
+    user?.role,
+    user?.is_superuser,
+    canShowWebLogin,
+    accountsNavTitle,
+    projectsNavTitle,
+    gatewayProjectNavChildren,
+  ]);
 
   return navData;
 }

@@ -248,6 +248,8 @@ export const endpoints = {
     donorById: (id) => `/api/donors/${id}/`,
     donorLedgers: '/api/donor-ledgers/',
     donorLedgerById: (id) => `/api/donor-ledgers/${id}/`,
+    currencies: '/api/currencies/',
+    currencyById: (id) => `/api/currencies/${id}/`,
   },
   storeInventory: {
     // Core - Items & Products
@@ -1086,10 +1088,19 @@ export const endpoints = {
     voucher_approve: (id) => `/api/acc-vouchers/${id}/approve-voucher/`,
     voucher_reject: (id) => `/api/acc-vouchers/${id}/reject-voucher/`,
     voucher_post: (id) => `/api/acc-vouchers/${id}/post-voucher/`,
+    voucher_reverse: (id) => `/api/acc-vouchers/${id}/reverse-voucher/`,
     voucher_approvals: '/api/acc-voucher-approvals/',
     voucher_approval_by_id: (id) => `/api/acc-voucher-approvals/${id}/`,
     voucher_attachments: '/api/acc-voucher-attachments/',
     voucher_attachment_by_id: (id) => `/api/acc-voucher-attachments/${id}/`,
+
+    // Gateway display & reports
+    gateway_day_book: '/api/acc-gateway/day-book/',
+    gateway_cash_bank_book: '/api/acc-gateway/cash-bank-book/',
+    gateway_account_ledger: '/api/acc-gateway/account-ledger/',
+    gateway_profit_and_loss: '/api/acc-gateway/profit-and-loss/',
+    gateway_balance_sheet: '/api/acc-gateway/balance-sheet/',
+    gateway_project_statement: '/api/acc-gateway/project-statement/',
 
     // Payments
     payment_methods: '/api/acc-payment-methods/',

@@ -109,6 +109,11 @@ export const paths = {
         edit: (id) => `${ROOTS.DASHBOARD}/projects/donors/${id}/edit`,
         ledgerCreate: (id) => `${ROOTS.DASHBOARD}/projects/donors/${id}/ledgers/new`,
       },
+      currencies: {
+        root: `${ROOTS.DASHBOARD}/projects/currencies`,
+        create: `${ROOTS.DASHBOARD}/projects/currencies/new`,
+        edit: (id) => `${ROOTS.DASHBOARD}/projects/currencies/${id}/edit`,
+      },
     },
     storeInventory: {
       root: `${ROOTS.DASHBOARD}/store&inventory`,
@@ -1126,6 +1131,47 @@ export const paths = {
       create: `${ROOTS.DASHBOARD}/project-managements/expenses/advances/create`,
       detail: (id) => `${ROOTS.DASHBOARD}/project-managements/expenses/advances/${id}`,
       edit: (id) => `${ROOTS.DASHBOARD}/project-managements/expenses/advances/${id}/edit`,
+    },
+    // TallyPrime-style Accounts Gateway
+    accountsGateway: {
+      root: `${ROOTS.DASHBOARD}/accounts-gateway`,
+      projects: `${ROOTS.DASHBOARD}/accounts-gateway/projects`,
+      selectProject: (id) => `${ROOTS.DASHBOARD}/accounts-gateway/select/${id}`,
+      voucherMenu: (type) => `${ROOTS.DASHBOARD}/accounts-gateway?voucher=${type}`,
+      masters: {
+        root: `${ROOTS.DASHBOARD}/accounts-gateway/masters`,
+        chartOfAccounts: `${ROOTS.DASHBOARD}/accounts-gateway/masters/chart-of-accounts`,
+        bankCash: `${ROOTS.DASHBOARD}/accounts-gateway/masters/bank-cash`,
+        journals: `${ROOTS.DASHBOARD}/accounts-gateway/masters/journals`,
+        /** @deprecated use accountsGateway.projects */
+        projects: `${ROOTS.DASHBOARD}/accounts-gateway/projects`,
+      },
+      vouchers: {
+        root: `${ROOTS.DASHBOARD}/accounts-gateway/vouchers`,
+        payment: `${ROOTS.DASHBOARD}/accounts-gateway/vouchers/payment`,
+        paymentCreate: `${ROOTS.DASHBOARD}/accounts-gateway/vouchers/payment/create`,
+        paymentList: `${ROOTS.DASHBOARD}/accounts-gateway/vouchers/payment/list`,
+        receipt: `${ROOTS.DASHBOARD}/accounts-gateway/vouchers/receipt`,
+        receiptCreate: `${ROOTS.DASHBOARD}/accounts-gateway/vouchers/receipt/create`,
+        receiptList: `${ROOTS.DASHBOARD}/accounts-gateway/vouchers/receipt/list`,
+        journal: `${ROOTS.DASHBOARD}/accounts-gateway/vouchers/journal`,
+        journalCreate: `${ROOTS.DASHBOARD}/accounts-gateway/vouchers/journal/create`,
+        journalList: `${ROOTS.DASHBOARD}/accounts-gateway/vouchers/journal/list`,
+        list: `${ROOTS.DASHBOARD}/accounts-gateway/vouchers/list`,
+      },
+      display: {
+        root: `${ROOTS.DASHBOARD}/accounts-gateway/display`,
+        dayBook: `${ROOTS.DASHBOARD}/accounts-gateway/display/day-book`,
+        cashBankBook: `${ROOTS.DASHBOARD}/accounts-gateway/display/cash-bank-book`,
+        ledger: `${ROOTS.DASHBOARD}/accounts-gateway/display/ledger`,
+      },
+      reports: {
+        root: `${ROOTS.DASHBOARD}/accounts-gateway/reports`,
+        trialBalance: `${ROOTS.DASHBOARD}/accounts-gateway/reports/trial-balance`,
+        profitAndLoss: `${ROOTS.DASHBOARD}/accounts-gateway/reports/profit-and-loss`,
+        balanceSheet: `${ROOTS.DASHBOARD}/accounts-gateway/reports/balance-sheet`,
+        projectStatement: `${ROOTS.DASHBOARD}/accounts-gateway/reports/project-statement`,
+      },
     },
   },
   moneyReceipt: {
