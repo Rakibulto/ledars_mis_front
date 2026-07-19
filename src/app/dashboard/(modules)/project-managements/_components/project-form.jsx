@@ -2174,6 +2174,9 @@ export default function ProjectForm({ mode = 'create', projectId = null }) {
                           Array.isArray(plan.sub_plans) && plan.sub_plans.length
                             ? plan.sub_plans
                             : [{ ...EMPTY_SUB_PLAN }];
+                        const selectedPlanUsers = selectedAssignedUsers.filter((user) =>
+                          (plan.assigned_user_ids || []).includes(user.id)
+                        );
 
                         return (
                           <Card
@@ -2194,7 +2197,7 @@ export default function ProjectForm({ mode = 'create', projectId = null }) {
                             >
                               <Box
                                 sx={{
-                                  mb: 2,
+                                  mb: 1.5,
                                   width: '100%',
                                   display: 'flex',
                                   alignItems: 'center',
@@ -2259,6 +2262,48 @@ export default function ProjectForm({ mode = 'create', projectId = null }) {
                                   ) : null}
                                 </Box>
                               </Box>
+
+                              <Autocomplete
+                                multiple
+                                size="small"
+                                options={selectedAssignedUsers}
+                                value={selectedPlanUsers}
+                                onChange={(_, value) =>
+                                  updatePlan(
+                                    index,
+                                    'assigned_user_ids',
+                                    value.map((item) => item.id)
+                                  )
+                                }
+                                getOptionLabel={(option) => option?.username || 'Unknown user'}
+                                renderTags={(value, getTagProps) =>
+                                  value.map((option, tagIndex) => (
+                                    <Chip
+                                      {...getTagProps({ index: tagIndex })}
+                                      key={option.id}
+                                      label={option.username}
+                                      size="small"
+                                    />
+                                  ))
+                                }
+                                renderInput={(params) => (
+                                  <TextField
+                                    {...params}
+                                    size="small"
+                                    label="Assign Users"
+                                    helperText="Only users selected in Basic Information are available here."
+                                  />
+                                )}
+                                sx={{
+                                  mb: 2,
+                                  bgcolor: 'background.paper',
+                                  borderRadius: 1,
+                                  '& .MuiOutlinedInput-root': {
+                                    bgcolor: 'background.paper',
+                                    borderRadius: '8px',
+                                  },
+                                }}
+                              />
 
                               <Stack spacing={1.25}>
                                 {subPlans.map((subPlan, subIndex) => {
